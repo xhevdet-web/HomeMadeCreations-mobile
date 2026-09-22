@@ -1,0 +1,53 @@
+[
+  {
+    "id": "bracelet-classic",
+    "name": "Classic Bracelet",
+    "type": "bracelet",
+    "description": "A little warmth, a little wonder. Start with our signature stretch bracelet and tell your story in natural stones, glass beads, and meaningful charms.",
+    "basePrice": 500,
+    "currency": "EUR",
+    "image": "procedural:amber",
+    "available": true,
+    "sizes": ["S · 15 cm", "M · 17 cm", "L · 19 cm"],
+    "palette": ["onyx", "amber", "gold", "onyx", "pearl", "amber"],
+    "tag": "BESTSELLER"
+  },
+  {
+    "id": "bracelet-pearl",
+    "name": "Pearl & Petal",
+    "type": "bracelet",
+    "description": "Soft freshwater-inspired pearls meet a hint of blush. An elegant base for a piece you will reach for every day.",
+    "basePrice": 800,
+    "currency": "EUR",
+    "image": "procedural:pearl",
+    "available": true,
+    "sizes": ["S · 15 cm", "M · 17 cm", "L · 19 cm"],
+    "palette": ["pearl", "pearl", "rose", "gold", "pearl", "rose"],
+    "tag": "NEW ARRIVAL"
+  },
+  {
+    "id": "necklace-classic",
+    "name": "Golden Hour Necklace",
+    "type": "necklace",
+    "description": "A delicate necklace with a warm golden glow. Add your favorite stones or a tiny keepsake, and keep a little sunshine close.",
+    "basePrice": 1000,
+    "currency": "EUR",
+    "image": "procedural:gold",
+    "available": true,
+    "sizes": ["40 cm", "45 cm", "50 cm"],
+    "palette": ["gold", "gold", "amber", "onyx", "gold", "pearl"],
+    "tag": "MADE FOR YOU"
+  },
+  {
+    "id": "necklace-gold",
+    "name": "Everyday Gold Chain",
+    "type": "necklace",
+    "description": "Understated and endlessly personal. Our gold-tone chain is the perfect starting point for initials, charms, and your own little rituals.",
+    "basePrice": 1500,
+    "currency": "EUR",
+    "image": "procedural:chain",
+    "available": true,
+    "sizes": ["40 cm", "45 cm", "50 cm"],
+    "palette": ["gold", "gold", "gold", "gold", "gold", "gold"]
+  }
+]
