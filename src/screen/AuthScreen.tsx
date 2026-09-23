@@ -1,8 +1,11 @@
 import { useTheme } from '@/hooks/useTheme';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Brand, Button, Field, Header, Page, useUI } from '@/components/common/ui';
+import { Brand, Button, Field, IconButton, Page, useUI } from '@/components/common/ui';
+import { PasswordInput } from '@/components/common/PasswordInput';
+import { useOnboardingStore } from '@/store/onboardingStore';
+import { useThemeStore } from '@/store/themeStore';
 import { useAuthStore } from '@/store/authStore';
 
 import { hasRequiredValues, isValidEmail } from '@/helper/validation';
@@ -10,57 +13,95 @@ import { hasRequiredValues, isValidEmail } from '@/helper/validation';
 export function AuthScreen({ register = false }: { register?: boolean }) {
   const theme = useTheme();
   const ui = useUI();
+  const toggleTheme = useThemeStore((state) => state.toggle);
+  useEffect(() => { useOnboardingStore.getState().complete(); }, []);
 
   const { next } = useLocalSearchParams<{ next?: string }>();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
+  const [userName, setUserName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [country, setCountry] = useState('');
   const [address, setAddress] = useState('');
+  const [postalCode, setPostalCode] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState('');
-  function submit() {
-    if (!isValidEmail(email)) return setError('Please enter a valid email address.');
-    if (password.length < 8) return setError('Please use a password with at least 8 characters.');
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+  const sessionError = useAuthStore((state) => state.error);
+  async function submit() {
+    if (busy) return;
+    setError('');
+    setMessage('');
+    if (register && !isValidEmail(email)) return setError('Please enter a valid email address.');
+    if (!register && !email.trim()) return setError('Please enter your email or username.');
+    if (register && userName.trim() && !/^[a-zA-Z0-9_.-]{3,30}$/.test(userName.trim()))
+      return setError(
+        'Username must be 3?30 characters: letters, numbers, dots, underscores or hyphens.',
+      );
+    if (!password) return setError('Please enter your password.');
     if (register) {
-      if (!hasRequiredValues(firstName, lastName, address))
-        return setError('Please complete your name and home address.');
+      if (password.length < 12 || password.length > 128)
+        return setError('Please use a password between 12 and 128 characters.');
+      if (!hasRequiredValues(firstName, lastName))
+        return setError('Please complete your first and last name.');
       if (password !== confirm) return setError('Your passwords do not match.');
-      if (!useAuthStore.getState().register({ firstName, lastName, email, address }))
-        return setError('This email already has a local profile. Please sign in.');
-    } else if (!useAuthStore.getState().signIn(email))
-      return setError('No local profile found. Create an account to get started.');
-    if (next === 'checkout') router.dismissTo('/checkout');
-    else router.replace('/');
+    }
+    setBusy(true);
+    try {
+      if (register) {
+        await useAuthStore.getState().register({
+          firstName,
+          lastName,
+          email,
+          password,
+          userName,
+          phone,
+          country,
+          address,
+          postalCode,
+        });
+        setPassword('');
+        setConfirm('');
+        setMessage('Account created. You can now sign in.');
+      } else {
+        await useAuthStore.getState().signIn(email, password);
+        setPassword('');
+        // The protected navigator opens Home once the session is authenticated.
+      }
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : 'Unable to sign in. Please try again.');
+    } finally {
+      setBusy(false);
+    }
   }
   return (
-    <Page>
-      <Header title="Your little creative corner" back />
-      <View style={{ alignItems: 'center', paddingVertical: 18 }}>
-        <Brand />
+    <Page style={{ maxWidth: 460, gap: 22, paddingTop: 12 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <IconButton name="arrow-back" label={register ? "Back to login" : "Go to registration"} onPress={() => router.replace(register ? '/login' : '/register')} />
+        <IconButton name={theme.mode === 'dark' ? 'sunny-outline' : 'moon-outline'}
+          label={theme.mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} onPress={toggleTheme} />
       </View>
-      <View>
-        <Text style={ui.eyebrow}>
-          {register ? 'LET’S MAKE SOMETHING MEANINGFUL' : 'A LITTLE TIME FOR YOU'}
-        </Text>
-        <Text style={ui.title}>{register ? 'A new story begins.' : 'Welcome back.'}</Text>
-        <Text style={[ui.body, { marginTop: 12 }]}>
-          {register
-            ? 'Save your creations and bring your ideas to life.'
-            : 'Your ideas, your favorites, your next creation.'}
-        </Text>
+      <View style={{ alignItems: 'center', paddingVertical: register ? 8 : 36 }}><Brand /></View>
+      <View style={{ alignItems: register ? 'flex-start' : 'center', gap: 6 }}>
+        <Text style={[ui.title, { fontSize: register ? 35 : 28, lineHeight: 38 }]}>{register ? 'Create\nYour Account' : 'Welcome back!'}</Text>
+        <Text style={ui.body}>{register ? 'Join HomeMade Beads' : 'Sign in to continue'}</Text>
       </View>
       <View style={{ gap: 18 }}>
         {register && (
           <>
             <Field
               label="First name"
+              icon="person-outline"
               value={firstName}
               onChangeText={setFirstName}
               autoComplete="given-name"
             />
             <Field
               label="Last name"
+              icon="person-outline"
               value={lastName}
               onChangeText={setLastName}
               autoComplete="family-name"
@@ -68,45 +109,99 @@ export function AuthScreen({ register = false }: { register?: boolean }) {
           </>
         )}
         <Field
-          label="Email address"
+          label={register ? 'Email address' : 'Email or username'}
+          icon="mail-outline"
           value={email}
           onChangeText={setEmail}
-          keyboardType="email-address"
+          keyboardType={register ? 'email-address' : 'default'}
           autoCapitalize="none"
-          autoComplete="email"
+          autoComplete={register ? 'email' : 'username'}
+          autoCorrect={false}
         />
         {register && (
-          <Field
-            label="Home address"
-            value={address}
-            onChangeText={setAddress}
-            autoComplete="street-address"
-            multiline
-          />
+          <>
+            <Field
+              label="Username (optional)"
+              icon="at-outline"
+              placeholder="3?30 letters, numbers, dots, _ or -"
+              value={userName}
+              onChangeText={setUserName}
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="username"
+              maxLength={30}
+            />
+            <Field
+              label="Phone (optional)"
+              icon="call-outline"
+              value={phone}
+              onChangeText={setPhone}
+              keyboardType="phone-pad"
+              autoComplete="tel"
+              maxLength={32}
+            />
+            <Field
+              label="Country (optional)"
+              icon="globe-outline"
+              value={country}
+              onChangeText={setCountry}
+              autoComplete="country"
+              maxLength={100}
+            />
+            <Field
+              label="Address (optional)"
+              icon="home-outline"
+              value={address}
+              onChangeText={setAddress}
+              autoComplete="street-address"
+              maxLength={300}
+            />
+            <Field
+              label="Postal code (optional)"
+              icon="location-outline"
+              value={postalCode}
+              onChangeText={setPostalCode}
+              autoComplete="postal-code"
+              maxLength={20}
+            />
+          </>
         )}
-        <Field
+        <PasswordInput
           label="Password"
-          placeholder="At least 8 characters"
+          placeholder={register ? 'At least 12 characters' : 'Your password'}
           value={password}
           onChangeText={setPassword}
-          secureTextEntry
           autoComplete={register ? 'new-password' : 'current-password'}
         />
         {register && (
-          <Field
+          <PasswordInput
             label="Confirm password"
             value={confirm}
             onChangeText={setConfirm}
-            secureTextEntry
-          />
+            />
         )}
-        {error ? (
+        {error || sessionError ? (
           <Text accessibilityRole="alert" style={ui.error}>
-            {error}
+            {error || sessionError}
+          </Text>
+        ) : null}
+        {sessionError?.startsWith('Could not clear') ? (
+          <Button
+            title="Retry clearing saved session"
+            secondary
+            onPress={() => {
+              void useAuthStore.getState().logout();
+            }}
+          />
+        ) : null}
+        {message ? (
+          <Text accessibilityRole="alert" style={ui.body}>
+            {message}
           </Text>
         ) : null}
         <Button
-          title={register ? 'Create my account' : 'Sign in'}
+          loading={busy}
+          title={register ? 'Create Account' : 'Log In'}
           icon="arrow-forward"
           onPress={submit}
         />
@@ -117,18 +212,11 @@ export function AuthScreen({ register = false }: { register?: boolean }) {
         }
       >
         <Text style={[ui.body, { textAlign: 'center' }]}>
-          {register ? 'Already part of the story? ' : 'New to HomeMade? '}
+          {register ? 'Already have an account? ' : "Don't have an account? "}
           <Text style={{ color: theme.colors.accent }}>
-            {register ? 'Sign in' : 'Create an account'}
+            {register ? 'Log In' : 'Sign Up'}
           </Text>
         </Text>
-      </Pressable>
-      <Text style={[ui.caption, { textAlign: 'center' }]}>
-        Prototype account · stored on this device only.{'\n'}Sign-in is simulated: any 8-character
-        password works for an existing local profile. Passwords are never saved.
-      </Text>
-      <Pressable onPress={() => router.replace('/')}>
-        <Text style={[ui.textLink, { textAlign: 'center' }]}>Explore the collection first</Text>
       </Pressable>
     </Page>
   );

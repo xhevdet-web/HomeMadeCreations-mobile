@@ -16,19 +16,23 @@ const categories: Record<string, ItemType | undefined> = {
 };
 export function BeadPicker({
   onPick,
+  initialCategory = 'All',
+  expanded = false,
   replacing,
   disabled = false,
 }: {
   onPick: (item: CustomizationItem) => void;
   replacing: boolean;
+  initialCategory?: string;
+  expanded?: boolean;
   disabled?: boolean;
 }) {
   const theme = useTheme();
   const ui = useUI();
   const styles = useThemedStyles(createStyles);
 
-  const [category, setCategory] = useState('All');
-  const [filterOpen, setFilterOpen] = useState(false);
+  const [category, setCategory] = useState(initialCategory in categories ? initialCategory : 'All');
+  const [filterOpen, setFilterOpen] = useState(expanded);
   const [color, setColor] = useState('Any color');
   const [material, setMaterial] = useState('Any material');
   const [shape, setShape] = useState('Any shape');
@@ -126,7 +130,7 @@ export function BeadPicker({
             <Text numberOfLines={1} style={styles.name}>
               {item.name}
             </Text>
-            <Text style={styles.price}>{money(item.price)}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}><Text style={styles.price}>{money(item.price)}</Text><Icon name="add-circle" size={24} color={theme.colors.primary} /></View>
           </Pressable>
         ))}
       </View>
@@ -142,9 +146,9 @@ const createStyles = (theme: Theme) => {
   return StyleSheet.create({
     grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     item: {
-      width: '23%',
+      width: '30%',
       flexGrow: 1,
-      maxWidth: '25%',
+      maxWidth: '33%',
       backgroundColor: theme.colors.surface,
       borderWidth: 1,
       borderColor: theme.colors.border,
@@ -153,7 +157,7 @@ const createStyles = (theme: Theme) => {
       alignItems: 'center',
       gap: 6,
     },
-    name: { fontSize: 8, color: theme.colors.muted },
+    name: { fontSize: 11, color: theme.colors.text },
     price: { fontSize: 11, color: theme.colors.text, fontWeight: '500' },
   });
 };

@@ -52,6 +52,8 @@ export interface Address {
   country: string;
 }
 export interface User {
+  userName?: string;
+  phone?: string;
   id: string;
   firstName: string;
   lastName: string;

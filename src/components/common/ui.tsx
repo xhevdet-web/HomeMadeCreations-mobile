@@ -180,19 +180,13 @@ export function Header({
     </View>
   );
 }
-export function Brand({ compact = false }: { compact?: boolean }) {
+export function Brand({ compact = false, hero = false }: { compact?: boolean; hero?: boolean }) {
   const theme = useTheme();
-  const c = theme.colors;
-  const ui = useUI();
-
+  const color = hero ? '#224B61' : theme.colors.text;
   return (
-    <View>
-      <Text style={[ui.brand, compact && { fontSize: 26 }]}>
-        HomeMade<Text style={{ color: c.accent }}>.</Text>
-      </Text>
-      <Text style={[ui.brandSub, compact && { fontSize: 7, letterSpacing: 1.2 }]}>
-        BEADS & LITTLE WONDERS
-      </Text>
+    <View style={{ alignItems: 'center' }}>
+      {!compact && <Icon name="leaf-outline" size={hero ? 38 : 30} color={color} />}
+      <Text style={{ fontFamily: theme.fonts.editorial, color, fontSize: hero ? 43 : compact ? 23 : 34, lineHeight: hero ? 43 : compact ? 23 : 34, textAlign: 'center', letterSpacing: -0.8 }}>HomeMade{'\n'}Beads</Text>
     </View>
   );
 }
@@ -259,8 +253,9 @@ export function Chips({
 export function Field({
   label,
   error,
+  icon,
   ...props
-}: TextInputProps & { label: string; error?: string }) {
+}: TextInputProps & { label: string; error?: string; icon?: IconName }) {
   const theme = useTheme();
   const c = theme.colors;
   const ui = useUI();
@@ -268,6 +263,8 @@ export function Field({
   return (
     <View style={{ gap: 8 }}>
       <Text style={ui.label}>{label}</Text>
+      <View style={{ justifyContent: 'center' }}>
+      {icon && <View pointerEvents="none" style={{ position: 'absolute', left: 14, zIndex: 1 }}><Icon name={icon} size={17} color={c.muted} /></View>}
       <TextInput
         accessibilityLabel={label}
         placeholderTextColor={c.muted}
@@ -276,10 +273,12 @@ export function Field({
         {...props}
         style={[
           ui.input,
+          icon && { paddingLeft: 42 },
           props.multiline && { minHeight: 90, textAlignVertical: 'top' },
           props.style,
         ]}
       />
+      </View>
       {error && <Text style={ui.error}>{error}</Text>}
     </View>
   );
@@ -330,7 +329,7 @@ const createUIStyles = (theme: Theme) => {
     page: { flex: 1, backgroundColor: c.background },
     pageContent: {
       width: '100%',
-      maxWidth: 920,
+      maxWidth: 760,
       alignSelf: 'center',
       padding: 22,
       paddingBottom: 36,
@@ -344,11 +343,22 @@ const createUIStyles = (theme: Theme) => {
       gap: 12,
     },
     header: { flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 48 },
-    headerTitle: { fontSize: 19, color: c.text, fontWeight: '600' },
+    headerTitle: { fontSize: 23, color: c.text, fontFamily: theme.fonts.editorial },
     brand: { fontFamily: theme.fonts.editorial, fontSize: 31, color: c.text, letterSpacing: -1.2 },
     brandSub: { fontSize: 8, color: c.gold, letterSpacing: 2.2, marginTop: 3 },
-    title: { fontFamily: theme.fonts.editorial, fontSize: 36, color: c.text, lineHeight: 43 },
-    sectionTitle: { fontFamily: theme.fonts.editorial, fontSize: 26, color: c.text },
+    title: {
+      fontFamily: theme.fonts.editorial,
+      fontSize: 30,
+      fontWeight: '400',
+      color: c.text,
+      lineHeight: 38,
+    },
+    sectionTitle: {
+      fontFamily: theme.fonts.editorial,
+      fontSize: 22,
+      fontWeight: '400',
+      color: c.text,
+    },
     eyebrow: { color: c.gold, letterSpacing: 2, fontSize: 9, fontWeight: '600', marginBottom: 9 },
     body: { fontSize: 14, lineHeight: 23, color: c.muted },
     caption: { fontSize: 12, lineHeight: 19, color: c.muted },
@@ -359,8 +369,8 @@ const createUIStyles = (theme: Theme) => {
       backgroundColor: c.surface,
       borderWidth: 1,
       borderColor: c.border,
-      borderRadius: 20,
-      padding: 20,
+      borderRadius: 16,
+      padding: 18,
       gap: 16,
     },
     iconButton: {
@@ -377,14 +387,14 @@ const createUIStyles = (theme: Theme) => {
       minHeight: 52,
       paddingHorizontal: 22,
       paddingVertical: 14,
-      borderRadius: 15,
+      borderRadius: 12,
       backgroundColor: c.primary,
       flexDirection: 'row',
       gap: 14,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    buttonText: { color: c.onPrimary, fontSize: 14, fontWeight: '700' },
+    buttonText: { color: c.onPrimary, fontSize: 14, fontWeight: '500' },
     secondaryButton: { backgroundColor: c.surface, borderWidth: 1, borderColor: c.border },
     input: {
       minHeight: 50,
@@ -401,10 +411,10 @@ const createUIStyles = (theme: Theme) => {
       paddingHorizontal: 17,
       minHeight: 40,
       justifyContent: 'center',
-      borderRadius: 12,
+      borderRadius: 20,
       borderWidth: 1,
       borderColor: c.border,
-      backgroundColor: c.surface,
+      backgroundColor: c.soft,
     },
     chipActive: { backgroundColor: c.primary, borderColor: c.accent },
     chipText: { color: c.muted, fontSize: 12 },

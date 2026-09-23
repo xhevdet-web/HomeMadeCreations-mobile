@@ -1,6 +1,6 @@
 # HomeMade Beads
 
-A mobile-first Expo 57 / React Native prototype for designing handmade jewelry. The visual direction follows the supplied charcoal, amber, and gold reference. The catalog, accounts, saved designs, and orders are local; no backend or payment service is connected.
+A mobile-first Expo 57 / React Native prototype for designing handmade jewelry. The visual direction follows the supplied charcoal, amber, and gold reference. The catalog, saved designs, and orders remain local prototype data. Authentication uses a token-based API boundary; backend auth endpoints still need implementation.
 
 ## Run
 
@@ -11,7 +11,7 @@ npm start
 
 Use `npm run web` for the browser. On Windows PowerShell with script execution disabled, use `npm.cmd` and `npx.cmd`.
 
-The app opens the collection for guest browsing. Create a profile through Profile, or when checking out. Registration validates fields and password confirmation. Sign-in is explicitly simulated: use the email of a profile created on this device and any password of at least eight characters. Passwords are never saved. This is not production authentication.
+The app checks its session before navigation and opens Login for guests. Native tokens use Expo SecureStore; authenticated sessions open Home. See [authentication setup and API contract](docs/authentication.md). The old local-profile sign-in simulation is removed.
 
 ## Prototype flow
 
@@ -23,7 +23,7 @@ Use the sun/moon button beside the bag on Discover to switch between charcoal/am
 4. Undo, redo, or clear the design. Designs support up to 32 components.
 5. Preview the exact selection, name it, and save it or add it to the bag.
 6. Confirm delivery details and place a local demo order.
-7. Revisit My Designs to edit, duplicate, delete/undo deletion, or order. Orders and profile details survive reloads.
+7. Revisit My Designs to edit, duplicate, delete/undo deletion, or order. Orders survive reloads; profile edits currently live only in the active session.
 
 Jewelry is rendered using reusable SVG geometry and shaded beads, so the prototype works without external product-image URLs. Catalog `image` fields are procedural identifiers, not remote image assets. Drag-and-drop is a future enhancement; the current interaction is tap-to-add and tap-to-replace.
 

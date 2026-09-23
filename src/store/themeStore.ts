@@ -11,7 +11,7 @@ interface ThemeState {
 export const useThemeStore = create<ThemeState>()(
   persist(
     (set) => ({
-      mode: 'dark',
+      mode: 'light',
       toggle: () => set((state) => ({ mode: state.mode === 'dark' ? 'light' : 'dark' })),
     }),
     { name: 'homemade-theme-v1', storage, partialize: ({ mode }) => ({ mode }) },

@@ -58,7 +58,7 @@ export function ProductCard({ product, width }: { product: Product; width: numbe
 const createStyles = (theme: Theme) => {
   return StyleSheet.create({
     card: {
-      borderRadius: 20,
+      borderRadius: 14,
       backgroundColor: theme.colors.surface,
       overflow: 'hidden',
       borderWidth: 1,
@@ -76,9 +76,9 @@ const createStyles = (theme: Theme) => {
       borderRadius: 5,
     },
     tagText: { color: theme.colors.gold, fontSize: 7, letterSpacing: 1.1 },
-    info: { padding: 15, gap: 10 },
+    info: { padding: 12, gap: 7 },
     type: { fontSize: 7, color: theme.colors.muted, letterSpacing: 1 },
-    name: { fontFamily: theme.fonts.editorial, fontSize: 20, color: theme.colors.text },
+    name: { fontFamily: theme.fonts.editorial, fontSize: 18, color: theme.colors.text },
     from: { color: theme.colors.muted, fontSize: 10 },
     price: { color: theme.colors.text, fontSize: 16, fontWeight: '600', marginTop: 3 },
     arrow: {

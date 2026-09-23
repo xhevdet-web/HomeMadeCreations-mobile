@@ -1,69 +1,109 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import { User } from '@/types/models';
-import { uniqueId } from '@/helper/design';
-import { storage } from './storage';
+import type { User } from '../types/models';
+import { authApi, parseTokens, type Tokens } from '../services/authApi';
+import { authStorage } from '../services/authStorage';
 
 interface AuthState {
   user: User | null;
-  profiles: User[];
-  signIn: (email: string) => boolean;
+  status: 'checking' | 'authenticated' | 'anonymous';
+  expiresAt: number | null;
+  error: string | null;
+  restore: () => Promise<void>;
+  signIn: (identifier: string, password: string) => Promise<void>;
   register: (input: {
     firstName: string;
     lastName: string;
     email: string;
-    address: string;
-  }) => boolean;
+    password: string;
+    userName?: string;
+    phone?: string;
+    country?: string;
+    address?: string;
+    postalCode?: string;
+  }) => Promise<void>;
   update: (user: User) => void;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
-// Local identity simulation. Passwords are validated in the form, never stored.
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set, get) => ({
-      user: null,
-      profiles: [],
-      signIn: (email) => {
-        const user = get().profiles.find(
-          (profile) => profile.email.toLowerCase() === email.trim().toLowerCase(),
-        );
-        if (!user) return false;
-        set({ user });
-        return true;
-      },
-      register: (input) => {
-        if (
-          get().profiles.some(
-            (profile) => profile.email.toLowerCase() === input.email.trim().toLowerCase(),
-          )
-        )
-          return false;
-        const id = uniqueId();
-        const user: User = {
-          id,
-          firstName: input.firstName.trim(),
-          lastName: input.lastName.trim(),
-          email: input.email.trim().toLowerCase(),
-          address: {
-            id: uniqueId(),
-            userId: id,
-            fullName: `${input.firstName.trim()} ${input.lastName.trim()}`,
-            street: input.address.trim(),
-            city: '',
-            postalCode: '',
-            country: '',
-          },
-        };
-        set({ user, profiles: [...get().profiles, user] });
-        return true;
-      },
-      update: (user) =>
-        set({
-          user,
-          profiles: get().profiles.map((profile) => (profile.id === user.id ? user : profile)),
-        }),
-      logout: () => set({ user: null }),
-    }),
-    { name: 'homemade-profile-v1', storage },
-  ),
-);
+let generation = 0;
+let restoring: Promise<void> | null = null;
+let storageQueue: Promise<unknown> = Promise.resolve();
+function stored<T>(operation: () => Promise<T>): Promise<T> {
+  const result = storageQueue.then(operation);
+  storageQueue = result.catch(() => undefined);
+  return result;
+}
+async function validate(tokens: Tokens) {
+  if (tokens.expiresAt <= Date.now()) throw new Error('Session expired.');
+  const user = await authApi.me(tokens.accessToken);
+  if (tokens.expiresAt <= Date.now()) throw new Error('Session expired.');
+  return user;
+}
+
+export const useAuthStore = create<AuthState>((set, get) => ({
+  user: null,
+  status: 'checking',
+  expiresAt: null,
+  error: null,
+  restore: () => {
+    if (restoring) return restoring;
+    const current = ++generation;
+    set({ status: 'checking' });
+    restoring = (async () => {
+      try {
+        const raw = await stored(authStorage.read);
+        if (!raw) {
+          if (current === generation) set({ user: null, status: 'anonymous', expiresAt: null });
+          return;
+        }
+        const tokens = parseTokens(JSON.parse(raw));
+        const user = await validate(tokens);
+        if (current === generation)
+          set({ user, status: 'authenticated', expiresAt: tokens.expiresAt, error: null });
+      } catch {
+        if (current !== generation) return;
+        await stored(authStorage.clear).catch(() => undefined);
+        if (current === generation)
+          set({
+            user: null,
+            status: 'anonymous',
+            expiresAt: null,
+            error: 'Please sign in to continue.',
+          });
+      } finally {
+        restoring = null;
+      }
+    })();
+    return restoring;
+  },
+  signIn: async (identifier, password) => {
+    const current = ++generation;
+    set({ error: null });
+    const tokens = await authApi.login(identifier, password);
+    const user = await validate(tokens);
+    if (current !== generation) return;
+    await stored(async () => {
+      if (current === generation) await authStorage.write(JSON.stringify(tokens));
+    });
+    if (current === generation) set({ user, status: 'authenticated', expiresAt: tokens.expiresAt });
+  },
+  register: async (input) => {
+    await authApi.register(input);
+    // Registration creates an account only; it never grants a simulated session.
+  },
+  update: (user) => {
+    if (get().user?.id === user.id) set({ user });
+  },
+  logout: async () => {
+    ++generation;
+    // Lock routing immediately, even if secure storage takes time or fails.
+    set({ user: null, status: 'anonymous', expiresAt: null, error: null });
+    try {
+      await stored(authStorage.clear);
+    } catch {
+      set({
+        error:
+          'Could not clear the saved session. Please retry signing out before closing the app.',
+      });
+    }
+  },
+}));

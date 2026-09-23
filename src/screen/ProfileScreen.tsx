@@ -33,14 +33,6 @@ function ProfileForm({ user }: { user: User }) {
   function save() {
     if (!hasRequiredValues(firstName, lastName, street) || !isValidEmail(email))
       return setError('Please complete your name, address, and a valid email.');
-    if (
-      useAuthStore
-        .getState()
-        .profiles.some(
-          (profile) => profile.id !== user.id && profile.email === email.trim().toLowerCase(),
-        )
-    )
-      return setError('That email belongs to another local profile.');
     useAuthStore.getState().update({
       ...user,
       firstName: firstName.trim(),
@@ -166,12 +158,11 @@ function ProfileForm({ user }: { user: User }) {
         secondary
         icon="log-out-outline"
         onPress={() => {
-          useAuthStore.getState().logout();
-          router.replace('/');
+          void useAuthStore.getState().logout();
         }}
       />
       <Text style={[ui.caption, { textAlign: 'center' }]}>
-        Your profile lives on this device for this prototype.
+        Profile edits are local to this session.
       </Text>
     </>
   );
