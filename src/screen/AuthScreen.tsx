@@ -86,8 +86,8 @@ export function AuthScreen({ register = false }: { register?: boolean }) {
       </View>
       <View style={{ alignItems: 'center', paddingVertical: register ? 8 : 36 }}><Brand /></View>
       <View style={{ alignItems: register ? 'flex-start' : 'center', gap: 6 }}>
-        <Text style={[ui.title, { fontSize: register ? 35 : 28, lineHeight: 38 }]}>{register ? 'Create\nYour Account' : 'Welcome back!'}</Text>
-        <Text style={ui.body}>{register ? 'Join HomeMade Beads' : 'Sign in to continue'}</Text>
+        <Text style={[ui.title, { fontSize: register ? 35 : 28, lineHeight: 38 }]}>{register ? 'Create Account' : 'Welcome back!'}</Text>
+        <Text style={ui.body}>{register ? 'Join our creative community' : 'Sign in to continue creating'}</Text>
       </View>
       <View style={{ gap: 18 }}>
         {register && (

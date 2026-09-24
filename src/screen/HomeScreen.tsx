@@ -86,9 +86,7 @@ export default function HomeScreen() {
             <Button
               title="Create your own"
               icon="arrow-forward"
-              onPress={() =>
-                router.push({ pathname: '/details', params: { id: 'bracelet-classic' } })
-              }
+              onPress={() => router.push('/categories')}
             />
           </View>
         </View>
@@ -160,7 +158,7 @@ export default function HomeScreen() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Explore the jewelry studio"
-          onPress={() => router.push('/designer')}
+          onPress={() => router.push('/categories')}
           style={{ padding: 7 }}
         >
           <Icon name="arrow-forward" color={c.gold} />
@@ -170,11 +168,11 @@ export default function HomeScreen() {
         title="The little details"
         eyebrow="MEET YOUR MATERIALS"
         action="Explore"
-        onPress={() => router.push('/designer')}
+        onPress={() => router.push('/categories')}
       />
       <View style={styles.materials}>
         {beads.slice(0, 4).map((bead) => (
-          <Pressable key={bead.id} onPress={() => router.push('/designer')} style={styles.material}>
+          <Pressable key={bead.id} onPress={() => router.push('/categories')} style={styles.material}>
             <View style={styles.materialImage}>
               <DesignItem item={bead} size={58} />
             </View>

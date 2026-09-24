@@ -17,6 +17,11 @@ export default function PreviewScreen() {
 
   const design = useDesignStore();
   const [saved, setSaved] = useState(false);
+  const cartDesign = useCartStore((state) => state.design);
+  const inCart = !!cartDesign && cartDesign.id === design.designId &&
+    cartDesign.name === design.name && cartDesign.size === design.size &&
+    cartDesign.productId === design.productId &&
+    JSON.stringify(cartDesign.items) === JSON.stringify(design.items);
   const { width } = useWindowDimensions();
   const product = productById[design.productId];
   function snapshot() {
@@ -39,7 +44,7 @@ export default function PreviewScreen() {
   const charmCount = design.items.filter((item) => itemById[item.itemId].type === 'charm').length;
   return (
     <Page>
-      <Header title="Made by you" back />
+      <Header title="Your Creation" back />
       <View
         style={{ backgroundColor: theme.colors.preview, borderRadius: 24, paddingVertical: 12 }}
       >
@@ -90,13 +95,16 @@ export default function PreviewScreen() {
       </View>
       {saved && <Notice text="Your creation is safely tucked away in My Designs." />}
       <Button
-        title="Continue to order"
+        title={inCart ? 'Continue to Checkout' : 'Add to Cart'}
         icon="arrow-forward"
         onPress={() => {
-          useCartStore.getState().setDesign(snapshot());
-          router.push('/checkout');
+          if (inCart) { router.push('/checkout'); return; }
+          const entry = snapshot();
+          useCartStore.getState().setDesign(entry);
+          design.markSaved(entry.id);
         }}
       />
+      {inCart && <Notice text="Your creation is in the cart and ready for checkout." />}
       <Button
         title={saved ? 'Design saved' : 'Save to My Designs'}
         secondary

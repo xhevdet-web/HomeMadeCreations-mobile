@@ -182,7 +182,7 @@ export function Header({
 }
 export function Brand({ compact = false, hero = false }: { compact?: boolean; hero?: boolean }) {
   const theme = useTheme();
-  const color = hero ? '#224B61' : theme.colors.text;
+  const color = theme.colors.text;
   return (
     <View style={{ alignItems: 'center' }}>
       {!compact && <Icon name="leaf-outline" size={hero ? 38 : 30} color={color} />}

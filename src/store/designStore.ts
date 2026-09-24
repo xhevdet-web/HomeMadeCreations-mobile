@@ -19,6 +19,9 @@ interface DesignState {
   rename: (name: string) => void;
   select: (id: string | null) => void;
   addItem: (itemId: string) => void;
+  insertItem: (itemId: string, index: number, angle?: number) => void;
+  replaceItemAt: (id: string, itemId: string) => void;
+  placeItem: (id: string, angle: number) => void;
   replaceItem: (itemId: string) => void;
   removeItem: () => void;
   moveItem: (direction: number) => void;
@@ -49,6 +52,22 @@ export const useDesignStore = create<DesignState>()(
           get().items.filter((entry) => entry.itemId === id && entry.id !== excluding).length <
             item.stock
         );
+      };
+      const nextAngle = () => {
+        const entries = get().items;
+        if (!entries.length) return 0;
+        const angles = entries.map((entry, index) => entry.angle ?? index / entries.length)
+          .sort((a, b) => a - b);
+        let largestGap = -1;
+        let choice = 0;
+        angles.forEach((angle, index) => {
+          const next = index === angles.length - 1 ? angles[0] + 1 : angles[index + 1];
+          if (next - angle > largestGap) {
+            largestGap = next - angle;
+            choice = (angle + largestGap / 2) % 1;
+          }
+        });
+        return choice;
       };
       return {
         productId: 'bracelet-classic',
@@ -86,7 +105,24 @@ export const useDesignStore = create<DesignState>()(
         markSaved: (designId) => set({ designId }),
         addItem: (itemId) => {
           if (get().items.length < 32 && canAdd(itemId))
-            commit([...get().items, { id: uniqueId(), itemId, position: get().items.length }]);
+            commit([...get().items, { id: uniqueId(), itemId, position: get().items.length,
+              angle: nextAngle() }]);
+        },
+        insertItem: (itemId, index, angle) => {
+          if (get().items.length >= 32 || !canAdd(itemId)) return;
+          const next = [...get().items];
+          next.splice(Math.max(0, Math.min(index, next.length)), 0, {
+            id: uniqueId(), itemId, position: index, angle: angle ?? nextAngle(),
+          });
+          commit(next);
+        },
+        replaceItemAt: (id, itemId) => {
+          if (canAdd(itemId, id))
+            commit(get().items.map((entry) => entry.id === id ? { ...entry, itemId } : entry));
+        },
+        placeItem: (id, angle) => {
+          if (!get().items.some((entry) => entry.id === id)) return;
+          commit(get().items.map((entry) => entry.id === id ? { ...entry, angle } : entry));
         },
         replaceItem: (itemId) => {
           if (get().selectedId && canAdd(itemId, get().selectedId))
@@ -105,6 +141,10 @@ export const useDesignStore = create<DesignState>()(
           const from = next.findIndex((entry) => entry.id === get().selectedId);
           const to = from + direction;
           if (from < 0 || to < 0 || to >= next.length) return;
+          const fromAngle = next[from].angle ?? from / next.length;
+          const toAngle = next[to].angle ?? to / next.length;
+          next[from] = { ...next[from], angle: toAngle };
+          next[to] = { ...next[to], angle: fromAngle };
           [next[from], next[to]] = [next[to], next[from]];
           commit(next);
         },

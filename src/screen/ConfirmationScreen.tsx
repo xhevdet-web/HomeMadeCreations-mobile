@@ -17,7 +17,7 @@ export default function ConfirmationScreen() {
   );
   return (
     <Page>
-      <Header title="A little moment of joy" />
+      <Header title="Order Confirmation" />
       <View style={{ alignItems: 'center', gap: 25, paddingVertical: 38 }}>
         <View
           style={{
@@ -31,14 +31,14 @@ export default function ConfirmationScreen() {
             borderColor: theme.colors.confirmationBorder,
           }}
         >
-          <Icon name={order ? 'checkmark' : 'heart-outline'} size={42} color={theme.colors.gold} />
+          <Icon name={order ? 'checkmark' : 'heart-outline'} size={42} color={theme.colors.onPrimary} />
         </View>
         <Text style={[ui.title, { textAlign: 'center' }]}>
-          {order ? 'Thank you for\nyour order!' : 'Your creations await.'}
+          {order ? 'Thank You!' : 'Your creations await.'}
         </Text>
         <Text style={[ui.body, { textAlign: 'center' }]}>
           {order
-            ? 'Your handmade creation is on its way to becoming real.'
+            ? 'Your order has been placed successfully.'
             : 'Visit My Orders to see your saved local orders.'}
         </Text>
       </View>

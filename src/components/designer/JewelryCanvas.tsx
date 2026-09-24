@@ -5,6 +5,7 @@ import { DesignItem as DesignItemModel, JewelryType } from '@/types/models';
 import { itemById } from '@/services/catalog';
 import { itemPosition } from '@/helper/design';
 import { BeadShape } from './DesignItem';
+import { useTheme } from '@/hooks/useTheme';
 
 export interface CanvasProps {
   items: DesignItemModel[];
@@ -23,6 +24,7 @@ export function JewelryCanvas({
   decorative = false,
 }: CanvasProps) {
   const uid = useId().replace(/:/g, '');
+  const theme = useTheme();
   const ry = type === 'necklace' ? 119 : 96;
   const radius = Math.min(15.5, 285 / Math.max(items.length, 16));
   return (
@@ -40,38 +42,23 @@ export function JewelryCanvas({
         <Circle cx={160} cy={160} r={157} fill={`url(#glow-${uid})`} />
         <Ellipse
           cx={160}
-          cy={161}
-          rx={113}
-          ry={ry}
-          stroke="#000"
-          strokeWidth={10}
-          opacity={0.25}
-          fill="none"
-        />
-        <Ellipse
-          cx={160}
           cy={148}
           rx={111}
           ry={ry}
-          stroke="#796345"
-          strokeWidth={2.2}
-          fill="none"
-          strokeDasharray={items.length ? undefined : '2 6'}
-        />
-        <Ellipse
-          cx={160}
-          cy={147}
-          rx={111}
-          ry={ry}
-          stroke="#DFBC7B"
-          strokeWidth={0.6}
-          opacity={0.7}
+          stroke={theme.colors.gold}
+          strokeWidth={1.7}
+          opacity={0.8}
           fill="none"
         />
+        {!items.length && Array.from({ length: 48 }, (_, index) => {
+          const point = itemPosition(index, 48, type);
+          return <Circle key={`link-${index}`} cx={point.x} cy={point.y} r={1.4}
+            fill={theme.colors.gold} opacity={0.85} />;
+        })}
         {items.map((entry, index) => {
           const item = itemById[entry.itemId];
           if (!item) return null;
-          const point = itemPosition(index, items.length, type);
+          const point = itemPosition(index, items.length, type, entry.angle);
           return (
             <BeadShape
               key={entry.id}

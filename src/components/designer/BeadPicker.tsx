@@ -1,12 +1,13 @@
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
-import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { memo, useMemo, useState } from 'react';
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { items } from '@/services/catalog';
 import { CustomizationItem, ItemType } from '@/types/models';
 import { type Theme } from '@/constants/theme';
 import { money } from '@/helper/pricing';
 import { Chips, Field, Icon, useUI } from '@/components/common/ui';
 import { DesignItem } from './DesignItem';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 const categories: Record<string, ItemType | undefined> = {
   All: undefined,
   Beads: 'bead',
@@ -20,16 +21,23 @@ export function BeadPicker({
   expanded = false,
   replacing,
   disabled = false,
+  onDragStart,
+  onDragMove,
+  onDragEnd,
 }: {
   onPick: (item: CustomizationItem) => void;
   replacing: boolean;
   initialCategory?: string;
   expanded?: boolean;
   disabled?: boolean;
+  onDragStart?: (item: CustomizationItem, x: number, y: number) => void;
+  onDragMove?: (x: number, y: number) => void;
+  onDragEnd?: (item: CustomizationItem, x: number, y: number, canceled: boolean) => void;
 }) {
   const theme = useTheme();
   const ui = useUI();
   const styles = useThemedStyles(createStyles);
+  const { width } = useWindowDimensions();
 
   const [category, setCategory] = useState(initialCategory in categories ? initialCategory : 'All');
   const [filterOpen, setFilterOpen] = useState(expanded);
@@ -60,11 +68,13 @@ export function BeadPicker({
     <View style={{ gap: 16 }}>
       <View style={ui.between}>
         <View>
-          <Text style={ui.sectionTitle}>The bead box</Text>
+          <Text style={[ui.sectionTitle, { fontSize: 19 }]}>Choose your details</Text>
           <Text style={ui.caption}>
-            {replacing
-              ? 'Tap a piece to replace your selection'
-              : 'Tap a little detail to add it to your story'}
+            {disabled
+              ? 'Your piece is full. Drag a detail onto a bead to replace it.'
+              : replacing
+                ? 'Tap to replace, or hold and drag onto your piece'
+                : 'Tap to add, or hold and drag onto your piece'}
           </Text>
         </View>
         <Pressable
@@ -116,22 +126,9 @@ export function BeadPicker({
       )}
       <View style={styles.grid}>
         {visible.map((item) => (
-          <Pressable
-            key={item.id}
-            accessibilityRole="button"
-            accessibilityLabel={
-              (replacing ? 'Replace with ' : 'Add ') + item.name + ', ' + money(item.price)
-            }
-            disabled={disabled || !item.available}
-            onPress={() => onPick(item)}
-            style={({ pressed }) => [styles.item, { opacity: disabled ? 0.4 : pressed ? 0.6 : 1 }]}
-          >
-            <DesignItem item={item} size={48} />
-            <Text numberOfLines={1} style={styles.name}>
-              {item.name}
-            </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}><Text style={styles.price}>{money(item.price)}</Text><Icon name="add-circle" size={24} color={theme.colors.primary} /></View>
-          </Pressable>
+          <DraggableBead key={item.id} item={item} replacing={replacing} disabled={disabled}
+            narrow={width < 360} onPick={onPick} onDragStart={onDragStart}
+            onDragMove={onDragMove} onDragEnd={onDragEnd} />
         ))}
       </View>
       {!visible.length && (
@@ -142,13 +139,54 @@ export function BeadPicker({
     </View>
   );
 }
+
+const DraggableBead = memo(function DraggableBead({ item, replacing, disabled, narrow, onPick, onDragStart, onDragMove, onDragEnd }: {
+  item: CustomizationItem;
+  replacing: boolean;
+  disabled: boolean;
+  narrow: boolean;
+  onPick: (item: CustomizationItem) => void;
+  onDragStart?: (item: CustomizationItem, x: number, y: number) => void;
+  onDragMove?: (x: number, y: number) => void;
+  onDragEnd?: (item: CustomizationItem, x: number, y: number, canceled: boolean) => void;
+}) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
+  const gesture = useMemo(() => Gesture.Pan().activateAfterLongPress(220).runOnJS(true)
+    .enabled(item.available)
+    .onStart((event) => onDragStart?.(item, event.absoluteX, event.absoluteY))
+    .onUpdate((event) => onDragMove?.(event.absoluteX, event.absoluteY))
+    .onFinalize((event, success) => onDragEnd?.(item, event.absoluteX, event.absoluteY, !success)),
+  [item, onDragStart, onDragMove, onDragEnd]);
+  return (
+    <GestureDetector gesture={gesture}>
+      <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={
+              (replacing ? 'Replace with ' : 'Add ') + item.name + ', ' + money(item.price)
+            }
+            disabled={!item.available}
+            onPress={() => onPick(item)}
+            style={({ pressed }) => [styles.item, narrow && styles.itemNarrow,
+              { opacity: !item.available ? 0.4 : pressed ? 0.6 : 1 }]}
+          >
+            <DesignItem item={item} size={40} />
+            <Text numberOfLines={1} style={styles.name}>
+              {item.name}
+            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}><Text style={styles.price}>{money(item.price)}</Text><Icon name={disabled ? 'hand-left-outline' : 'add-circle'} size={22} color={theme.colors.primary} /></View>
+      </Pressable>
+    </GestureDetector>
+  );
+}, (previous, next) => previous.item === next.item && previous.replacing === next.replacing &&
+  previous.disabled === next.disabled && previous.narrow === next.narrow);
 const createStyles = (theme: Theme) => {
   return StyleSheet.create({
     grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     item: {
-      width: '30%',
+      width: '23%',
       flexGrow: 1,
-      maxWidth: '33%',
+      maxWidth: '25%',
       backgroundColor: theme.colors.surface,
       borderWidth: 1,
       borderColor: theme.colors.border,
@@ -157,7 +195,8 @@ const createStyles = (theme: Theme) => {
       alignItems: 'center',
       gap: 6,
     },
-    name: { fontSize: 11, color: theme.colors.text },
-    price: { fontSize: 11, color: theme.colors.text, fontWeight: '500' },
+    itemNarrow: { width: '30%', maxWidth: '33%' },
+    name: { fontSize: 10, color: theme.colors.text, textAlign: 'center' },
+    price: { fontSize: 10, color: theme.colors.text, fontWeight: '600' },
   });
 };

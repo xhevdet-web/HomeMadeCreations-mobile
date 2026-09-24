@@ -32,6 +32,7 @@ export interface DesignItem {
   id: string;
   itemId: string;
   position: number;
+  angle?: number;
 }
 export interface Design {
   id: string;

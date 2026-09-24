@@ -23,6 +23,7 @@ function CheckoutForm({ design, user }: { design: Design; user: User }) {
   const [postalCode, setPostalCode] = useState(user.address.postalCode);
   const [country, setCountry] = useState(user.address.country);
   const [email, setEmail] = useState(user.email);
+  const [paymentMethod, setPaymentMethod] = useState<'card' | 'delivery'>('delivery');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const placing = useRef(false);
@@ -54,8 +55,7 @@ function CheckoutForm({ design, user }: { design: Design; user: User }) {
   return (
     <>
       <View>
-        <Text style={ui.eyebrow}>THE FINAL LITTLE DETAILS</Text>
-        <Text style={ui.title}>Let’s make it real.</Text>
+        <Text style={ui.title}>Delivery Information</Text>
       </View>
       <View style={ui.card}>
         <View style={ui.row}>
@@ -101,6 +101,14 @@ function CheckoutForm({ design, user }: { design: Design; user: User }) {
         keyboardType="email-address"
         autoCapitalize="none"
       />
+      <Text style={ui.sectionTitle}>Payment Method</Text>
+      <View style={{ gap: 10 }}>
+        {([['delivery', 'Cash on Delivery'], ['card', 'Card']] as const).map(([value, label]) => (
+          <Button key={value} title={`${paymentMethod === value ? '◉' : '○'} ${label}`}
+            secondary onPress={() => setPaymentMethod(value)} />
+        ))}
+      </View>
+      {paymentMethod === 'card' && <Text style={ui.caption}>Card payment is unavailable in this demo. Choose Cash on Delivery to place a demo order.</Text>}
       {error ? (
         <Text accessibilityRole="alert" style={ui.error}>
           {error}
@@ -113,7 +121,7 @@ function CheckoutForm({ design, user }: { design: Design; user: User }) {
           order is sent.
         </Text>
       </View>
-      <Button title="Place demo order" icon="heart-outline" onPress={place} loading={submitting} />
+      <Button title="Place Order" icon="heart-outline" onPress={place} loading={submitting} disabled={paymentMethod === 'card'} />
     </>
   );
 }
