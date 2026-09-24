@@ -3,6 +3,7 @@ import { ComponentProps, ReactNode } from 'react';
 import {
   ActivityIndicator,
   ColorValue,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -182,11 +183,26 @@ export function Header({
 }
 export function Brand({ compact = false, hero = false }: { compact?: boolean; hero?: boolean }) {
   const theme = useTheme();
-  const color = theme.colors.text;
+  const width = compact ? 110 : hero ? 58 : 130;
+  const height = compact ? 94 : hero ? 80 : 160;
+  const imageSize = compact ? 90 : hero ? 360 : 320;
+  const isDark = theme.mode === 'dark';
+  // Center the visible artwork; both files have transparent padding around it.
+  const imageLeft = (width - imageSize) / 2;
+  const imageTop = (height - imageSize) / 2 - imageSize * (isDark ? 12 / 500 : 51 / 1254);
+  const panelWidth = imageSize * 0.66;
+  const panelHeight = imageSize * 0.53;
   return (
-    <View style={{ alignItems: 'center' }}>
-      {!compact && <Icon name="leaf-outline" size={hero ? 38 : 30} color={color} />}
-      <Text style={{ fontFamily: theme.fonts.editorial, color, fontSize: hero ? 43 : compact ? 23 : 34, lineHeight: hero ? 43 : compact ? 23 : 34, textAlign: 'center', letterSpacing: -0.8 }}>HomeMade{'\n'}Beads</Text>
+    <View accessible accessibilityLabel="HomeMade Creator" accessibilityRole="image" style={{
+      width, height, borderRadius: compact ? 14 : 24,
+      alignSelf: 'center',
+    }}>
+      <View style={{ position: 'absolute', width: panelWidth, height: panelHeight,
+        left: (width - panelWidth) / 2, top: (height - panelHeight) / 2,
+        borderRadius: compact ? 12 : 22,
+        }} />
+      <Image key={theme.mode} source={isDark ? require('../../../assets/LogoDarkMode.png') : require('../../../assets/Logo.png')} resizeMode="contain"
+        style={{ width: imageSize, height: imageSize, position: 'absolute', left: imageLeft, top: imageTop }} />
     </View>
   );
 }

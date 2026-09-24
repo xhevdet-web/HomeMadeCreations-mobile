@@ -2,7 +2,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Brand, Button, Field, IconButton, Page, useUI } from '@/components/common/ui';
+import { Brand, Button, Field, Icon, IconButton, Page, useUI } from '@/components/common/ui';
 import { PasswordInput } from '@/components/common/PasswordInput';
 import { useOnboardingStore } from '@/store/onboardingStore';
 import { useThemeStore } from '@/store/themeStore';
@@ -14,9 +14,11 @@ export function AuthScreen({ register = false }: { register?: boolean }) {
   const theme = useTheme();
   const ui = useUI();
   const toggleTheme = useThemeStore((state) => state.toggle);
-  useEffect(() => { useOnboardingStore.getState().complete(); }, []);
+  useEffect(() => {
+    useOnboardingStore.getState().complete();
+  }, []);
 
-  const { next } = useLocalSearchParams<{ next?: string }>();
+  const { next, registered } = useLocalSearchParams<{ next?: string; registered?: string }>();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -29,12 +31,16 @@ export function AuthScreen({ register = false }: { register?: boolean }) {
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState('');
+  const [showSuccessToast, setShowSuccessToast] = useState(registered === '1');
+  useEffect(() => {
+    if (register || registered !== '1') return;
+    const timer = setTimeout(() => setShowSuccessToast(false), 4000);
+    return () => clearTimeout(timer);
+  }, [register, registered]);
   const sessionError = useAuthStore((state) => state.error);
   async function submit() {
     if (busy) return;
     setError('');
-    setMessage('');
     if (register && !isValidEmail(email)) return setError('Please enter a valid email address.');
     if (!register && !email.trim()) return setError('Please enter your email or username.');
     if (register && userName.trim() && !/^[a-zA-Z0-9_.-]{3,30}$/.test(userName.trim()))
@@ -65,7 +71,7 @@ export function AuthScreen({ register = false }: { register?: boolean }) {
         });
         setPassword('');
         setConfirm('');
-        setMessage('Account created. You can now sign in.');
+        router.replace({ pathname: '/login', params: { next, registered: '1' } });
       } else {
         await useAuthStore.getState().signIn(email, password);
         setPassword('');
@@ -79,15 +85,59 @@ export function AuthScreen({ register = false }: { register?: boolean }) {
   }
   return (
     <Page style={{ maxWidth: 460, gap: 22, paddingTop: 12 }}>
+      {!register && showSuccessToast && (
+        <View
+          accessibilityRole="alert"
+          accessibilityLiveRegion="polite"
+          style={{
+            position: 'absolute',
+            top: 64,
+            left: 22,
+            right: 22,
+            zIndex: 10,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 10,
+            paddingHorizontal: 16,
+            paddingVertical: 14,
+            borderRadius: 14,
+            backgroundColor: theme.colors.successSurface,
+            borderWidth: 1,
+            borderColor: theme.colors.success,
+            shadowColor: '#000',
+            shadowOpacity: 0.14,
+            shadowRadius: 12,
+            elevation: 5,
+          }}
+        >
+          <Icon name="checkmark-circle" size={22} color={theme.colors.success} />
+          <Text style={[ui.body, { flex: 1, color: theme.colors.text, fontWeight: '600' }]}>
+            Account created successfully. Please log in.
+          </Text>
+        </View>
+      )}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <IconButton name="arrow-back" label={register ? "Back to login" : "Go to registration"} onPress={() => router.replace(register ? '/login' : '/register')} />
-        <IconButton name={theme.mode === 'dark' ? 'sunny-outline' : 'moon-outline'}
-          label={theme.mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} onPress={toggleTheme} />
+        <IconButton
+          name="arrow-back"
+          label={register ? 'Back to login' : 'Go to registration'}
+          onPress={() => router.replace(register ? '/login' : '/register')}
+        />
+        <IconButton
+          name={theme.mode === 'dark' ? 'sunny-outline' : 'moon-outline'}
+          label={theme.mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          onPress={toggleTheme}
+        />
       </View>
-      <View style={{ alignItems: 'center', paddingVertical: register ? 8 : 36 }}><Brand /></View>
+      <View style={{ alignItems: 'center', paddingVertical: register ? 8 : 0, marginBottom: register ? 0 : -16 }}>
+        <Brand />
+      </View>
       <View style={{ alignItems: register ? 'flex-start' : 'center', gap: 6 }}>
-        <Text style={[ui.title, { fontSize: register ? 35 : 28, lineHeight: 38 }]}>{register ? 'Create Account' : 'Welcome back!'}</Text>
-        <Text style={ui.body}>{register ? 'Join our creative community' : 'Sign in to continue creating'}</Text>
+        <Text style={[ui.title, { fontSize: register ? 35 : 28, lineHeight: 38 }]}>
+          {register ? 'Create Account' : 'Welcome back!'}
+        </Text>
+        <Text style={ui.body}>
+          {register ? 'Join our creative community' : 'Sign in to continue creating'}
+        </Text>
       </View>
       <View style={{ gap: 18 }}>
         {register && (
@@ -174,11 +224,7 @@ export function AuthScreen({ register = false }: { register?: boolean }) {
           autoComplete={register ? 'new-password' : 'current-password'}
         />
         {register && (
-          <PasswordInput
-            label="Confirm password"
-            value={confirm}
-            onChangeText={setConfirm}
-            />
+          <PasswordInput label="Confirm password" value={confirm} onChangeText={setConfirm} />
         )}
         {error || sessionError ? (
           <Text accessibilityRole="alert" style={ui.error}>
@@ -194,11 +240,6 @@ export function AuthScreen({ register = false }: { register?: boolean }) {
             }}
           />
         ) : null}
-        {message ? (
-          <Text accessibilityRole="alert" style={ui.body}>
-            {message}
-          </Text>
-        ) : null}
         <Button
           loading={busy}
           title={register ? 'Create Account' : 'Log In'}
@@ -213,9 +254,7 @@ export function AuthScreen({ register = false }: { register?: boolean }) {
       >
         <Text style={[ui.body, { textAlign: 'center' }]}>
           {register ? 'Already have an account? ' : "Don't have an account? "}
-          <Text style={{ color: theme.colors.accent }}>
-            {register ? 'Log In' : 'Sign Up'}
-          </Text>
+          <Text style={{ color: theme.colors.accent }}>{register ? 'Log In' : 'Sign Up'}</Text>
         </Text>
       </Pressable>
     </Page>
