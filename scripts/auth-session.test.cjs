@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const ts = require('typescript');
 
-function load(file, mocks = {}) {
+function load(file, mocks = {}, globals = {}) {
   const source = ts.transpileModule(fs.readFileSync(file, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText;
@@ -23,12 +23,29 @@ function load(file, mocks = {}) {
       Number,
       setTimeout,
       clearTimeout,
+      ...globals,
     },
     { filename: file },
   );
   return module.exports;
 }
 const { parseTokens } = load('src/services/authApi.ts');
+test('native cancellation after the request deadline reports a timeout', async () => {
+  let deadline;
+  let cleared = false;
+  const { authApi } = load('src/services/authApi.ts', {}, {
+    process: { env: { EXPO_PUBLIC_API_URL: 'http://api.test/api/v1' } },
+    AbortController,
+    setTimeout: (callback) => { deadline = callback; return 1; },
+    clearTimeout: () => { cleared = true; },
+    fetch: async (_url, { signal }) => new Promise((_resolve, reject) => {
+      signal.addEventListener('abort', () => reject(new Error('FetchRequestCanceledException: fetch req has been canceled')));
+      deadline();
+    }),
+  });
+  await assert.rejects(authApi.login('test@example.com', 'test'), /request timed out/);
+  assert.equal(cleared, true);
+});
 const user = { id: '1', firstName: 'Mila', lastName: 'Stone', email: 'mila@example.com' };
 const tokens = () => ({
   accessToken: 'test-access',

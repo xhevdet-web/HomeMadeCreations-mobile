@@ -45,7 +45,8 @@ async function request(path: string, init: RequestInit = {}): Promise<unknown> {
     }
     return await response.json();
   } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError')
+    // Native fetch can reject with FetchRequestCanceledException instead of AbortError.
+    if (abort.signal.aborted || (error instanceof Error && error.name === 'AbortError'))
       throw new Error('The account request timed out. Check your connection and try again.');
     if (error instanceof TypeError)
       throw new Error(

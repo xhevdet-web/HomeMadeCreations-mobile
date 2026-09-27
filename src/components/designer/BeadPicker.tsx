@@ -1,13 +1,15 @@
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
 import { memo, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { items } from '@/services/catalog';
+import { items as localItems } from '@/services/catalog';
 import { CustomizationItem, ItemType } from '@/types/models';
 import { type Theme } from '@/constants/theme';
 import { money } from '@/helper/pricing';
 import { Chips, Field, Icon, useUI } from '@/components/common/ui';
 import { DesignItem } from './DesignItem';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { CatalogImage } from '@/components/products/CatalogImage';
+import { useDesignStore } from '@/store/designStore';
 const categories: Record<string, ItemType | undefined> = {
   All: undefined,
   Beads: 'bead',
@@ -24,7 +26,9 @@ export function BeadPicker({
   onDragStart,
   onDragMove,
   onDragEnd,
+  sourceItems,
 }: {
+  sourceItems?: CustomizationItem[];
   onPick: (item: CustomizationItem) => void;
   replacing: boolean;
   initialCategory?: string;
@@ -38,6 +42,7 @@ export function BeadPicker({
   const ui = useUI();
   const styles = useThemedStyles(createStyles);
   const { width } = useWindowDimensions();
+  const items = sourceItems ?? localItems;
 
   const [category, setCategory] = useState(initialCategory in categories ? initialCategory : 'All');
   const [filterOpen, setFilterOpen] = useState(expanded);
@@ -57,7 +62,7 @@ export function BeadPicker({
           (price === 'Any price' || item.price <= 50) &&
           item.name.toLowerCase().includes(search.toLowerCase()),
       ),
-    [category, color, material, shape, price, search],
+    [items, category, color, material, shape, price, search],
   );
   const active =
     color !== 'Any color' ||
@@ -86,7 +91,7 @@ export function BeadPicker({
           <Icon name="options-outline" color={active ? theme.colors.accent : theme.colors.text} />
         </Pressable>
       </View>
-      <Chips options={Object.keys(categories)} value={category} onChange={setCategory} />
+      {!sourceItems && <Chips options={Object.keys(categories)} value={category} onChange={setCategory} />}
       {filterOpen && (
         <View style={ui.card}>
           <Field
@@ -152,12 +157,16 @@ const DraggableBead = memo(function DraggableBead({ item, replacing, disabled, n
 }) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
+  const quantity = useDesignStore((state) => state.items.filter((entry) => entry.itemId === item.id).length);
+  const replaceSame = useDesignStore((state) => state.items.some((entry) => entry.id === state.selectedId && entry.itemId === item.id));
+  const atStockLimit = quantity - (replaceSame ? 1 : 0) >= item.stock;
+  const unavailable = !item.available || atStockLimit;
   const gesture = useMemo(() => Gesture.Pan().activateAfterLongPress(220).runOnJS(true)
-    .enabled(item.available)
+    .enabled(!unavailable)
     .onStart((event) => onDragStart?.(item, event.absoluteX, event.absoluteY))
     .onUpdate((event) => onDragMove?.(event.absoluteX, event.absoluteY))
     .onFinalize((event, success) => onDragEnd?.(item, event.absoluteX, event.absoluteY, !success)),
-  [item, onDragStart, onDragMove, onDragEnd]);
+  [item, unavailable, onDragStart, onDragMove, onDragEnd]);
   return (
     <GestureDetector gesture={gesture}>
       <Pressable
@@ -165,21 +174,25 @@ const DraggableBead = memo(function DraggableBead({ item, replacing, disabled, n
             accessibilityLabel={
               (replacing ? 'Replace with ' : 'Add ') + item.name + ', ' + money(item.price)
             }
-            disabled={!item.available}
+            disabled={unavailable}
             onPress={() => onPick(item)}
-            style={({ pressed }) => [styles.item, narrow && styles.itemNarrow,
-              { opacity: !item.available ? 0.4 : pressed ? 0.6 : 1 }]}
+            style={({ pressed }) => [styles.item, narrow && styles.itemNarrow, item.categoryId && { width: '47%', maxWidth: '49%' },
+              { opacity: unavailable ? 0.4 : pressed ? 0.6 : 1 }]}
           >
-            <DesignItem item={item} size={40} />
-            <Text numberOfLines={1} style={styles.name}>
+            {item.categoryId ? <CatalogImage imageUrl={null} name={item.name} size={48} /> : <DesignItem item={item} size={40} />}
+            {!item.categoryId && <Text numberOfLines={1} style={styles.name}>
               {item.name}
-            </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}><Text style={styles.price}>{money(item.price)}</Text><Icon name={disabled ? 'hand-left-outline' : 'add-circle'} size={22} color={theme.colors.primary} /></View>
+            </Text>}
+            {item.categoryId && <>
+              <Text style={styles.name}>Color: {item.color}</Text>
+              <Text style={styles.name}>{money(item.price)} per bead</Text>
+              <Text style={styles.name}>{item.stock ? `${item.stock} available` : 'Out of stock'}</Text>
+            </>}
+            {!item.categoryId && <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}><Text style={styles.price}>{money(item.price)}</Text><Icon name={disabled ? 'hand-left-outline' : 'add-circle'} size={22} color={theme.colors.primary} /></View>}
       </Pressable>
     </GestureDetector>
   );
-}, (previous, next) => previous.item === next.item && previous.replacing === next.replacing &&
-  previous.disabled === next.disabled && previous.narrow === next.narrow);
+});
 const createStyles = (theme: Theme) => {
   return StyleSheet.create({
     grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },

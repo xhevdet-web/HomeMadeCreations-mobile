@@ -1,161 +1,195 @@
-import { useTheme } from '@/hooks/useTheme';
-import { useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { Button, EmptyState, Field, Header, Icon, Page, useUI } from '@/components/common/ui';
-import { PriceBreakdown } from '@/components/common/PriceBreakdown';
-import { JewelryCanvas } from '@/components/designer/JewelryCanvas';
-import { useCartStore } from '@/store/cartStore';
+import { Button, Field, Header, Page, useUI } from '@/components/common/ui';
+import { CatalogState } from '@/components/products/CatalogState';
+import { SavedProductSummary } from '@/components/products/SavedProductSummary';
+import { useRemote } from '@/hooks/useRemote';
 import { useAuthStore } from '@/store/authStore';
-import { useOrderStore } from '@/store/orderStore';
-import { useSavedStore } from '@/store/savedStore';
-import { productById } from '@/services/catalog';
-import { DELIVERY_PRICE } from '@/constants/theme';
-import { Design, User } from '@/types/models';
-import { hasRequiredValues, isValidEmail } from '@/helper/validation';
-function CheckoutForm({ design, user }: { design: Design; user: User }) {
-  const theme = useTheme();
-  const ui = useUI();
+import { useCommerceStore } from '@/store/commerceStore';
+import { useCatalogStore } from '@/store/catalogStore';
+import { ApiError, commerceApi, SavedProduct } from '@/services/commerceApi';
+import { fetchCategoryComponents } from '@/services/catalogApi';
+import { User } from '@/types/models';
 
-  const [fullName, setFullName] = useState(user.address.fullName);
-  const [street, setStreet] = useState(user.address.street);
-  const [city, setCity] = useState(user.address.city);
-  const [postalCode, setPostalCode] = useState(user.address.postalCode);
+function CheckoutForm({ product, user }: { product: SavedProduct; user: User }) {
+  const ui = useUI();
+  const [firstName, setFirstName] = useState(user.firstName);
+  const [lastName, setLastName] = useState(user.lastName);
+  const [phone, setPhone] = useState(user.phone ?? '');
   const [country, setCountry] = useState(user.address.country);
-  const [email, setEmail] = useState(user.email);
-  const [paymentMethod, setPaymentMethod] = useState<'card' | 'delivery'>('delivery');
+  const [address, setAddress] = useState(user.address.street);
+  const [postalCode, setPostalCode] = useState(user.address.postalCode);
+  const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  const [busy, setBusy] = useState(false);
   const placing = useRef(false);
-  const product = productById[design.productId];
-  function place() {
-    if (placing.current || !useCartStore.getState().design) return;
-    if (!hasRequiredValues(fullName, street, city, postalCode, country))
-      return setError('Please complete every delivery field.');
-    if (!isValidEmail(email)) return setError('Please enter a valid email address.');
+  const key = user.id + ':' + product.id;
+  const pending = useCommerceStore((state) => !!state.pending[key]);
+  async function refreshStock() {
+    const components = await fetchCategoryComponents(product.categoryId);
+    useCatalogStore.getState().registerComponents(components);
+  }
+  async function place() {
+    if (placing.current || useCommerceStore.getState().pending[key]) return;
+    if (![firstName, lastName, phone, country, address].every((value) => value.trim())) {
+      setError('Complete first name, last name, phone, country and address.');
+      return;
+    }
     placing.current = true;
-    setSubmitting(true);
-    const ownedDesign = { ...design, userId: user.id };
-    const order = useOrderStore.getState().place(
-      ownedDesign,
-      {
-        ...user.address,
-        fullName: fullName.trim(),
-        street: street.trim(),
-        city: city.trim(),
-        postalCode: postalCode.trim(),
+    setBusy(true);
+    setError('');
+    let sent = false;
+    try {
+      const profile = await commerceApi.updateProfile(user.id, {
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        phone: phone.trim(),
         country: country.trim(),
-      },
-      email.trim(),
-    );
-    useSavedStore.getState().save(ownedDesign);
-    useCartStore.getState().clear();
-    router.replace({ pathname: '/confirmation', params: { id: order.id } });
+        address: address.trim(),
+        ...(postalCode.trim() ? { postalCode: postalCode.trim() } : {}),
+      });
+      useAuthStore.getState().update(profile);
+      useCommerceStore.getState().setPending(key, true);
+      sent = true;
+      const order = await commerceApi.order(product.id, notes);
+      useCommerceStore.getState().rememberOrder(order);
+      // Keep this checkout locked after success to prevent submitting it again.
+      router.replace({ pathname: '/confirmation', params: { id: order.id, placed: '1' } });
+      void Promise.allSettled([refreshStock(), commerceApi.orders()]);
+    } catch (failure) {
+      const uncertain =
+        sent && (!(failure instanceof ApiError) || failure.status === 0 || failure.status >= 500);
+      if (sent && !uncertain) useCommerceStore.getState().setPending(key, false);
+      setError(
+        uncertain
+          ? 'We could not confirm whether your order was placed. Check My Orders before doing anything else. This checkout will not submit again.'
+          : failure instanceof Error
+            ? failure.message
+            : 'Unable to place the order.',
+      );
+      if (failure instanceof ApiError && failure.status === 400)
+        void refreshStock().catch(() => undefined);
+    } finally {
+      placing.current = false;
+      setBusy(false);
+    }
   }
   return (
     <>
-      <View>
-        <Text style={ui.title}>Delivery Information</Text>
-      </View>
-      <View style={ui.card}>
-        <View style={ui.row}>
-          <JewelryCanvas items={design.items} type={product.type} size={100} />
-          <View style={{ flex: 1, gap: 7 }}>
-            <Text style={ui.sectionTitle}>{design.name}</Text>
-            <Text style={ui.caption}>
-              {product.name} · {design.size}
-            </Text>
-          </View>
-        </View>
-        <PriceBreakdown
-          productName={product.name}
-          basePrice={product.basePrice}
-          items={design.items}
-          delivery={DELIVERY_PRICE}
-        />
-      </View>
-      <View style={ui.row}>
-        <Icon name="location-outline" color={theme.colors.gold} />
-        <Text style={ui.sectionTitle}>A place to call home</Text>
-      </View>
-      <Field label="Full name" value={fullName} onChangeText={setFullName} autoComplete="name" />
+      <SavedProductSummary product={product} />
+      <Text style={ui.sectionTitle}>Delivery details</Text>
       <Field
-        label="Street address"
-        value={street}
-        onChangeText={setStreet}
-        autoComplete="street-address"
-        multiline
+        label="First name"
+        value={firstName}
+        onChangeText={setFirstName}
+        editable={!busy}
+        maxLength={100}
       />
-      <Field label="City" value={city} onChangeText={setCity} />
       <Field
-        label="Postal code"
+        label="Last name"
+        value={lastName}
+        onChangeText={setLastName}
+        editable={!busy}
+        maxLength={100}
+      />
+      <Field
+        label="Phone"
+        value={phone}
+        onChangeText={setPhone}
+        editable={!busy}
+        keyboardType="phone-pad"
+        maxLength={32}
+      />
+      <Field
+        label="Country"
+        value={country}
+        onChangeText={setCountry}
+        editable={!busy}
+        maxLength={100}
+      />
+      <Field
+        label="Address"
+        value={address}
+        onChangeText={setAddress}
+        editable={!busy}
+        multiline
+        maxLength={300}
+      />
+      <Field
+        label="Postal code (optional)"
         value={postalCode}
         onChangeText={setPostalCode}
-        autoComplete="postal-code"
+        editable={!busy}
+        maxLength={20}
       />
-      <Field label="Country" value={country} onChangeText={setCountry} />
-      <Field
-        label="Email address"
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
-      />
-      <Text style={ui.sectionTitle}>Payment Method</Text>
-      <View style={{ gap: 10 }}>
-        {([['delivery', 'Cash on Delivery'], ['card', 'Card']] as const).map(([value, label]) => (
-          <Button key={value} title={`${paymentMethod === value ? '◉' : '○'} ${label}`}
-            secondary onPress={() => setPaymentMethod(value)} />
-        ))}
+      <View style={ui.card}>
+        <Text style={ui.sectionTitle}>Cash on Delivery</Text>
+        <Text style={ui.body}>Pay when your order arrives.</Text>
       </View>
-      {paymentMethod === 'card' && <Text style={ui.caption}>Card payment is unavailable in this demo. Choose Cash on Delivery to place a demo order.</Text>}
-      {error ? (
+      <Field
+        label="Customer notes (optional)"
+        value={notes}
+        onChangeText={setNotes}
+        editable={!busy}
+        multiline
+        maxLength={2000}
+      />
+      {!!error && (
         <Text accessibilityRole="alert" style={ui.error}>
           {error}
         </Text>
-      ) : null}
-      <View style={ui.card}>
-        <Text style={ui.label}>A little rehearsal</Text>
-        <Text style={ui.caption}>
-          This is a demo order, saved only on this device. No payment is collected and no physical
-          order is sent.
+      )}
+      {pending && !busy && (
+        <Text style={ui.body}>
+          An order was submitted for this design. Check My Orders for its status before placing
+          another order.
         </Text>
-      </View>
-      <Button title="Place Order" icon="heart-outline" onPress={place} loading={submitting} disabled={paymentMethod === 'card'} />
+      )}
+      <Button
+        title="Place Order"
+        onPress={() => void place()}
+        loading={busy}
+        disabled={pending || busy}
+      />
+      <Button title="My Orders" secondary onPress={() => router.push('/orders')} />
     </>
   );
 }
 export default function CheckoutScreen() {
-  const design = useCartStore((state) => state.design);
+  const ui = useUI();
   const user = useAuthStore((state) => state.user);
+  const checkout = useCommerceStore((state) => state.checkout);
+  const userId = user?.id;
+  const id = checkout?.userId === user?.id ? checkout?.product.id : undefined;
+  const load = useCallback(
+    async (signal: AbortSignal) => {
+      if (!id || !userId) return null;
+      const product = await commerceApi.product(id, signal);
+      if (product.createdById !== userId)
+        throw new Error('This design belongs to another account.');
+      return product;
+    },
+    [id, userId],
+  );
+  const result = useRemote(load);
   return (
     <Page>
-      <Header title="Your order" back />
-      {!design ? (
-        <EmptyState
-          icon="bag-handle-outline"
-          title="Your bag is waiting."
-          description="Add a creation from its preview or from My Designs."
-          action="Explore your designs"
-          onPress={() => router.replace('/designs')}
+      <Header title="Review your order" back />
+      {result.loading || result.error ? (
+        <CatalogState
+          loading={result.loading}
+          error={result.error ?? ''}
+          empty=""
+          retry={result.retry}
         />
-      ) : !user ? (
-        <>
-          <EmptyState
-            icon="person-outline"
-            title="A name behind the creation."
-            description="Sign in or create a local profile to complete your demo order. Your creation is safely in your bag."
-            action="Create an account"
-            onPress={() => router.push({ pathname: '/register', params: { next: 'checkout' } })}
-          />
-          <Button
-            title="Sign in"
-            secondary
-            onPress={() => router.push({ pathname: '/login', params: { next: 'checkout' } })}
-          />
-        </>
+      ) : result.data && user ? (
+        <CheckoutForm key={result.data.id + user.id} product={result.data} user={user} />
       ) : (
-        <CheckoutForm key={design.id + user.id} design={design} user={user} />
+        <>
+          <Text style={ui.body}>Save a design before placing an order.</Text>
+          <Button title="My Designs" onPress={() => router.push('/designs')} />
+        </>
       )}
     </Page>
   );

@@ -5,7 +5,9 @@ import { useCartStore } from '@/store/cartStore';
 import { useDesignStore } from '@/store/designStore';
 import { useThemeStore } from '@/store/themeStore';
 import { useOnboardingStore } from '@/store/onboardingStore';
-const stores = [useSavedStore, useOrderStore, useCartStore, useDesignStore, useThemeStore, useOnboardingStore];
+import { useCatalogStore } from '@/store/catalogStore';
+import { useCommerceStore } from '@/store/commerceStore';
+const stores = [useSavedStore, useOrderStore, useCartStore, useDesignStore, useThemeStore, useOnboardingStore, useCatalogStore, useCommerceStore];
 export function useHydration() {
   const [hydrated, setHydrated] = useState(stores.every((store) => store.persist.hasHydrated()));
   useEffect(() => {

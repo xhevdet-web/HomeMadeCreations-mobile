@@ -1,78 +1,76 @@
-import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { Chips, EmptyState, Header, IconButton, Page, useUI } from '@/components/common/ui';
-import { SavedDesignCard } from '@/components/products/SavedDesignCard';
-import { useSavedStore } from '@/store/savedStore';
+import { Button, Header, Page, useUI } from '@/components/common/ui';
+import { CatalogState } from '@/components/products/CatalogState';
+import { SavedProductSummary } from '@/components/products/SavedProductSummary';
 import { useAuthStore } from '@/store/authStore';
-import { productById } from '@/services/catalog';
-import { Design } from '@/types/models';
+import { useCommerceStore } from '@/store/commerceStore';
+import { commerceApi } from '@/services/commerceApi';
+import { editSavedDesign } from '@/services/savedDesign';
+import { useRemote } from '@/hooks/useRemote';
 export default function DesignsScreen() {
   const ui = useUI();
-
-  const { designs, remove, duplicate, save } = useSavedStore();
   const user = useAuthStore((state) => state.user);
-  const [filter, setFilter] = useState('All pieces');
-  const [deleted, setDeleted] = useState<Design | null>(null);
-  const owned = designs.filter(
-    (design) => design.userId === (user?.id ?? 'guest') || design.userId === 'guest',
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const load = useCallback(
+    (signal: AbortSignal) => (user ? commerceApi.products(user.id, signal) : Promise.resolve([])),
+    [user],
   );
-  const visible = owned.filter(
-    (design) =>
-      filter === 'All pieces' ||
-      productById[design.productId].type === (filter === 'Bracelets' ? 'bracelet' : 'necklace'),
-  );
+  const result = useRemote(load);
+  async function edit(id: string) {
+    if (!user || busy) return;
+    setBusy(true);
+    setError('');
+    try {
+      await editSavedDesign(id, user.id);
+      router.push('/designer');
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : 'Unable to open design.');
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
     <Page>
-      <Header
-        title="My Designs"
-        subtitle="Little pieces of your imagination."
-        right={
-          <IconButton name="add" label="Create a new design" onPress={() => router.push('/')} />
-        }
-      />
-      <View>
-        <Text style={ui.eyebrow}>YOUR PERSONAL COLLECTION</Text>
-        <Text style={ui.title}>Made of you.</Text>
-      </View>
-      <Chips
-        options={['All pieces', 'Bracelets', 'Necklaces']}
-        value={filter}
-        onChange={setFilter}
-      />
-      {deleted && (
-        <View style={[ui.card, ui.between]}>
-          <Text style={[ui.caption, { flex: 1 }]}>Design removed.</Text>
-          <Pressable
-            onPress={() => {
-              save(deleted);
-              setDeleted(null);
-            }}
-          >
-            <Text style={ui.textLink}>Undo</Text>
-          </Pressable>
-        </View>
+      <Header title="My Designs" />
+      <Button title="Create a new design" onPress={() => router.push('/categories')} />
+      {!!error && (
+        <Text accessibilityRole="alert" style={ui.error}>
+          {error}
+        </Text>
       )}
-      {visible.map((design) => (
-        <SavedDesignCard
-          key={design.id}
-          design={design}
-          onDuplicate={() => duplicate(design.id)}
-          onDelete={() => {
-            setDeleted(design);
-            remove(design.id);
-          }}
+      {result.loading || result.error || !result.data?.length ? (
+        <CatalogState
+          loading={result.loading}
+          error={result.error ?? ''}
+          empty="No saved designs yet."
+          retry={result.retry}
         />
-      ))}
-      {!visible.length && (
-        <EmptyState
-          icon="heart-outline"
-          title={owned.length ? 'A new chapter awaits.' : 'Your ideas belong here.'}
-          description="Create a piece, save it, and come back whenever inspiration finds you."
-          action="Find your starting point"
-          onPress={() => router.push('/')}
-        />
+      ) : (
+        result.data.map((product) => (
+          <View key={product.id} style={{ gap: 10 }}>
+            <SavedProductSummary product={product} />
+            <Button
+              title={'Order ' + product.name}
+              onPress={() => {
+                if (user) {
+                  useCommerceStore.getState().setCheckout(user.id, product);
+                  router.push('/checkout');
+                }
+              }}
+            />
+            <Button
+              title={'Edit a copy of ' + product.name}
+              secondary
+              disabled={busy}
+              onPress={() => void edit(product.id)}
+            />
+          </View>
+        ))
       )}
+      <Button title="Refresh designs" secondary disabled={result.loading} onPress={result.retry} />
     </Page>
   );
 }

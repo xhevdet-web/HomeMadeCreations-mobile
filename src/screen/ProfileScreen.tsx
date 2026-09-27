@@ -1,169 +1,80 @@
-import { useTheme } from '@/hooks/useTheme';
 import { useState } from 'react';
-import { Text, View } from 'react-native';
+import { Text } from 'react-native';
 import { router } from 'expo-router';
-import {
-  Button,
-  EmptyState,
-  Field,
-  Header,
-  Icon,
-  Notice,
-  Page,
-  useUI,
-} from '@/components/common/ui';
+import { Button, Field, Header, Page, useUI } from '@/components/common/ui';
 import { useAuthStore } from '@/store/authStore';
+import { commerceApi } from '@/services/commerceApi';
 import { User } from '@/types/models';
 
-import { hasRequiredValues, isValidEmail } from '@/helper/validation';
-
 function ProfileForm({ user }: { user: User }) {
-  const theme = useTheme();
   const ui = useUI();
-
   const [firstName, setFirstName] = useState(user.firstName);
   const [lastName, setLastName] = useState(user.lastName);
-  const [email, setEmail] = useState(user.email);
-  const [street, setStreet] = useState(user.address.street);
-  const [city, setCity] = useState(user.address.city);
-  const [postalCode, setPostalCode] = useState(user.address.postalCode);
+  const [phone, setPhone] = useState(user.phone ?? '');
   const [country, setCountry] = useState(user.address.country);
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState('');
-  function save() {
-    if (!hasRequiredValues(firstName, lastName, street) || !isValidEmail(email))
-      return setError('Please complete your name, address, and a valid email.');
-    useAuthStore.getState().update({
-      ...user,
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
-      email: email.trim().toLowerCase(),
-      address: {
-        ...user.address,
-        fullName: firstName.trim() + ' ' + lastName.trim(),
-        street: street.trim(),
-        city: city.trim(),
-        postalCode: postalCode.trim(),
+  const [address, setAddress] = useState(user.address.street);
+  const [postalCode, setPostalCode] = useState(user.address.postalCode);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+  async function save() {
+    if (busy) return;
+    if (![firstName, lastName, phone, country, address].every((value) => value.trim())) {
+      setMessage('Complete your name, phone, country and address.');
+      return;
+    }
+    setBusy(true);
+    setMessage('');
+    try {
+      const updated = await commerceApi.updateProfile(user.id, {
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        phone: phone.trim(),
         country: country.trim(),
-      },
-    });
-    setError('');
-    setSaved(true);
+        address: address.trim(),
+        ...(postalCode.trim() ? { postalCode: postalCode.trim() } : {}),
+      });
+      useAuthStore.getState().update(updated);
+      setMessage('Your details have been saved.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Unable to save profile.');
+    } finally {
+      setBusy(false);
+    }
   }
   return (
     <>
-      <View style={[ui.card, ui.row]}>
-        <View
-          style={{
-            width: 62,
-            height: 62,
-            borderRadius: 31,
-            backgroundColor: theme.colors.avatar,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Text
-            style={{ color: theme.colors.gold, fontFamily: theme.fonts.editorial, fontSize: 26 }}
-          >
-            {user.firstName[0]}
-            {user.lastName[0]}
-          </Text>
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={ui.sectionTitle}>Hello, {user.firstName}.</Text>
-          <Text style={ui.caption}>A maker of little wonders.</Text>
-        </View>
-        <Icon name="sparkles-outline" color={theme.colors.gold} />
-      </View>
-      <Text style={ui.sectionTitle}>Personal information</Text>
+      <Text style={ui.body}>{user.email}</Text>
+      <Field label="First name" value={firstName} onChangeText={setFirstName} maxLength={100} />
+      <Field label="Last name" value={lastName} onChangeText={setLastName} maxLength={100} />
       <Field
-        label="First name"
-        value={firstName}
-        onChangeText={(value) => {
-          setFirstName(value);
-          setSaved(false);
-        }}
+        label="Phone"
+        value={phone}
+        onChangeText={setPhone}
+        keyboardType="phone-pad"
+        maxLength={32}
       />
+      <Field label="Country" value={country} onChangeText={setCountry} maxLength={100} />
+      <Field label="Address" value={address} onChangeText={setAddress} multiline maxLength={300} />
       <Field
-        label="Last name"
-        value={lastName}
-        onChangeText={(value) => {
-          setLastName(value);
-          setSaved(false);
-        }}
-      />
-      <Field
-        label="Email address"
-        value={email}
-        onChangeText={(value) => {
-          setEmail(value);
-          setSaved(false);
-        }}
-        autoCapitalize="none"
-        keyboardType="email-address"
-      />
-      <Text style={ui.sectionTitle}>Delivery address</Text>
-      <Field
-        label="Street address"
-        value={street}
-        onChangeText={(value) => {
-          setStreet(value);
-          setSaved(false);
-        }}
-        multiline
-      />
-      <Field
-        label="City"
-        value={city}
-        onChangeText={(value) => {
-          setCity(value);
-          setSaved(false);
-        }}
-      />
-      <Field
-        label="Postal code"
+        label="Postal code (optional)"
         value={postalCode}
-        onChangeText={(value) => {
-          setPostalCode(value);
-          setSaved(false);
-        }}
+        onChangeText={setPostalCode}
+        maxLength={20}
       />
-      <Field
-        label="Country"
-        value={country}
-        onChangeText={(value) => {
-          setCountry(value);
-          setSaved(false);
-        }}
-      />
-      {error ? <Text style={ui.error}>{error}</Text> : null}
-      {saved && <Notice text="Your details have been updated." />}
-      <Button title="Save my details" onPress={save} />
-      <View style={ui.divider} />
-      <Button
-        title="My Designs"
-        secondary
-        icon="heart-outline"
-        onPress={() => router.push('/designs')}
-      />
-      <Button
-        title="My Orders"
-        secondary
-        icon="bag-handle-outline"
-        onPress={() => router.push('/orders')}
-      />
+      {!!message && (
+        <Text accessibilityRole="alert" style={ui.body}>
+          {message}
+        </Text>
+      )}
+      <Button title="Save my details" loading={busy} onPress={() => void save()} />
+      <Button title="My Designs" secondary onPress={() => router.push('/designs')} />
+      <Button title="My Orders" secondary onPress={() => router.push('/orders')} />
       <Button
         title="Sign out"
         secondary
-        icon="log-out-outline"
-        onPress={() => {
-          void useAuthStore.getState().logout();
-        }}
+        disabled={busy}
+        onPress={() => void useAuthStore.getState().logout()}
       />
-      <Text style={[ui.caption, { textAlign: 'center' }]}>
-        Profile edits are local to this session.
-      </Text>
     </>
   );
 }
@@ -171,24 +82,11 @@ export default function ProfileScreen() {
   const user = useAuthStore((state) => state.user);
   return (
     <Page>
-      <Header title="Your little corner" />
+      <Header title="Your profile" />
       {user ? (
         <ProfileForm key={user.id} user={user} />
       ) : (
-        <>
-          <EmptyState
-            icon="person-outline"
-            title="Make yourself at home."
-            description="Create a local profile to keep your details ready for your next handmade piece."
-            action="Create an account"
-            onPress={() => router.push('/register')}
-          />
-          <Button
-            title="I already have an account"
-            secondary
-            onPress={() => router.push('/login')}
-          />
-        </>
+        <Button title="Sign in" onPress={() => router.push('/login')} />
       )}
     </Page>
   );

@@ -6,6 +6,8 @@ import { normalizePositions, uniqueId } from '@/helper/design';
 import { storage } from './storage';
 
 interface DesignState {
+  description: string;
+  describe: (description: string) => void;
   productId: string;
   name: string;
   size: string;
@@ -70,6 +72,8 @@ export const useDesignStore = create<DesignState>()(
         return choice;
       };
       return {
+        description: '',
+        describe: (description) => set({ description }),
         productId: 'bracelet-classic',
         name: 'My little masterpiece',
         size: 'M · 17 cm',
@@ -80,6 +84,7 @@ export const useDesignStore = create<DesignState>()(
         historyIndex: 0,
         start: (productId, size) =>
           set({
+            description: '',
             productId,
             size: size ?? productById[productId].sizes[1],
             name: `My ${productById[productId].name}`,
@@ -91,6 +96,7 @@ export const useDesignStore = create<DesignState>()(
           }),
         load: (design) =>
           set({
+            description: design.description ?? '',
             productId: design.productId,
             size: design.size,
             name: design.name,
@@ -162,6 +168,7 @@ export const useDesignStore = create<DesignState>()(
             set({ items: get().history[index], historyIndex: index, selectedId: null });
         },
         snapshot: (userId) => ({
+          description: get().description,
           id: get().designId ?? uniqueId(),
           userId,
           name: get().name.trim() || 'My little masterpiece',

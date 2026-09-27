@@ -1,122 +1,138 @@
-import { useTheme } from '@/hooks/useTheme';
-import { useState } from 'react';
-import { Text, useWindowDimensions, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { Button, EmptyState, Field, Header, Notice, Page, useUI } from '@/components/common/ui';
-import { PriceBreakdown } from '@/components/common/PriceBreakdown';
+import { Button, Field, Header, IconButton, Page, useUI } from '@/components/common/ui';
 import { JewelryCanvas } from '@/components/designer/JewelryCanvas';
+import { SavedProductSummary } from '@/components/products/SavedProductSummary';
 import { useDesignStore } from '@/store/designStore';
 import { useAuthStore } from '@/store/authStore';
-import { useSavedStore } from '@/store/savedStore';
-import { useCartStore } from '@/store/cartStore';
+import { useCommerceStore } from '@/store/commerceStore';
 import { itemById, productById } from '@/services/catalog';
-
+import { priceLines, money } from '@/helper/pricing';
+import { productInput, saveCurrentDesign } from '@/services/savedDesign';
 export default function PreviewScreen() {
-  const theme = useTheme();
   const ui = useUI();
-
-  const design = useDesignStore();
-  const [saved, setSaved] = useState(false);
-  const cartDesign = useCartStore((state) => state.design);
-  const inCart = !!cartDesign && cartDesign.id === design.designId &&
-    cartDesign.name === design.name && cartDesign.size === design.size &&
-    cartDesign.productId === design.productId &&
-    JSON.stringify(cartDesign.items) === JSON.stringify(design.items);
-  const { width } = useWindowDimensions();
-  const product = productById[design.productId];
-  function snapshot() {
-    return design.snapshot(useAuthStore.getState().user?.id ?? 'guest');
+  const draft = useDesignStore();
+  const user = useAuthStore((state) => state.user);
+  const stored = useCommerceStore((state) => state.savedDraft);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const submitting = useRef(false);
+  const product = productById[draft.productId];
+  let signature = '';
+  try {
+    signature = JSON.stringify(productInput());
+  } catch {
+    /* A local demo design cannot be saved remotely. */
   }
-  if (!design.items.length)
-    return (
-      <Page>
-        <Header title="Your preview" back />
-        <EmptyState
-          icon="sparkles-outline"
-          title="Every story starts somewhere."
-          description="Choose a few beads to see your own creation here."
-          action="Open the studio"
-          onPress={() => router.replace('/designer')}
-        />
-      </Page>
-    );
-  const beadCount = design.items.filter((item) => itemById[item.itemId].type === 'bead').length;
-  const charmCount = design.items.filter((item) => itemById[item.itemId].type === 'charm').length;
+  const saved =
+    stored?.userId === user?.id && stored?.signature === signature ? stored.product : null;
+  const lines = priceLines(draft.items);
+  async function save(checkout: boolean) {
+    if (!user) {
+      router.push('/login');
+      return;
+    }
+    if (submitting.current) return;
+    submitting.current = true;
+    setBusy(true);
+    setError('');
+    try {
+      const result = await saveCurrentDesign(user.id);
+      if (checkout) {
+        useCommerceStore.getState().setCheckout(user.id, result);
+        router.push('/checkout');
+      }
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : 'Unable to save your design.');
+    } finally {
+      submitting.current = false;
+      setBusy(false);
+    }
+  }
   return (
     <Page>
       <Header title="Your Creation" back />
-      <View
-        style={{ backgroundColor: theme.colors.preview, borderRadius: 24, paddingVertical: 12 }}
-      >
-        <Text style={[ui.eyebrow, { textAlign: 'center', marginTop: 15 }]}>ONE OF A KIND</Text>
-        <JewelryCanvas items={design.items} type={product.type} size={Math.min(width - 54, 370)} />
-      </View>
-      <View>
-        <Text style={ui.title}>Look what you made.</Text>
-        <Text style={[ui.body, { marginTop: 9 }]}>
-          A little piece of your personality, ready to wear.
-        </Text>
-      </View>
+      <JewelryCanvas items={draft.items} type={product.type} size={280} />
       <Field
         label="Give your creation a name"
-        value={design.name}
-        onChangeText={(name) => {
-          design.rename(name);
-          setSaved(false);
-        }}
-        maxLength={60}
+        value={draft.name}
+        onChangeText={draft.rename}
+        editable={!busy}
+        maxLength={150}
       />
-      <Text style={ui.body}>
-        {product.name} · {design.size}
-      </Text>
-      <View style={[ui.card, ui.between]}>
-        {[
-          { label: 'Beads', count: beadCount },
-          { label: 'Charms', count: charmCount },
-          { label: 'Total details', count: design.items.length },
-        ].map((stat) => (
-          <View key={stat.label} style={{ alignItems: 'center', gap: 6 }}>
-            <Text
-              style={{ color: theme.colors.gold, fontSize: 23, fontFamily: theme.fonts.editorial }}
-            >
-              {stat.count}
-            </Text>
-            <Text style={ui.caption}>{stat.label}</Text>
+      <Field
+        label="Description (optional)"
+        value={draft.description}
+        onChangeText={draft.describe}
+        editable={!busy}
+        multiline
+        maxLength={2000}
+      />
+      {lines.map((line) => (
+        <View key={line.itemId} style={ui.card}>
+          <Text style={ui.label}>
+            {line.name}: {line.quantity} × {money(line.unitPrice)} ={' '}
+            {money(line.quantity * line.unitPrice)}
+          </Text>
+          <View style={ui.row}>
+            <IconButton
+              name="remove"
+              label={'Remove one ' + line.name}
+              disabled={busy}
+              onPress={() => {
+                const entry = draft.items.find((item) => item.itemId === line.itemId);
+                if (entry) {
+                  draft.select(entry.id);
+                  useDesignStore.getState().removeItem();
+                  draft.select(null);
+                }
+              }}
+            />
+            <Text style={ui.label}>{line.quantity}</Text>
+            <IconButton
+              name="add"
+              label={'Add one ' + line.name}
+              disabled={
+                busy ||
+                draft.items.length >= 32 ||
+                line.quantity >= itemById[line.itemId].stock ||
+                !itemById[line.itemId].available
+              }
+              onPress={() => draft.addItem(line.itemId)}
+            />
           </View>
-        ))}
-      </View>
-      <View style={ui.card}>
-        <Text style={ui.eyebrow}>EVERY LITTLE DETAIL</Text>
-        <PriceBreakdown
-          productName={product.name}
-          basePrice={product.basePrice}
-          items={design.items}
-        />
-      </View>
-      {saved && <Notice text="Your creation is safely tucked away in My Designs." />}
+        </View>
+      ))}
+      <Text style={ui.label}>Total beads: {draft.items.length}</Text>
+      <Text style={ui.label}>
+        Estimated price:{' '}
+        {money(lines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0))}
+      </Text>
+      {saved && <SavedProductSummary product={saved} />}
+      {saved && (
+        <Text style={ui.caption}>Design saved. Stock is checked when you place an order.</Text>
+      )}
+      {!!error && (
+        <Text accessibilityRole="alert" style={ui.error}>
+          {error}
+        </Text>
+      )}
+      {!product.categoryId && (
+        <Button title="Choose a category" onPress={() => router.push('/categories')} />
+      )}
       <Button
-        title={inCart ? 'Continue to Checkout' : 'Add to Cart'}
-        icon="arrow-forward"
-        onPress={() => {
-          if (inCart) { router.push('/checkout'); return; }
-          const entry = snapshot();
-          useCartStore.getState().setDesign(entry);
-          design.markSaved(entry.id);
-        }}
+        title={saved ? 'Design saved' : 'Save design'}
+        onPress={() => void save(false)}
+        loading={busy}
+        disabled={!draft.items.length || !product.categoryId || !!saved}
       />
-      {inCart && <Notice text="Your creation is in the cart and ready for checkout." />}
       <Button
-        title={saved ? 'Design saved' : 'Save to My Designs'}
-        secondary
-        icon="heart-outline"
-        onPress={() => {
-          const entry = snapshot();
-          useSavedStore.getState().save(entry);
-          design.markSaved(entry.id);
-          setSaved(true);
-        }}
+        title="Review order"
+        onPress={() => void save(true)}
+        disabled={busy || !draft.items.length || !product.categoryId}
       />
-      <Button title="Keep creating" secondary icon="create-outline" onPress={() => router.back()} />
+      <Button title="Keep creating" secondary disabled={busy} onPress={() => router.back()} />
     </Page>
   );
 }

@@ -8,8 +8,9 @@ import { Button, Header, Icon, IconButton, Notice, Page, useUI } from '@/compone
 import { JewelryCanvas } from '@/components/designer/JewelryCanvas';
 import { DesignItem } from '@/components/designer/DesignItem';
 import { BeadPicker } from '@/components/designer/BeadPicker';
+import { CategoryBeadPicker } from '@/components/designer/CategoryBeadPicker';
 import { useDesignStore } from '@/store/designStore';
-import { useSavedStore } from '@/store/savedStore';
+import { saveCurrentDesign } from '@/services/savedDesign';
 import { useAuthStore } from '@/store/authStore';
 import { itemById, productById } from '@/services/catalog';
 import { type Theme } from '@/constants/theme';
@@ -43,6 +44,8 @@ export default function DesignerScreen() {
 
   const design = useDesignStore();
   const [message, setMessage] = useState('');
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
   const [draggingItem, setDraggingItem] = useState<CustomizationItem | null>(null);
   const canvasRef = useRef<View>(null);
   const jewelryRef = useRef<View>(null);
@@ -76,6 +79,7 @@ export default function DesignerScreen() {
   const stageHeight = stageWidth * 2 / 3;
   const jewelrySize = Math.min(stageHeight - 8, 360);
   const product = productById[design.productId];
+  const DetailPicker = product.categoryId ? CategoryBeadPicker : BeadPicker;
   const selectedIndex = design.items.findIndex((item) => item.id === design.selectedId);
   function startReorder(x: number, y: number) {
     reorderId.current = null;
@@ -170,11 +174,16 @@ export default function DesignerScreen() {
     state.insertItem(item.id, slots[0].index, angleFromPoint(point.x, point.y, product.type));
     setMessage(`${item.name} added to your ${product.type}.`);
   }
-  function save() {
-    const snapshot = design.snapshot(useAuthStore.getState().user?.id ?? 'guest');
-    useSavedStore.getState().save(snapshot);
-    design.markSaved(snapshot.id);
-    setMessage('Saved to My Designs. Keep creating, or take a peek.');
+  async function save() {
+    const user = useAuthStore.getState().user;
+    if (!user) { router.push('/login'); return; }
+    if (savingRef.current) return;
+    savingRef.current = true; setSaving(true);
+    try {
+      const saved = await saveCurrentDesign(user.id);
+      setMessage(`Saved to My Designs. ${saved.itemCount} beads · ${money(saved.price)}. Stock is not reserved.`);
+    } catch (error) { setMessage(error instanceof Error ? error.message : 'Unable to save design.'); }
+    finally { savingRef.current = false; setSaving(false); }
   }
   return (
     <View ref={screenRef} collapsable={false} style={{ flex: 1, backgroundColor: theme.colors.background }}>
@@ -188,7 +197,7 @@ export default function DesignerScreen() {
               name="bookmark-outline"
               label="Save design"
               onPress={save}
-              disabled={!design.items.length}
+              disabled={!design.items.length || saving}
             />
           }
         /></View>
@@ -217,7 +226,7 @@ export default function DesignerScreen() {
               </View>
             </ReorderGestureLayer>
           </View>
-          {!design.items.length && (
+          {!design.items.length && !product.categoryId && (
             <>
               {[0, 1].map((index) => (
                 <Pressable key={index} accessibilityRole="button"
@@ -318,7 +327,9 @@ export default function DesignerScreen() {
             Your piece is full. Select a detail to replace or remove it.
           </Text>
         )}
-        <BeadPicker
+        <DetailPicker
+          key={product.categoryId ?? 'local'}
+          categoryId={product.categoryId ?? ''}
           replacing={!!design.selectedId}
           disabled={design.items.length >= 32 && !design.selectedId}
           onPick={(item) => {
