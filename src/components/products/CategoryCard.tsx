@@ -34,7 +34,7 @@ export function CategoryCard({ category }: { category: CatalogCategory }) {
         opacity: pressed ? 0.65 : 1,
       })}
     >
-      <CatalogImage imageUrl={null} name={category.name} />
+      <CatalogImage imageUrl={category.imageUrl} name={category.name} />
       <View style={{ flex: 1, gap: 8 }}>
         <Text style={ui.sectionTitle}>{category.name}</Text>
         {!!category.description && <Text style={ui.caption}>{category.description}</Text>}

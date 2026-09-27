@@ -1,11 +1,13 @@
 import { useId } from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import Svg, { Circle, Defs, Ellipse, G, Path, RadialGradient, Stop } from 'react-native-svg';
 import { DesignItem as DesignItemModel, JewelryType } from '@/types/models';
 import { itemById } from '@/services/catalog';
 import { itemPosition } from '@/helper/design';
 import { BeadShape } from './DesignItem';
 import { useTheme } from '@/hooks/useTheme';
+import { CatalogImage } from '@/components/products/CatalogImage';
+import { useCatalogStore } from '@/store/catalogStore';
 
 export interface CanvasProps {
   items: DesignItemModel[];
@@ -25,6 +27,7 @@ export function JewelryCanvas({
 }: CanvasProps) {
   const uid = useId().replace(/:/g, '');
   const theme = useTheme();
+  const catalogItems = useCatalogStore((state) => state.items);
   const ry = type === 'necklace' ? 119 : 96;
   const radius = Math.min(15.5, 285 / Math.max(items.length, 16));
   return (
@@ -57,7 +60,7 @@ export function JewelryCanvas({
         })}
         {items.map((entry, index) => {
           const item = itemById[entry.itemId];
-          if (!item) return null;
+          if (!item || item.categoryId || item.imageUrl) return null;
           const point = itemPosition(index, items.length, type, entry.angle);
           return (
             <BeadShape
@@ -95,6 +98,27 @@ export function JewelryCanvas({
           <Path d="M151 28 Q160 16 169 28" fill="none" stroke="#CBA66E" strokeWidth={2} />
         )}
       </Svg>
+      {items.map((entry, index) => {
+        const item = catalogItems[entry.itemId] ?? itemById[entry.itemId];
+        if (!item || !(item.categoryId || item.imageUrl)) return null;
+        const point = itemPosition(index, items.length, type, entry.angle);
+        const diameter = radius * 2 * size / 320;
+        return (
+          <Pressable key={entry.id} testID={`placed-${entry.id}`}
+            accessibilityRole={onSelect ? 'button' : undefined}
+            accessibilityLabel={`Select canvas position ${index + 1}, ${item.name}`}
+            onPress={onSelect ? () => onSelect(entry.id) : undefined}
+            disabled={!onSelect}
+            style={{ position: 'absolute', left: point.x * size / 320 - diameter / 2,
+              top: point.y * size / 320 - diameter / 2, width: diameter, height: diameter }}>
+            {entry.id === selectedId && <View pointerEvents="none" style={{
+              position: 'absolute', inset: -4, borderRadius: diameter, borderWidth: 2,
+              borderColor: theme.colors.accent,
+            }} />}
+            <CatalogImage imageUrl={item.imageUrl} name={item.name} size={diameter} />
+          </Pressable>
+        );
+      })}
     </View>
   );
 }

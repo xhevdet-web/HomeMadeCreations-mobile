@@ -30,6 +30,9 @@ export default function ConfirmationScreen() {
         />
       )}
       <Button title="Refresh status" secondary disabled={result.loading} onPress={result.retry} />
+      {placed && <Button title="View Order" onPress={() =>
+        router.replace({ pathname: '/confirmation', params: { id } })} />}
+      {placed && <Button title="Back to Home" secondary onPress={() => router.replace('/')} />}
       <Button title="View my orders" onPress={() => router.replace('/orders')} />
     </Page>
   );

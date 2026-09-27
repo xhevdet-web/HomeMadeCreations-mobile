@@ -4,9 +4,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { Product } from '@/types/models';
 import { type Theme } from '@/constants/theme';
-import { sampleItems } from '@/services/catalog';
+import { CatalogImage } from './CatalogImage';
 import { money } from '@/helper/pricing';
-import { JewelryCanvas } from '@/components/designer/JewelryCanvas';
 import { Icon, useUI } from '@/components/common/ui';
 
 export function ProductCard({ product, width }: { product: Product; width: number }) {
@@ -17,7 +16,7 @@ export function ProductCard({ product, width }: { product: Product; width: numbe
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Customize ${product.name}, starting from ${money(product.basePrice)}`}
+      accessibilityLabel={`Customize ${product.name}, starting from ${money(product.price ?? product.basePrice)}`}
       onPress={() => router.push({ pathname: '/details', params: { id: product.id } })}
       style={({ pressed }) => [styles.card, { width, opacity: pressed ? 0.8 : 1 }]}
     >
@@ -31,12 +30,8 @@ export function ProductCard({ product, width }: { product: Product; width: numbe
           </View>
         )}
         <View style={{ marginTop: 12 }}>
-          <JewelryCanvas
-            items={sampleItems(product)}
-            type={product.type}
-            size={Math.min(width - 12, 265)}
-            decorative
-          />
+          <CatalogImage imageUrl={product.imageUrl} name={product.name}
+            size={Math.min(width - 12, 265)} />
         </View>
       </LinearGradient>
       <View style={styles.info}>
@@ -45,7 +40,7 @@ export function ProductCard({ product, width }: { product: Product; width: numbe
         <View style={ui.between}>
           <View>
             <Text style={styles.from}>Starting from</Text>
-            <Text style={styles.price}>{money(product.basePrice)}</Text>
+            <Text style={styles.price}>{money(product.price ?? product.basePrice)}</Text>
           </View>
           <View style={styles.arrow}>
             <Icon name="arrow-forward" size={18} color={theme.colors.onPrimary} />

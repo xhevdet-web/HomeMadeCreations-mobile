@@ -1,8 +1,10 @@
+import type { SavedProduct } from './commerceApi';
 export interface CatalogCategory {
   id: string;
   name: string;
   description: string | null;
-  imageUrl: string | null;
+  imageUrl?: string | null;
+  imageKey?: string | null;
   isActive: boolean;
   sortOrder: number;
 }
@@ -93,3 +95,18 @@ export const fetchCategoryComponents = async (id: string, signal?: AbortSignal) 
   );
 export const fetchComponent = async (id: string, signal?: AbortSignal) =>
   parseComponent(await get(`/sub-categories/${encodeURIComponent(id)}`, signal));
+
+function parseProduct(value: unknown): SavedProduct {
+  const item = value as SavedProduct | null;
+  if (!item || typeof item.id !== 'string' || typeof item.name !== 'string' ||
+      typeof item.categoryId !== 'string' || !Number.isSafeInteger(item.price) || item.price < 0)
+    throw new Error('The catalog returned an invalid product. Please retry.');
+  return item;
+}
+export const fetchProducts = async (signal?: AbortSignal) => {
+  const data = await get('/products', signal);
+  if (!Array.isArray(data)) throw new Error('The catalog returned an invalid product list.');
+  return data.map(parseProduct).filter((product) => product.isActive !== false);
+};
+export const fetchProduct = async (id: string, signal?: AbortSignal) =>
+  parseProduct(await get(`/products/${encodeURIComponent(id)}`, signal));

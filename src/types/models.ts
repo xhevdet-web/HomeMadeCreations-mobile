@@ -1,6 +1,9 @@
 export type JewelryType = 'bracelet' | 'necklace';
 export type ItemType = 'bead' | 'charm' | 'letter' | 'spacer';
 export interface Product {
+  imageUrl?: string | null;
+  imageKey?: string | null;
+  price?: number;
   categoryId?: string;
   id: string;
   name: string;
@@ -18,6 +21,7 @@ export interface CustomizationItem {
   categoryId?: string;
   componentType?: string;
   imageUrl?: string | null;
+  imageKey?: string | null;
   id: string;
   name: string;
   type: ItemType;

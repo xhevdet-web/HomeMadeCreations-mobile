@@ -184,7 +184,7 @@ export function Header({
 export function Brand({ compact = false, hero = false }: { compact?: boolean; hero?: boolean }) {
   const theme = useTheme();
   const width = compact ? 110 : hero ? 58 : 130;
-  const height = compact ? 94 : hero ? 80 : 160;
+  const height = compact ? 44 : hero ? 80 : 160;
   const imageSize = compact ? 90 : hero ? 360 : 320;
   const isDark = theme.mode === 'dark';
   // Center the visible artwork; both files have transparent padding around it.

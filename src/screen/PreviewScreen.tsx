@@ -9,19 +9,23 @@ import { useAuthStore } from '@/store/authStore';
 import { useCommerceStore } from '@/store/commerceStore';
 import { itemById, productById } from '@/services/catalog';
 import { priceLines, money } from '@/helper/pricing';
-import { productInput, saveCurrentDesign } from '@/services/savedDesign';
+import { designSignature, saveCurrentDesign } from '@/services/savedDesign';
+import { captureDesignPreview } from '@/services/designPreview';
+import { useTheme } from '@/hooks/useTheme';
 export default function PreviewScreen() {
   const ui = useUI();
+  const theme = useTheme();
   const draft = useDesignStore();
   const user = useAuthStore((state) => state.user);
   const stored = useCommerceStore((state) => state.savedDraft);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const submitting = useRef(false);
+  const previewRef = useRef<View>(null);
   const product = productById[draft.productId];
   let signature = '';
   try {
-    signature = JSON.stringify(productInput());
+    signature = designSignature();
   } catch {
     /* A local demo design cannot be saved remotely. */
   }
@@ -38,7 +42,8 @@ export default function PreviewScreen() {
     setBusy(true);
     setError('');
     try {
-      const result = await saveCurrentDesign(user.id);
+      const result = await saveCurrentDesign(user.id, () =>
+        captureDesignPreview(previewRef.current, useDesignStore.getState().items));
       if (checkout) {
         useCommerceStore.getState().setCheckout(user.id, result);
         router.push('/checkout');
@@ -53,7 +58,10 @@ export default function PreviewScreen() {
   return (
     <Page>
       <Header title="Your Creation" back />
-      <JewelryCanvas items={draft.items} type={product.type} size={280} />
+      <View ref={previewRef} collapsable={false} testID="design-preview-canvas"
+        style={{ width: 280, height: 280, alignSelf: 'center', backgroundColor: theme.colors.background }}>
+        <JewelryCanvas items={draft.items} type={product.type} size={280} />
+      </View>
       <Field
         label="Give your creation a name"
         value={draft.name}

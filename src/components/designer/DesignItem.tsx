@@ -1,4 +1,5 @@
 import { useId } from 'react';
+import { CatalogImage } from '@/components/products/CatalogImage';
 import Svg, {
   Circle,
   Defs,
@@ -120,6 +121,7 @@ export function BeadShape({
 }
 export function DesignItem({ item, size = 48 }: { item: CustomizationItem; size?: number }) {
   const id = useId().replace(/:/g, '');
+  if (item.categoryId || item.imageUrl) return <CatalogImage imageUrl={item.imageUrl} name={item.name} size={size} />;
   return (
     <Svg width={size} height={size} viewBox="0 0 48 48">
       <BeadShape item={item} id={`bead-${id}`} />

@@ -3,7 +3,9 @@ import { Text, View, useWindowDimensions } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { Chips, Field, Header, Page, useUI } from '@/components/common/ui';
 import { ProductCard } from '@/components/products/ProductCard';
-import { products } from '@/services/catalog';
+import { loadProducts } from '@/store/catalogStore';
+import { useRemote } from '@/hooks/useRemote';
+import { CatalogState } from '@/components/products/CatalogState';
 
 export default function ProductsScreen() {
   const { category } = useLocalSearchParams<{ category?: string }>();
@@ -13,7 +15,8 @@ export default function ProductsScreen() {
   const [search, setSearch] = useState('');
   const { width } = useWindowDimensions();
   const ui = useUI();
-  const visible = products.filter(
+  const result = useRemote(loadProducts);
+  const visible = (result.data ?? []).filter(
     (product) =>
       (filter === 'All' || product.type === (filter === 'Bracelets' ? 'bracelet' : 'necklace')) &&
       product.name.toLowerCase().includes(search.toLowerCase()),
@@ -34,7 +37,8 @@ export default function ProductsScreen() {
           <ProductCard key={product.id} product={product} width={(Math.min(width, 760) - 58) / 2} />
         ))}
       </View>
-      {!visible.length && (
+      {(result.loading || result.error) && <CatalogState {...result} error={result.error ?? ''} empty="No products available." />}
+      {!result.loading && !result.error && !visible.length && (
         <Text style={ui.body}>No pieces match your search. Try another name.</Text>
       )}
     </Page>

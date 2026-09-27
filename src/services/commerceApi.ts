@@ -1,8 +1,14 @@
 import { authStorage } from './authStorage';
 import { parseTokens, parseUser } from './authApi';
 import { CatalogComponent } from './catalogApi';
+import { File } from 'expo-file-system';
+import { fetch } from 'expo/fetch';
 
 export interface SavedProduct {
+  imageUrl?: string | null;
+  designPreviewUrl?: string | null;
+  imageKey?: string | null;
+  isActive?: boolean;
   id: string;
   createdById: string;
   categoryId: string;
@@ -20,6 +26,10 @@ export interface SavedProduct {
     subCategory: Partial<CatalogComponent> & { name: string };
   }[];
 }
+export type OrderedProduct = Pick<
+  SavedProduct,
+  'id' | 'name' | 'description' | 'imageUrl' | 'designPreviewUrl' | 'price' | 'itemCount' | 'items'
+>;
 export const orderStages = [
   'ORDERED',
   'CREATING',
@@ -45,7 +55,7 @@ export interface ApiOrder {
   postalCode?: string;
   customerNotes?: string;
   createdAt: string;
-  product: SavedProduct;
+  product: OrderedProduct;
 }
 export interface OrderPage {
   data: ApiOrder[];
@@ -79,19 +89,31 @@ async function request<T>(
   const cancel = () => controller.abort();
   signal?.addEventListener('abort', cancel);
   if (signal?.aborted) cancel();
-  const timer = setTimeout(cancel, 15000);
+  // Image uploads also wait for backend storage, which has its own 15s deadline.
+  const timer = setTimeout(cancel, body instanceof FormData ? 45000 : 15000);
   try {
     const response = await fetch(base + path, {
       method,
       signal: controller.signal,
       headers: {
         Accept: 'application/json',
-        'Content-Type': 'application/json',
+        ...(body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
         Authorization: 'Bearer ' + tokens.accessToken,
       },
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined ? undefined : body instanceof FormData ? body : JSON.stringify(body),
     });
-    const data = await response.json();
+    const text = await response.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      throw new ApiError(
+        response.ok
+          ? 'The server returned an invalid response. Check My Designs before saving again.'
+          : `The server could not complete the request (HTTP ${response.status}). Please try again later.`,
+        response.status,
+      );
+    }
     if (!response.ok) {
       const message = Array.isArray(data.message) ? data.message.join(' ') : data.message;
       throw new ApiError(
@@ -119,15 +141,35 @@ export interface ProductInput {
   items: { subCategoryId: string; quantity: number; position: number }[];
 }
 export interface DeliveryInput {
-  firstName: string;
-  lastName: string;
-  phone: string;
-  country: string;
-  address: string;
-  postalCode?: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  country?: string;
+  address?: string;
+  postalCode?: string | null;
 }
 export const commerceApi = {
-  save: (input: ProductInput) => request<SavedProduct>('/products', 'POST', input),
+  save: (input: ProductInput, previewUri: string) => {
+    const data = new FormData();
+    data.append('categoryId', input.categoryId);
+    data.append('name', input.name);
+    if (input.description) data.append('description', input.description);
+    data.append('items', JSON.stringify(input.items));
+    if (previewUri.startsWith('data:')) {
+      // Expo web capture returns a data URI; browsers require an actual Blob.
+      return fetch(previewUri).then((response) => response.blob()).then((blob) => {
+        data.append('designPreview', blob, 'design-preview.png');
+        return request<SavedProduct>('/products', 'POST', data);
+      });
+    }
+    // SDK 57's Expo fetch rejects React Native's legacy { uri, name, type } parts.
+    // File implements the byte-reading interface its multipart encoder supports.
+    const preview = new File(previewUri.startsWith('/') ? 'file://' + previewUri : previewUri);
+    if (!preview.exists || !preview.size)
+      throw new ApiError('The preview file is unavailable. Your design is safe; please capture it again.', 400);
+    data.append('designPreview', preview);
+    return request<SavedProduct>('/products', 'POST', data);
+  },
   products: (userId: string, signal?: AbortSignal) =>
     request<SavedProduct[]>(
       '/users/' + encodeURIComponent(userId) + '/products',
@@ -137,8 +179,8 @@ export const commerceApi = {
     ),
   product: (id: string, signal?: AbortSignal) =>
     request<SavedProduct>('/products/' + encodeURIComponent(id), 'GET', undefined, signal),
-  updateProfile: async (userId: string, input: DeliveryInput) =>
-    parseUser(await request('/users/' + encodeURIComponent(userId), 'PATCH', input)),
+  updateProfile: async (input: DeliveryInput) =>
+    parseUser(await request('/users/me', 'PATCH', input)),
   order: (productId: string, notes: string) =>
     request<ApiOrder>('/orders', 'POST', {
       productId,

@@ -10,6 +10,7 @@ export const useCommerceStore = create<{
   rememberOrder: (order: ApiOrder) => void;
   setCheckout: (userId: string, product: SavedProduct) => void;
   saveDraft: (userId: string, signature: string, product: SavedProduct) => void;
+  clearDraft: () => void;
   setPending: (key: string, value: boolean) => void;
 }>()(
   persist(
@@ -22,6 +23,7 @@ export const useCommerceStore = create<{
       setCheckout: (userId, product) => set({ checkout: { userId, product } }),
       saveDraft: (userId, signature, product) =>
         set({ savedDraft: { userId, signature, product } }),
+      clearDraft: () => set({ savedDraft: null }),
       setPending: (key, value) => set((state) => ({ pending: { ...state.pending, [key]: value } })),
     }),
     { name: 'homemade-commerce-v1', storage },

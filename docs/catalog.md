@@ -24,8 +24,7 @@ My Designs reads GET /users/{userId}/products. Opening a design for editing or
 checkout reads GET /products/{id}. Editing a saved design creates a copy on save.
 API metadata is cached to restore the canvas after an app restart.
 
-Profile and checkout save delivery fields using PATCH /users/{userId}. Checkout
-requires firstName, lastName, phone, country and address; postalCode is optional.
+Profile saves the signed-in customer's own details using PATCH /users/me. Review your order displays only the saved design, quantities, price, Cash on Delivery and optional notes. It does not read or update profile fields. If the backend requires missing delivery details, checkout links to Profile and offers a return to the order. The backend requires firstName, lastName, phone, country and address; postalCode is optional.
 POST /orders sends only productId, paymentType=CASH_ON_DELIVERY and optional
 customerNotes, with the authenticated bearer token from the existing token storage.
 No local delivery fee or demo order is added. Backend stock errors are shown

@@ -11,18 +11,16 @@ import { useCatalogStore } from '@/store/catalogStore';
 import { ApiError, commerceApi, SavedProduct } from '@/services/commerceApi';
 import { fetchCategoryComponents } from '@/services/catalogApi';
 import { User } from '@/types/models';
+import { designSignature, editSavedDesign } from '@/services/savedDesign';
+import { useDesignStore } from '@/store/designStore';
 
 function CheckoutForm({ product, user }: { product: SavedProduct; user: User }) {
   const ui = useUI();
-  const [firstName, setFirstName] = useState(user.firstName);
-  const [lastName, setLastName] = useState(user.lastName);
-  const [phone, setPhone] = useState(user.phone ?? '');
-  const [country, setCountry] = useState(user.address.country);
-  const [address, setAddress] = useState(user.address.street);
-  const [postalCode, setPostalCode] = useState(user.address.postalCode);
+  const [needsProfile, setNeedsProfile] = useState(false);
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState(false);
   const placing = useRef(false);
   const key = user.id + ':' + product.id;
   const pending = useCommerceStore((state) => !!state.pending[key]);
@@ -32,28 +30,27 @@ function CheckoutForm({ product, user }: { product: SavedProduct; user: User }) 
   }
   async function place() {
     if (placing.current || useCommerceStore.getState().pending[key]) return;
-    if (![firstName, lastName, phone, country, address].every((value) => value.trim())) {
-      setError('Complete first name, last name, phone, country and address.');
-      return;
-    }
     placing.current = true;
     setBusy(true);
     setError('');
+    setNeedsProfile(false);
     let sent = false;
     try {
-      const profile = await commerceApi.updateProfile(user.id, {
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        phone: phone.trim(),
-        country: country.trim(),
-        address: address.trim(),
-        ...(postalCode.trim() ? { postalCode: postalCode.trim() } : {}),
-      });
-      useAuthStore.getState().update(profile);
       useCommerceStore.getState().setPending(key, true);
       sent = true;
       const order = await commerceApi.order(product.id, notes);
       useCommerceStore.getState().rememberOrder(order);
+      // Only clear the matching local draft after the backend confirms the Order.
+      // An unrelated draft may also be open, so leave that one alone.
+      const savedDraft = useCommerceStore.getState().savedDraft;
+      try {
+        if (savedDraft?.userId === user.id && savedDraft.product.id === product.id &&
+          savedDraft.signature === designSignature()) {
+          const current = useDesignStore.getState();
+          current.start(current.productId, current.size);
+          useCommerceStore.getState().clearDraft();
+        }
+      } catch { /* The placed Order is already confirmed; keep unrelated draft state. */ }
       // Keep this checkout locked after success to prevent submitting it again.
       router.replace({ pathname: '/confirmation', params: { id: order.id, placed: '1' } });
       void Promise.allSettled([refreshStock(), commerceApi.orders()]);
@@ -68,61 +65,38 @@ function CheckoutForm({ product, user }: { product: SavedProduct; user: User }) 
             ? failure.message
             : 'Unable to place the order.',
       );
-      if (failure instanceof ApiError && failure.status === 400)
+      if (failure instanceof ApiError && failure.status === 400) {
+        setNeedsProfile(/profile|firstName|lastName|phone|country|address/i.test(failure.message));
         void refreshStock().catch(() => undefined);
+      }
     } finally {
       placing.current = false;
       setBusy(false);
     }
   }
+  async function edit() {
+    if (editing || busy) return;
+    setEditing(true);
+    setError('');
+    try {
+      const cached = useCommerceStore.getState().savedDraft;
+      let sameDraft = false;
+      try { sameDraft = cached?.userId === user.id && cached.product.id === product.id &&
+        cached.signature === designSignature(); } catch { /* Reload below. */ }
+      if (!sameDraft) await editSavedDesign(product.id, user.id);
+      router.push('/designer');
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : 'Unable to open the design.');
+    } finally {
+      setEditing(false);
+    }
+  }
   return (
     <>
       <SavedProductSummary product={product} />
-      <Text style={ui.sectionTitle}>Delivery details</Text>
-      <Field
-        label="First name"
-        value={firstName}
-        onChangeText={setFirstName}
-        editable={!busy}
-        maxLength={100}
-      />
-      <Field
-        label="Last name"
-        value={lastName}
-        onChangeText={setLastName}
-        editable={!busy}
-        maxLength={100}
-      />
-      <Field
-        label="Phone"
-        value={phone}
-        onChangeText={setPhone}
-        editable={!busy}
-        keyboardType="phone-pad"
-        maxLength={32}
-      />
-      <Field
-        label="Country"
-        value={country}
-        onChangeText={setCountry}
-        editable={!busy}
-        maxLength={100}
-      />
-      <Field
-        label="Address"
-        value={address}
-        onChangeText={setAddress}
-        editable={!busy}
-        multiline
-        maxLength={300}
-      />
-      <Field
-        label="Postal code (optional)"
-        value={postalCode}
-        onChangeText={setPostalCode}
-        editable={!busy}
-        maxLength={20}
-      />
+      <Text style={ui.caption}>
+        Delivery: {user.address?.street ?? ''} {user.address?.city ?? ''}
+      </Text>
       <View style={ui.card}>
         <Text style={ui.sectionTitle}>Cash on Delivery</Text>
         <Text style={ui.body}>Pay when your order arrives.</Text>
@@ -146,12 +120,21 @@ function CheckoutForm({ product, user }: { product: SavedProduct; user: User }) 
           another order.
         </Text>
       )}
+      {needsProfile && (
+        <Button
+          title="Update my profile"
+          secondary
+          onPress={() => router.push({ pathname: '/profile', params: { next: 'checkout' } })}
+        />
+      )}
       <Button
         title="Place Order"
         onPress={() => void place()}
         loading={busy}
         disabled={pending || busy}
       />
+      <Button title="Edit Design" secondary disabled={busy || editing}
+        loading={editing} onPress={() => void edit()} />
       <Button title="My Orders" secondary onPress={() => router.push('/orders')} />
     </>
   );

@@ -8,7 +8,6 @@ import { money } from '@/helper/pricing';
 import { Chips, Field, Icon, useUI } from '@/components/common/ui';
 import { DesignItem } from './DesignItem';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { CatalogImage } from '@/components/products/CatalogImage';
 import { useDesignStore } from '@/store/designStore';
 const categories: Record<string, ItemType | undefined> = {
   All: undefined,
@@ -179,14 +178,14 @@ const DraggableBead = memo(function DraggableBead({ item, replacing, disabled, n
             style={({ pressed }) => [styles.item, narrow && styles.itemNarrow, item.categoryId && { width: '47%', maxWidth: '49%' },
               { opacity: unavailable ? 0.4 : pressed ? 0.6 : 1 }]}
           >
-            {item.categoryId ? <CatalogImage imageUrl={null} name={item.name} size={48} /> : <DesignItem item={item} size={40} />}
-            {!item.categoryId && <Text numberOfLines={1} style={styles.name}>
+            <DesignItem item={item} size={48} />
+            {<Text numberOfLines={1} style={styles.name}>
               {item.name}
             </Text>}
             {item.categoryId && <>
               <Text style={styles.name}>Color: {item.color}</Text>
               <Text style={styles.name}>{money(item.price)} per bead</Text>
-              <Text style={styles.name}>{item.stock ? `${item.stock} available` : 'Out of stock'}</Text>
+              <Text style={styles.name}>{atStockLimit && item.stock ? `Only ${item.stock} available ? all selected` : item.stock ? `${item.stock} available` : 'Out of stock'}</Text>
             </>}
             {!item.categoryId && <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}><Text style={styles.price}>{money(item.price)}</Text><Icon name={disabled ? 'hand-left-outline' : 'add-circle'} size={22} color={theme.colors.primary} /></View>}
       </Pressable>

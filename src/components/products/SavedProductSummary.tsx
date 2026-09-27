@@ -7,7 +7,10 @@ export function SavedProductSummary({ product }: { product: SavedProduct }) {
   const ui = useUI();
   return (
     <View style={ui.card}>
-      <CatalogImage imageUrl={null} name={product.name} />
+      <View style={{ alignItems: 'center' }}>
+        <CatalogImage imageUrl={product.designPreviewUrl ?? product.imageUrl}
+          name={product.name} size={220} />
+      </View>
       <Text style={ui.sectionTitle}>{product.name}</Text>
       {!!product.description && <Text style={ui.body}>{product.description}</Text>}
       {product.items.map((item) => (

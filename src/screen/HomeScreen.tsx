@@ -6,19 +6,18 @@ import { router } from 'expo-router';
 import {
   Brand,
   Button,
-  Chips,
   Icon,
   IconButton,
   Page,
   SectionTitle,
   useUI,
 } from '@/components/common/ui';
+import { CatalogImage } from '@/components/products/CatalogImage';
 import { ProductCard } from '@/components/products/ProductCard';
-import { JewelryCanvas } from '@/components/designer/JewelryCanvas';
-import { DesignItem } from '@/components/designer/DesignItem';
-import { beads, products, sampleItems } from '@/services/catalog';
+import { CatalogState } from '@/components/products/CatalogState';
+import { loadProducts } from '@/store/catalogStore';
+import { useRemote } from '@/hooks/useRemote';
 import { type Theme } from '@/constants/theme';
-import { money } from '@/helper/pricing';
 import { useThemeStore } from '@/store/themeStore';
 
 export default function HomeScreen() {
@@ -28,16 +27,10 @@ export default function HomeScreen() {
   const ui = useUI();
   const styles = useThemedStyles(createStyles);
 
-  const [category, setCategory] = useState('All pieces');
   const [search, setSearch] = useState('');
+  const result = useRemote(loadProducts);
+  const products = result.data ?? [];
   const { width } = useWindowDimensions();
-  const cardWidth = (Math.min(width, 920) - 58) / 2;
-  const visible = products.filter(
-    (product) =>
-      (category === 'All pieces' ||
-        product.type === (category === 'Bracelets' ? 'bracelet' : 'necklace')) &&
-      product.name.toLowerCase().includes(search.toLowerCase()),
-  );
   return (
     <Page>
       <View style={ui.between}>
@@ -101,11 +94,8 @@ export default function HomeScreen() {
             },
           ]}
         >
-          <JewelryCanvas
-            items={sampleItems(products[0], 22)}
-            size={width > 650 ? 380 : 250}
-            decorative
-          />
+          <CatalogImage imageUrl={products[0]?.imageUrl} name={products[0]?.name ?? 'Your creation'}
+            size={width > 650 ? 380 : 250} />
         </View>
         <Text style={styles.heroNote}>one of a kind, just like you</Text>
       </LinearGradient>
@@ -138,58 +128,14 @@ export default function HomeScreen() {
         )}
       </View>
       <SectionTitle title="Your story starts here" eyebrow="THE COLLECTION" />
-      <Chips
-        options={['All pieces', 'Bracelets', 'Necklaces']}
-        value={category}
-        onChange={setCategory}
-      />
-      <View style={styles.grid}>
-        {visible.map((product) => (
-          <ProductCard key={product.id} product={product} width={cardWidth} />
+      {result.loading || result.error || !products.length ? (
+        <CatalogState {...result} error={result.error ?? ''} empty="No products are available yet." />
+      ) : <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 14 }}>
+        {products.filter((product) => product.name.toLowerCase().includes(search.toLowerCase())).map((product) => (
+          <ProductCard key={product.id} product={product} width={(Math.min(width, 760) - 58) / 2} />
         ))}
-        {!visible.length && <Text style={ui.body}>No pieces found. Try a different search.</Text>}
-      </View>
-      <LinearGradient colors={theme.gradients.studio} style={styles.studio}>
-        <Icon name="sparkles-outline" color={c.gold} size={25} />
-        <View style={{ flex: 1, gap: 5 }}>
-          <Text style={styles.studioTitle}>A little inspiration, a lot of possibility.</Text>
-          <Text style={ui.caption}>Start with a blank canvas. Make it completely yours.</Text>
-        </View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Explore the jewelry studio"
-          onPress={() => router.push('/categories')}
-          style={{ padding: 7 }}
-        >
-          <Icon name="arrow-forward" color={c.gold} />
-        </Pressable>
-      </LinearGradient>
-      <SectionTitle
-        title="The little details"
-        eyebrow="MEET YOUR MATERIALS"
-        action="Explore"
-        onPress={() => router.push('/categories')}
-      />
-      <View style={styles.materials}>
-        {beads.slice(0, 4).map((bead) => (
-          <Pressable key={bead.id} onPress={() => router.push('/categories')} style={styles.material}>
-            <View style={styles.materialImage}>
-              <DesignItem item={bead} size={58} />
-            </View>
-            <Text style={styles.materialName}>{bead.name}</Text>
-            <Text style={ui.caption}>{money(bead.price)}</Text>
-          </Pressable>
-        ))}
-      </View>
-      <View style={styles.footer}>
-        <Icon name="heart-outline" color={c.gold} size={18} />
-        <Text style={styles.footerTitle}>Made slowly. Worn forever.</Text>
-        <Text style={[ui.caption, { textAlign: 'center' }]}>
-          Thoughtfully chosen beads. Carefully crafted pieces.{'\n'}Something that could only be
-          yours.
-        </Text>
-        <Text style={styles.footerBrand}>H O M E M A D E B E A D S</Text>
-      </View>
+      </View>}
+
     </Page>
   );
 }
@@ -261,38 +207,5 @@ const createStyles = (theme: Theme) => {
       gap: 10,
     },
     searchInput: { flex: 1, color: c.text, fontSize: 12, minHeight: 48 },
-    grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
-    studio: {
-      padding: 18,
-      borderWidth: 1,
-      borderColor: theme.colors.studioBorder,
-      borderRadius: 18,
-      flexDirection: 'row',
-      gap: 12,
-      alignItems: 'center',
-    },
-    studioTitle: { fontFamily: theme.fonts.editorial, color: c.text, fontSize: 18 },
-    materials: { flexDirection: 'row', gap: 9 },
-    material: { flex: 1, alignItems: 'center', gap: 7 },
-    materialImage: {
-      width: '100%',
-      aspectRatio: 1,
-      borderRadius: 16,
-      backgroundColor: c.surface,
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderWidth: 1,
-      borderColor: c.border,
-    },
-    materialName: { color: c.text, fontSize: 9 },
-    footer: {
-      alignItems: 'center',
-      gap: 13,
-      paddingVertical: 20,
-      borderTopWidth: 1,
-      borderTopColor: c.border,
-    },
-    footerTitle: { fontFamily: theme.fonts.editorial, color: c.text, fontSize: 24 },
-    footerBrand: { color: c.gold, fontSize: 8, marginTop: 8 },
   });
 };

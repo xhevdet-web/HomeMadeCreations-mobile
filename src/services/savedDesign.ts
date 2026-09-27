@@ -23,12 +23,24 @@ export function productInput(): ProductInput {
     items,
   };
 }
-export async function saveCurrentDesign(userId: string): Promise<SavedProduct> {
+export function designSignature(): string {
+  const items = useDesignStore.getState().items;
+  return JSON.stringify({
+    product: productInput(),
+    visual: items.map(({ itemId, angle, position }) => ({ itemId, angle, position })),
+  });
+}
+export async function saveCurrentDesign(
+  userId: string,
+  capturePreview: () => Promise<string>,
+): Promise<SavedProduct> {
   const input = productInput();
-  const signature = JSON.stringify(input);
+  const signature = designSignature();
   const saved = useCommerceStore.getState().savedDraft;
-  if (saved?.userId === userId && saved.signature === signature) return saved.product;
-  const product = await commerceApi.save(input);
+  if (saved?.userId === userId && saved.signature === signature && saved.product.designPreviewUrl)
+    return saved.product;
+  const previewUri = await capturePreview();
+  const product = await commerceApi.save(input, previewUri);
   useCommerceStore.getState().saveDraft(userId, signature, product);
   return product;
 }
@@ -48,7 +60,8 @@ export async function editSavedDesign(id: string, userId: string) {
       categoryId: saved.categoryId,
       name: item.subCategory.name,
       description: null,
-      imageUrl: null,
+      imageUrl: item.subCategory.imageUrl,
+      imageKey: item.subCategory.imageKey,
       color: item.subCategory.color ?? null,
       type: item.subCategory.type ?? null,
       price: item.unitPrice,
@@ -79,5 +92,6 @@ export async function editSavedDesign(id: string, userId: string) {
       items,
       updatedAt: new Date().toISOString(),
     });
-  useCommerceStore.getState().saveDraft(userId, JSON.stringify(productInput()), saved);
+  // Customer edits always save a new Product; PATCH is currently admin-only.
+  useCommerceStore.getState().clearDraft();
 }

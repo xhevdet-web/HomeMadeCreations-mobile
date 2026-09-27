@@ -18,6 +18,7 @@ import { designPrice, money } from '@/helper/pricing';
 import { angleFromPoint, itemPosition } from '@/helper/design';
 import { CustomizationItem } from '@/types/models';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { captureDesignPreview } from '@/services/designPreview';
 
 type Rect = { x: number; y: number; width: number; height: number };
 
@@ -46,6 +47,7 @@ export default function DesignerScreen() {
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
+  const [reorderingItem, setReorderingItem] = useState<CustomizationItem | null>(null);
   const [draggingItem, setDraggingItem] = useState<CustomizationItem | null>(null);
   const canvasRef = useRef<View>(null);
   const jewelryRef = useRef<View>(null);
@@ -55,6 +57,7 @@ export default function DesignerScreen() {
   const dragActive = useRef(false);
   const suppressPickUntil = useRef<{ id: string; time: number } | null>(null);
   const reorderId = useRef<string | null>(null);
+  const suppressCanvasTapUntil = useRef(0);
   const reorderRect = useRef<Rect | null>(null);
   const dragX = useSharedValue(0);
   const dragY = useSharedValue(0);
@@ -83,6 +86,7 @@ export default function DesignerScreen() {
   const selectedIndex = design.items.findIndex((item) => item.id === design.selectedId);
   function startReorder(x: number, y: number) {
     reorderId.current = null;
+    setReorderingItem(null);
     reorderRect.current = null;
     jewelryRef.current?.measureInWindow((left, top, width, height) => {
       const state = useDesignStore.getState();
@@ -93,6 +97,7 @@ export default function DesignerScreen() {
       }).sort((a, b) => a.distance - b.distance)[0];
       if (!nearest || nearest.distance > 32) return;
       reorderId.current = nearest.entry.id;
+      setReorderingItem(itemById[nearest.entry.itemId]);
       reorderRect.current = { x: left, y: top, width, height };
       dragX.value = x;
       dragY.value = y;
@@ -105,6 +110,8 @@ export default function DesignerScreen() {
   }
   function finishReorder(x: number, y: number, canceled: boolean) {
     reorderVisible.value = 0;
+    if (reorderId.current) suppressCanvasTapUntil.current = Date.now() + 400;
+    setReorderingItem(null);
     const id = reorderId.current;
     const rect = reorderRect.current;
     reorderId.current = null;
@@ -180,7 +187,8 @@ export default function DesignerScreen() {
     if (savingRef.current) return;
     savingRef.current = true; setSaving(true);
     try {
-      const saved = await saveCurrentDesign(user.id);
+      const saved = await saveCurrentDesign(user.id, () =>
+        captureDesignPreview(jewelryRef.current, useDesignStore.getState().items));
       setMessage(`Saved to My Designs. ${saved.itemCount} beads · ${money(saved.price)}. Stock is not reserved.`);
     } catch (error) { setMessage(error instanceof Error ? error.message : 'Unable to save design.'); }
     finally { savingRef.current = false; setSaving(false); }
@@ -215,13 +223,17 @@ export default function DesignerScreen() {
           <View pointerEvents="box-none" style={styles.jewelryLayer}>
             <ReorderGestureLayer enabled={design.items.length > 0}
               onStart={startReorder} onMove={moveReorder} onEnd={finishReorder}>
-              <View ref={jewelryRef} collapsable={false} style={{ width: jewelrySize, height: jewelrySize }}>
+              <View ref={jewelryRef} collapsable={false} testID="design-preview-canvas"
+                style={{ width: jewelrySize, height: jewelrySize, backgroundColor: theme.colors.background }}>
               <JewelryCanvas
                 items={design.items}
                 type={product.type}
                 size={jewelrySize}
                 selectedId={design.selectedId}
-                onSelect={(id) => design.select(id === design.selectedId ? null : id)}
+                onSelect={(id) => {
+                  if (Date.now() >= suppressCanvasTapUntil.current)
+                    design.select(id === design.selectedId ? null : id);
+                }}
               />
               </View>
             </ReorderGestureLayer>
@@ -348,12 +360,12 @@ export default function DesignerScreen() {
         </ScrollView>
       </Page>
       {draggingItem && (
-        <Animated.View pointerEvents="none" style={[styles.dragPreview, dragStyle]}>
+        <Animated.View pointerEvents="none" testID="drag-preview" style={[styles.dragPreview, dragStyle]}>
           <DesignItem item={draggingItem} size={52} />
         </Animated.View>
       )}
-      <Animated.View pointerEvents="none" style={[styles.reorderPreview, reorderStyle]}>
-        <Icon name="move-outline" size={22} color={theme.colors.text} />
+      <Animated.View pointerEvents="none" testID="reorder-preview" style={[styles.reorderPreview, reorderStyle]}>
+        {reorderingItem && <DesignItem item={reorderingItem} size={48} />}
       </Animated.View>
       <SafeAreaView edges={['bottom']} style={styles.bottom}>
         <View style={[ui.between, { width: '100%', maxWidth: 876, alignSelf: 'center' }]}>
@@ -417,7 +429,7 @@ const createStyles = (theme: Theme) => {
     },
     reorderPreview: {
       position: 'absolute', left: 0, top: 0, width: 48, height: 48,
-      borderRadius: 24, backgroundColor: theme.colors.badge,
+      borderRadius: 24, backgroundColor: 'transparent',
       borderColor: theme.colors.accent, borderWidth: 2,
       alignItems: 'center', justifyContent: 'center',
     },

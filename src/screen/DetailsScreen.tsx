@@ -1,11 +1,14 @@
 import { useTheme } from '@/hooks/useTheme';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Text, useWindowDimensions, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Button, Chips, Header, Icon, Page, useUI } from '@/components/common/ui';
-import { JewelryCanvas } from '@/components/designer/JewelryCanvas';
-import { productById, sampleItems } from '@/services/catalog';
+import { CatalogImage } from '@/components/products/CatalogImage';
+import { CatalogState } from '@/components/products/CatalogState';
+import { useRemote } from '@/hooks/useRemote';
+import { loadProduct } from '@/store/catalogStore';
+import { products } from '@/services/catalog';
 import { money } from '@/helper/pricing';
 import { useDesignStore } from '@/store/designStore';
 
@@ -14,9 +17,16 @@ export default function DetailsScreen() {
   const ui = useUI();
 
   const { id } = useLocalSearchParams<{ id: string }>();
-  const product = productById[id ?? 'bracelet-classic'];
+  const load = useCallback((signal: AbortSignal) => {
+    const local = products.find((product) => product.id === id);
+    return local ? Promise.resolve(local) : loadProduct(id ?? '', signal);
+  }, [id]);
+  const result = useRemote(load);
+  const product = result.data;
   const [size, setSize] = useState<string | null>(null);
   const { width } = useWindowDimensions();
+  if (result.loading || result.error) return <Page><Header title="Product details" back />
+    <CatalogState {...result} error={result.error ?? ''} empty="Product unavailable." /></Page>;
   if (!product)
     return (
       <Page>
@@ -32,12 +42,8 @@ export default function DetailsScreen() {
         <Text style={[ui.eyebrow, { textAlign: 'center', marginTop: 15 }]}>
           {product.tag ?? 'MAKE IT YOURS'}
         </Text>
-        <JewelryCanvas
-          items={sampleItems(product)}
-          type={product.type}
-          size={Math.min(width - 70, 370)}
-          decorative
-        />
+        <View style={{ alignItems: 'center' }}><CatalogImage imageUrl={product.imageUrl}
+          name={product.name} size={Math.min(width - 70, 370)} /></View>
         <Text style={[ui.caption, { textAlign: 'center', marginBottom: 12 }]}>
           An idea to inspire you. Your design starts with a blank base.
         </Text>
@@ -47,8 +53,8 @@ export default function DetailsScreen() {
         <Text style={ui.title}>{product.name}</Text>
       </View>
       <View style={ui.between}>
-        <Text style={ui.body}>Your blank canvas, from</Text>
-        <Text style={{ fontSize: 25, color: theme.colors.accent }}>{money(product.basePrice)}</Text>
+        <Text style={ui.body}>{product.price === undefined ? 'Your blank canvas, from' : 'Saved design price'}</Text>
+        <Text style={{ fontSize: 25, color: theme.colors.accent }}>{money(product.price ?? product.basePrice)}</Text>
       </View>
       <Text style={ui.body}>{product.description}</Text>
       <View style={{ gap: 12 }}>

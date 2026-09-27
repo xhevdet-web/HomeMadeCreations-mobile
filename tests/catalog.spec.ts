@@ -20,6 +20,7 @@ const bead = {
 };
 
 test.beforeEach(async ({ page }) => {
+  await page.route('**/api/v1/products', route => route.fulfill({ json: [] }));
   await page.addInitScript(() =>
     localStorage.setItem(
       'homemade-onboarding-v1',
@@ -84,9 +85,9 @@ test('catalog filters, sorts, falls back for images and caps bead quantities', a
   await expect(increase).toBeDisabled();
   await expect(page.getByRole('button', { name: /^Add Sold bead,/ })).toBeDisabled();
   await expect(page.getByText('3 / 32 DETAILS')).toBeVisible();
-  await expect(page.getByRole('img', { name: 'Shining bead image', exact: true })).toHaveAttribute(
+  await expect(page.getByRole('img', { name: 'Shining bead image', exact: true }).first()).toHaveAttribute(
     'src',
-    /beads-editorial/,
+    /catalog-placeholder/,
   );
   await page.getByRole('button', { name: 'Undo', exact: true }).click();
   await expect(page.getByText('2 / 32 DETAILS')).toBeVisible();
