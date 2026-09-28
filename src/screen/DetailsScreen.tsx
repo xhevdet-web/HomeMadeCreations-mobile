@@ -12,7 +12,14 @@ import { products } from '@/services/catalog';
 import { money } from '@/helper/pricing';
 import { useDesignStore } from '@/store/designStore';
 
+import ReadyMadeScreen from './ReadyMadeScreen';
+
 export default function DetailsScreen() {
+  const { purchase } = useLocalSearchParams<{ purchase?: string }>();
+  return purchase === 'ready-made' ? <ReadyMadeScreen /> : <CustomDetailsScreen />;
+}
+
+function CustomDetailsScreen() {
   const theme = useTheme();
   const ui = useUI();
 

@@ -1,3 +1,5 @@
+import { toast } from '@/store/toastStore';
+import { useFeedbackState } from '@/hooks/useFeedbackState';
 import { useState } from 'react';
 import { Text } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -16,7 +18,7 @@ function ProfileForm({ user }: { user: User }) {
   const [address, setAddress] = useState(user.address.street);
   const [postalCode, setPostalCode] = useState(user.address.postalCode);
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useFeedbackState('info');
   async function save() {
     if (busy) return;
     const changes: DeliveryInput = {};
@@ -30,7 +32,7 @@ function ProfileForm({ user }: { user: User }) {
     for (const [key, label, value, original] of fields) {
       if (value.trim() === original.trim()) continue;
       if (!value.trim()) {
-        setMessage(`${label} cannot be empty.`);
+        setMessage(`${label} cannot be empty. Complete this field before saving.`, 'error');
         return;
       }
       changes[key] = value.trim();
@@ -42,6 +44,7 @@ function ProfileForm({ user }: { user: User }) {
       return;
     }
     setBusy(true);
+    toast.info('Saving your delivery details. Please wait for confirmation.');
     setMessage('');
     try {
       const updated = await commerceApi.updateProfile(changes);
@@ -53,8 +56,11 @@ function ProfileForm({ user }: { user: User }) {
       setAddress(updated.address.street);
       setPostalCode(updated.address.postalCode);
       setMessage('Your details have been saved.');
+      toast.success(next === 'checkout' ? 'Delivery details saved. Next, tap Return to order to finish your purchase.' : 'Profile saved. You can now continue shopping or designing.');
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to save profile.');
+      const message = error instanceof Error ? error.message : 'Unable to save profile.';
+      setMessage(message);
+      toast.error(message + ' Check your details and try saving again.');
     } finally {
       setBusy(false);
     }

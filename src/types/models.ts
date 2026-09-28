@@ -1,6 +1,14 @@
 export type JewelryType = 'bracelet' | 'necklace';
+export interface CategorySize {
+  id: string;
+  name: string;
+  measurement: number;
+  unit: string;
+  maxItems: number;
+}
 export type ItemType = 'bead' | 'charm' | 'letter' | 'spacer';
 export interface Product {
+  categorySizes?: CategorySize[];
   imageUrl?: string | null;
   imageKey?: string | null;
   price?: number;
@@ -43,6 +51,7 @@ export interface DesignItem {
   angle?: number;
 }
 export interface Design {
+  selectedSize?: CategorySize | null;
   description?: string;
   id: string;
   userId: string;

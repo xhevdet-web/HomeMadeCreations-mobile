@@ -1,3 +1,5 @@
+import { toast } from '@/store/toastStore';
+import { useFeedbackState } from '@/hooks/useFeedbackState';
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
 import { ReactElement, useMemo, useRef, useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
@@ -18,7 +20,7 @@ import { designPrice, money } from '@/helper/pricing';
 import { angleFromPoint, itemPosition } from '@/helper/design';
 import { CustomizationItem } from '@/types/models';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { captureDesignPreview } from '@/services/designPreview';
+import { useDesignPreviewCapture } from '@/hooks/useDesignPreviewCapture';
 
 type Rect = { x: number; y: number; width: number; height: number };
 
@@ -44,13 +46,16 @@ export default function DesignerScreen() {
   const styles = useThemedStyles(createStyles);
 
   const design = useDesignStore();
-  const [message, setMessage] = useState('');
+  const limit = design.selectedSize?.maxItems ?? Infinity;
+  const limitMessage = design.selectedSize ? `${design.selectedSize.name} supports up to ${limit} components.` : '';
+  const sizeLabel = design.selectedSize ? `${design.selectedSize.name} \u2022 ${design.selectedSize.measurement} ${design.selectedSize.unit}` : design.size;
+  const [message, setMessage, setInlineMessage] = useFeedbackState('info');
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
   const [reorderingItem, setReorderingItem] = useState<CustomizationItem | null>(null);
   const [draggingItem, setDraggingItem] = useState<CustomizationItem | null>(null);
   const canvasRef = useRef<View>(null);
-  const jewelryRef = useRef<View>(null);
+  const { ref: jewelryRef, exporting, capture } = useDesignPreviewCapture();
   const screenRef = useRef<View>(null);
   const canvasRect = useRef<Rect | null>(null);
   const jewelryRect = useRef<Rect | null>(null);
@@ -121,7 +126,7 @@ export default function DesignerScreen() {
     const point = { x: (x - rect.x) * 320 / rect.width, y: (y - rect.y) * 320 / rect.height };
     state.placeItem(id, angleFromPoint(point.x, point.y, product.type));
     state.select(id);
-    setMessage('Detail moved. Hold and drag it again to adjust its position.');
+    setInlineMessage('Detail moved. Hold and drag it again to adjust its position.');
   }
   function moveReorder(x: number, y: number) {
     if (reorderId.current) moveDrag(x, y);
@@ -143,7 +148,7 @@ export default function DesignerScreen() {
       jewelryRect.current = { x: left, y: top, width, height };
     });
     setDraggingItem(item);
-    setMessage('');
+    setInlineMessage('');
   }
   function moveDrag(x: number, y: number) {
     dragX.value = x;
@@ -160,7 +165,7 @@ export default function DesignerScreen() {
     const point = { x: (x - piece.x) * 320 / piece.width, y: (y - piece.y) * 320 / piece.height };
     if (state.selectedId) {
       state.replaceItemAt(state.selectedId, item.id);
-      setMessage(`${item.name} replaced the selected detail.`);
+      setInlineMessage(`${item.name} replaced the selected detail.`);
       return;
     }
     const nearest = state.items.map((entry, index) => {
@@ -169,28 +174,32 @@ export default function DesignerScreen() {
     }).sort((a, b) => a.distance - b.distance)[0];
     if (nearest && nearest.distance < 22) {
       state.replaceItemAt(nearest.entry.id, item.id);
-      setMessage(`${item.name} replaced a detail on your ${product.type}.`);
+      setInlineMessage(`${item.name} replaced a detail on your ${product.type}.`);
       return;
     }
-    if (state.items.length >= 32) { setMessage('Your piece is full. Drag onto an existing detail to replace it.'); return; }
+    if (state.items.length >= limit) { setInlineMessage(limitMessage + ' Drag onto an existing detail to replace it.'); return; }
     const slots = Array.from({ length: state.items.length + 1 }, (_, index) => {
       const position = itemPosition(index, state.items.length + 1, product.type);
       return { index, distance: Math.hypot(point.x - position.x, point.y - position.y) };
     });
     slots.sort((a, b) => a.distance - b.distance);
     state.insertItem(item.id, slots[0].index, angleFromPoint(point.x, point.y, product.type));
-    setMessage(`${item.name} added to your ${product.type}.`);
+    setInlineMessage(`${item.name} added to your ${product.type}.`);
   }
   async function save() {
     const user = useAuthStore.getState().user;
     if (!user) { router.push('/login'); return; }
     if (savingRef.current) return;
     savingRef.current = true; setSaving(true);
+    toast.info('Saving your design. Please wait for confirmation before continuing.');
     try {
       const saved = await saveCurrentDesign(user.id, () =>
-        captureDesignPreview(jewelryRef.current, useDesignStore.getState().items));
-      setMessage(`Saved to My Designs. ${saved.itemCount} beads · ${money(saved.price)}. Stock is not reserved.`);
-    } catch (error) { setMessage(error instanceof Error ? error.message : 'Unable to save design.'); }
+        capture(useDesignStore.getState().items));
+      setMessage(`Saved to My Designs. ${saved.itemCount} beads · ${money(saved.price)}. Stock is not reserved. Next, preview your creation and review your order.`, 'success');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to save design.';
+      setMessage(message + ' Your design is still here. Check the issue, then save again.', 'error');
+    }
     finally { savingRef.current = false; setSaving(false); }
   }
   return (
@@ -198,7 +207,7 @@ export default function DesignerScreen() {
       <Page scroll={false} style={{ padding: 0, gap: 0 }}>
         <View style={styles.headerWrap}><Header
           title="Your creative studio"
-          subtitle={product.name + ' · ' + design.size}
+          subtitle={[product.name, sizeLabel].filter(Boolean).join(' \u2022 ')}
           back
           right={
             <IconButton
@@ -224,8 +233,9 @@ export default function DesignerScreen() {
             <ReorderGestureLayer enabled={design.items.length > 0}
               onStart={startReorder} onMove={moveReorder} onEnd={finishReorder}>
               <View ref={jewelryRef} collapsable={false} testID="design-preview-canvas"
-                style={{ width: jewelrySize, height: jewelrySize, backgroundColor: theme.colors.background }}>
+                style={{ width: jewelrySize, height: jewelrySize, backgroundColor: exporting ? 'transparent' : theme.colors.background }}>
               <JewelryCanvas
+                exportMode={exporting}
                 items={design.items}
                 type={product.type}
                 size={jewelrySize}
@@ -254,7 +264,7 @@ export default function DesignerScreen() {
           )}
           {draggingItem && <View pointerEvents="none" style={styles.dropOverlay} />}
           <Text style={styles.stageLabel}>{product.type.toUpperCase()} STUDIO</Text>
-          <Text style={styles.counter}>{design.items.length} / 32 DETAILS</Text>
+          <Text style={styles.counter}>{design.selectedSize ? `${design.items.length} / ${limit} beads` : `${design.items.length} components`}</Text>
           <View style={styles.stageControls}>
             <IconButton name="arrow-undo-outline" label="Undo" onPress={design.undo}
               disabled={design.historyIndex === 0} />
@@ -334,23 +344,23 @@ export default function DesignerScreen() {
           </Animated.View>
         )}
         {message ? <Notice text={message} /> : null}
-        {design.items.length === 32 && !design.selectedId && (
+        {design.items.length >= limit && !design.selectedId && (
           <Text style={ui.caption}>
-            Your piece is full. Select a detail to replace or remove it.
+            {limitMessage} Select a detail to replace or remove it.
           </Text>
         )}
         <DetailPicker
           key={product.categoryId ?? 'local'}
           categoryId={product.categoryId ?? ''}
           replacing={!!design.selectedId}
-          disabled={design.items.length >= 32 && !design.selectedId}
+          disabled={design.items.length >= limit && !design.selectedId}
           onPick={(item) => {
             if (dragActive.current ||
               (suppressPickUntil.current?.id === item.id && Date.now() < suppressPickUntil.current.time)) return;
             setMessage('');
             const state = useDesignStore.getState();
             if (state.selectedId) state.replaceItem(item.id);
-            else if (state.items.length >= 32) setMessage('Your piece is full. Hold and drag onto an existing detail to replace it.');
+            else if (state.items.length >= limit) setMessage(limitMessage + ' Hold and drag onto an existing detail to replace it.');
             else state.addItem(item.id);
           }}
           onDragStart={startDrag}

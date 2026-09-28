@@ -1,3 +1,5 @@
+import { toast } from '@/store/toastStore';
+import { useFeedbackState } from '@/hooks/useFeedbackState';
 import { useCallback, useState } from 'react';
 import { Text, View } from 'react-native';
 import { router } from 'expo-router';
@@ -13,7 +15,7 @@ export default function DesignsScreen() {
   const ui = useUI();
   const user = useAuthStore((state) => state.user);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useFeedbackState();
   const load = useCallback(
     (signal: AbortSignal) => (user ? commerceApi.products(user.id, signal) : Promise.resolve([])),
     [user],
@@ -25,6 +27,7 @@ export default function DesignsScreen() {
     setError('');
     try {
       await editSavedDesign(id, user.id);
+      toast.info('Design opened. Next, edit and save a copy before reviewing your order.');
       router.push('/designer');
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : 'Unable to open design.');
@@ -57,6 +60,7 @@ export default function DesignsScreen() {
               onPress={() => {
                 if (user) {
                   useCommerceStore.getState().setCheckout(user.id, product);
+                  toast.info('Design selected. Next, review delivery details and place your order.');
                   router.push('/checkout');
                 }
               }}

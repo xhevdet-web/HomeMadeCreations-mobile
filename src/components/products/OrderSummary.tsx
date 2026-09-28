@@ -28,8 +28,8 @@ export function OrderSummary({ order, progress = false }: { order: ApiOrder; pro
       </Text>
       <Text style={ui.body}>Payment status: {order.paymentStatus}</Text>
       <Text style={ui.label}>Status: {statusLabels[order.status] ?? order.status}</Text>
-      {progress && <Text style={ui.sectionTitle}>Components</Text>}
-      {progress && order.product.items.map((item) => <Text key={item.id} style={ui.body}>
+      {progress && !!order.product.items?.length && <Text style={ui.sectionTitle}>Components</Text>}
+      {progress && order.product.items?.map((item) => <Text key={item.id} style={ui.body}>
         {item.subCategory.name}: {item.quantity} × {money(item.unitPrice)}
       </Text>)}
       {progress && <Text style={ui.sectionTitle}>Delivery</Text>}

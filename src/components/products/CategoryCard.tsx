@@ -15,6 +15,10 @@ export function CategoryCard({ category }: { category: CatalogCategory }) {
       accessibilityRole="button"
       accessibilityLabel={`Browse ${category.name}`}
       onPress={() => {
+        if (category.sizes?.length) {
+          router.push({ pathname: './choose-size', params: { categoryId: category.id } });
+          return;
+        }
         const productId = useCatalogStore.getState().registerCategory(category);
         useDesignStore.getState().start(productId);
         router.push({

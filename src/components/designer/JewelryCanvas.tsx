@@ -16,6 +16,7 @@ export interface CanvasProps {
   selectedId?: string | null;
   onSelect?: (id: string) => void;
   decorative?: boolean;
+  exportMode?: boolean;
 }
 export function JewelryCanvas({
   items,
@@ -24,12 +25,14 @@ export function JewelryCanvas({
   selectedId,
   onSelect,
   decorative = false,
+  exportMode = false,
 }: CanvasProps) {
   const uid = useId().replace(/:/g, '');
   const theme = useTheme();
   const catalogItems = useCatalogStore((state) => state.items);
   const ry = type === 'necklace' ? 119 : 96;
   const radius = Math.min(15.5, 285 / Math.max(items.length, 16));
+  const cordColor = exportMode ? '#C7773F' : theme.colors.gold;
   return (
     <View
       style={{ width: size, height: size, alignSelf: 'center' }}
@@ -42,13 +45,13 @@ export function JewelryCanvas({
             <Stop offset="1" stopColor="#A78550" stopOpacity={0} />
           </RadialGradient>
         </Defs>
-        <Circle cx={160} cy={160} r={157} fill={`url(#glow-${uid})`} />
+        {!exportMode && <Circle cx={160} cy={160} r={157} fill={`url(#glow-${uid})`} />}
         <Ellipse
           cx={160}
           cy={148}
           rx={111}
           ry={ry}
-          stroke={theme.colors.gold}
+          stroke={cordColor}
           strokeWidth={1.7}
           opacity={0.8}
           fill="none"
@@ -56,7 +59,7 @@ export function JewelryCanvas({
         {!items.length && Array.from({ length: 48 }, (_, index) => {
           const point = itemPosition(index, 48, type);
           return <Circle key={`link-${index}`} cx={point.x} cy={point.y} r={1.4}
-            fill={theme.colors.gold} opacity={0.85} />;
+            fill={cordColor} opacity={0.85} />;
         })}
         {items.map((entry, index) => {
           const item = itemById[entry.itemId];
@@ -70,8 +73,8 @@ export function JewelryCanvas({
               y={point.y}
               radius={item.type === 'spacer' ? radius * 0.65 : radius}
               id={`${uid}-${index}`}
-              selected={entry.id === selectedId}
-              onPress={onSelect ? () => onSelect(entry.id) : undefined}
+              selected={!exportMode && entry.id === selectedId}
+              onPress={!exportMode && onSelect ? () => onSelect(entry.id) : undefined}
             />
           );
         })}
@@ -111,7 +114,7 @@ export function JewelryCanvas({
             disabled={!onSelect}
             style={{ position: 'absolute', left: point.x * size / 320 - diameter / 2,
               top: point.y * size / 320 - diameter / 2, width: diameter, height: diameter }}>
-            {entry.id === selectedId && <View pointerEvents="none" style={{
+            {!exportMode && entry.id === selectedId && <View pointerEvents="none" style={{
               position: 'absolute', inset: -4, borderRadius: diameter, borderWidth: 2,
               borderColor: theme.colors.accent,
             }} />}

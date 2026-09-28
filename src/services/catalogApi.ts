@@ -1,5 +1,7 @@
 import type { SavedProduct } from './commerceApi';
+import type { CategorySize } from '@/types/models';
 export interface CatalogCategory {
+  sizes?: CategorySize[] | null;
   id: string;
   name: string;
   description: string | null;
@@ -57,9 +59,28 @@ function parseCategory(value: unknown): CatalogCategory {
     throw new Error('The catalog returned an invalid category. Please retry.');
   return {
     ...item,
+    sizes: item.sizes == null ? [] : parseCategorySizes(item.sizes),
     description: typeof item.description === 'string' ? item.description : null,
     imageUrl: typeof item.imageUrl === 'string' ? item.imageUrl : null,
   };
+}
+export function parseCategorySize(value: unknown): CategorySize {
+  const size = value as CategorySize | null;
+  if (!size || typeof size.id !== 'string' || !size.id.trim() ||
+      typeof size.name !== 'string' || !size.name.trim() ||
+      !Number.isFinite(size.measurement) || size.measurement <= 0 ||
+      typeof size.unit !== 'string' || !size.unit.trim() ||
+      !Number.isSafeInteger(size.maxItems) || size.maxItems <= 0)
+    throw new Error('The server returned an invalid size configuration. Please retry.');
+  return { id: size.id, name: size.name, measurement: size.measurement,
+    unit: size.unit, maxItems: size.maxItems };
+}
+function parseCategorySizes(value: unknown): CategorySize[] {
+  if (!Array.isArray(value)) throw new Error('The server returned invalid category sizes. Please retry.');
+  const sizes = value.map(parseCategorySize);
+  if (new Set(sizes.map(size => size.id)).size !== sizes.length)
+    throw new Error('The server returned duplicate size IDs. Please retry.');
+  return sizes;
 }
 function parseComponent(value: unknown): CatalogComponent {
   const item = { ...(value as CatalogComponent), ...parseCategory(value) };
@@ -110,3 +131,15 @@ export const fetchProducts = async (signal?: AbortSignal) => {
 };
 export const fetchProduct = async (id: string, signal?: AbortSignal) =>
   parseProduct(await get(`/products/${encodeURIComponent(id)}`, signal));
+
+export const fetchReadyMadeProducts = async (signal?: AbortSignal) =>
+  (await fetchProducts(signal)).filter((product) =>
+    product.isActive === true && product.productType === 'READY_MADE');
+
+export function readyMadeUnavailable(product: SavedProduct): string | null {
+  if (product.productType !== 'READY_MADE' || product.isActive !== true)
+    return 'This product is unavailable.';
+  if (!Number.isSafeInteger(product.stock) || product.stock! < 0)
+    return 'Stock is unavailable. The backend must return available stock before ordering.';
+  return product.stock === 0 ? 'Out of stock' : null;
+}

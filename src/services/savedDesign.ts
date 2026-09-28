@@ -1,5 +1,5 @@
 import { commerceApi, ProductInput, SavedProduct } from './commerceApi';
-import { fetchCategory, fetchCategoryComponents } from './catalogApi';
+import { fetchCategory, fetchCategoryComponents, parseCategorySize } from './catalogApi';
 import { useCatalogStore } from '@/store/catalogStore';
 import { useDesignStore } from '@/store/designStore';
 import { useCommerceStore } from '@/store/commerceStore';
@@ -9,6 +9,10 @@ export function productInput(): ProductInput {
   const categoryId = productById[draft.productId]?.categoryId;
   if (!categoryId) throw new Error('Choose an API category to save this design.');
   if (!draft.items.length) throw new Error('Add at least one component.');
+  if (productById[draft.productId]?.categorySizes?.length && !draft.selectedSize)
+    throw new Error('Choose a category size before saving your design.');
+  if (draft.selectedSize && draft.items.length > draft.selectedSize.maxItems)
+    throw new Error(`${draft.selectedSize.name} supports up to ${draft.selectedSize.maxItems} components. Remove extra components before saving.`);
   // Consecutive runs preserve the design order, including repeated components.
   const items: ProductInput['items'] = [];
   for (const [position, entry] of draft.items.entries()) {
@@ -18,6 +22,7 @@ export function productInput(): ProductInput {
   }
   return {
     categoryId,
+    ...(draft.selectedSize ? { selectedSizeId: draft.selectedSize.id } : {}),
     name: draft.name.trim() || 'My design',
     description: draft.description.trim() || undefined,
     items,
@@ -26,6 +31,7 @@ export function productInput(): ProductInput {
 export function designSignature(): string {
   const items = useDesignStore.getState().items;
   return JSON.stringify({
+    previewVersion: 'transparent-png-v1',
     product: productInput(),
     visual: items.map(({ itemId, angle, position }) => ({ itemId, angle, position })),
   });
@@ -47,7 +53,7 @@ export async function saveCurrentDesign(
 export async function editSavedDesign(id: string, userId: string) {
   const saved = await commerceApi.product(id);
   if (saved.createdById !== userId) throw new Error('This design belongs to another account.');
-  if (saved.itemCount > 32) throw new Error('This design exceeds the studio limit of 32 beads.');
+  const selectedSize = saved.selectedSize == null ? null : parseCategorySize(saved.selectedSize);
   const [category, components] = await Promise.all([
     fetchCategory(saved.categoryId),
     fetchCategoryComponents(saved.categoryId),
@@ -88,7 +94,8 @@ export async function editSavedDesign(id: string, userId: string) {
       productId,
       name: saved.name,
       description: saved.description ?? '',
-      size: productById[productId].sizes[1],
+      selectedSize,
+      size: selectedSize ? `${selectedSize.name} • ${selectedSize.measurement} ${selectedSize.unit}` : '',
       items,
       updatedAt: new Date().toISOString(),
     });

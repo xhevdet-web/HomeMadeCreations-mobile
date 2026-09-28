@@ -24,7 +24,7 @@ test('guests and old local profiles cannot access protected routes', async ({ pa
     await page.goto(route);
     await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
     await expect(page).toHaveURL(/\/login$/);
-    await expect(page.getByText(/Small beads\./)).toHaveCount(0);
+    await expect(page.getByText(/Your idea\./)).toHaveCount(0);
   }
 });
 
@@ -45,7 +45,7 @@ test('login validates session, opens Home, logout locks routes and clears memory
   await page.getByLabel('Email or username', { exact: true }).fill('mila@example.com');
   await page.getByLabel('Password', { exact: true }).fill('ValidPassword123!');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await expect(page.getByText(/Small beads\./)).toBeVisible();
+  await expect(page.getByText(/Your idea\./)).toBeVisible();
   const stored = await page.evaluate(() => JSON.stringify({ ...localStorage, ...sessionStorage }));
   expect(stored).not.toContain('access-test');
   expect(stored).not.toContain('refresh-test');
@@ -81,7 +81,7 @@ test('web reload requires login because bearer tokens are not persisted on web',
   await page.getByLabel('Email or username', { exact: true }).fill('mila@example.com');
   await page.getByLabel('Password', { exact: true }).fill('ValidPassword123!');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await expect(page.getByText(/Small beads\./)).toBeVisible();
+  await expect(page.getByText(/Your idea\./)).toBeVisible();
   await page.reload();
   await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
 });
@@ -160,7 +160,7 @@ test('login accepts a username and submits it as identifier', async ({ page }) =
   await page.getByLabel('Email or username', { exact: true }).fill('Mila.Stone');
   await page.getByLabel('Password', { exact: true }).fill('ValidPassword123!');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await expect(page.getByText(/Small beads\./)).toBeVisible();
+  await expect(page.getByText(/Your idea\./)).toBeVisible();
   expect(payload).toEqual({ identifier: 'mila.stone', password: 'ValidPassword123!' });
   await page.getByRole('tab', { name: 'Profile', exact: true }).click();
   await expect(page.getByLabel('Street address', { exact: true })).toHaveValue('12 Main Street');

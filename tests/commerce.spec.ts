@@ -1,7 +1,8 @@
 import { expect, test, Page } from '@playwright/test';
+import type { CategorySize } from '../src/types/models';
 
-async function fixture(page: Page, mode: 'ok' | 'stock' | 'uncertain' | 'profile' = 'ok') {
-  const category = { id: 'category-test', name: 'Bracelets', description: '', imageUrl: null, isActive: true, sortOrder: 1 };
+async function fixture(page: Page, mode: 'ok' | 'stock' | 'uncertain' | 'profile' = 'ok', sizes?: CategorySize[] | null) {
+  const category = { ...(sizes === undefined ? {} : { sizes }), id: 'category-test', name: 'Bracelets', description: '', imageUrl: null, isActive: true, sortOrder: 1 };
   const components = [
     { ...category, id: 'black-api', categoryId: category.id, name: 'Black Panther', color: 'Black', type: 'Glass', price: 100, stock: 30 },
     { ...category, id: 'shining-api', categoryId: category.id, name: 'Shining bead', color: 'Gold', type: 'Glass', price: 150, stock: 40, sortOrder: 2 },
@@ -11,6 +12,7 @@ async function fixture(page: Page, mode: 'ok' | 'stock' | 'uncertain' | 'profile
   const orders: any[] = [];
   const productBodies: any[] = [];
   const previewDimensions: number[][] = [];
+  const previewPixelHashes: string[] = [];
   const orderBodies: any[] = [];
   const profileBodies: any[] = [];
   let stockReads = 0;
@@ -44,9 +46,24 @@ async function fixture(page: Page, mode: 'ok' | 'stock' | 'uncertain' | 'profile
       expect(preview?.size).toBeGreaterThan(100);
       const bytes = new Uint8Array(await preview.arrayBuffer());
       expect([...bytes.slice(0, 4)]).toEqual([137, 80, 78, 71]);
+      const alpha = await page.evaluate(async (bytes) => {
+        const bitmap = await createImageBitmap(new Blob([new Uint8Array(bytes)], { type: 'image/png' }));
+        const canvas = document.createElement('canvas');
+        canvas.width = bitmap.width; canvas.height = bitmap.height;
+        const ctx = canvas.getContext('2d')!;
+        ctx.drawImage(bitmap, 0, 0);
+        const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+        const sample = (x: number, y: number) => pixels[(y * canvas.width + x) * 4 + 3];
+        const hash = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', pixels))).map(byte => byte.toString(16).padStart(2, '0')).join('');
+        return { hash, corner: sample(0, 0), center: sample(420, 420),
+          visible: pixels.some((value, index) => index % 4 === 3 && value > 0) };
+      }, Array.from(bytes));
+      previewPixelHashes.push(alpha.hash);
+      expect(alpha).toMatchObject({ corner: 0, center: 0, visible: true });
       const view = new DataView(bytes.buffer);
       previewDimensions.push([view.getUint32(16), view.getUint32(20)]);
       const body = { categoryId: data.get('categoryId'), name: data.get('name'),
+        ...(data.has('selectedSizeId') ? { selectedSizeId: data.get('selectedSizeId') } : {}),
         ...(data.has('description') ? { description: data.get('description') } : {}),
         items: JSON.parse(data.get('items') as string) };
       productBodies.push(body);
@@ -54,7 +71,7 @@ async function fixture(page: Page, mode: 'ok' | 'stock' | 'uncertain' | 'profile
         ...item, id: 'item-' + index, unitPrice: components.find(c => c.id === item.subCategoryId)!.price,
         subCategory: components.find(c => c.id === item.subCategoryId),
       }));
-      const product = { ...body, designPreviewUrl: 'https://images.example.test/saved-preview.png', id: 'product-' + (products.length + 1), createdById: user.id, category, items,
+      const product = { ...body, selectedSize: sizes?.find(size => size.id === body.selectedSizeId) ?? null, designPreviewUrl: 'https://images.example.test/saved-preview.png', id: 'product-' + (products.length + 1), createdById: user.id, category, items,
         itemCount: items.reduce((sum: number, item: any) => sum + item.quantity, 0),
         price: items.reduce((sum: number, item: any) => sum + item.quantity * item.unitPrice, 0) };
       products.push(product);
@@ -101,8 +118,9 @@ async function fixture(page: Page, mode: 'ok' | 'stock' | 'uncertain' | 'profile
   await page.getByRole('button', { name: 'Log In', exact: true }).click();
   await page.getByRole('button', { name: 'Create your own', exact: true }).click();
   await page.getByRole('button', { name: 'Browse Bracelets' }).click();
-  await expect(page.getByText('Choose your details')).toBeVisible();
-  return { components, products, orders, productBodies, previewDimensions, orderBodies, profileBodies, stockReads: () => stockReads };
+  if (sizes?.length) await expect(page.getByText('Choose Size', { exact: true })).toBeVisible();
+  else await expect(page.getByText('Choose your details')).toBeVisible();
+  return { category, components, products, orders, productBodies, previewDimensions, previewPixelHashes, orderBodies, profileBodies, stockReads: () => stockReads };
 }
 async function build(page: Page, black = 1, shining = 1) {
   for (let i = 0; i < black; i++) await page.getByRole('button', { name: /^Add Black Panther,/ }).click();
@@ -170,7 +188,7 @@ test('changing a saved design creates a new product', async ({ page }) => {
   await page.getByRole('button', { name: 'Go back', exact: true }).click();
   await page.getByRole('tab', { name: 'My Designs', exact: true }).click();
   await page.getByRole('button', { name: 'Edit a copy of My bracelet', exact: true }).first().click();
-  await expect(page.getByText('2 / 32 DETAILS').last()).toBeVisible();
+  await expect(page.getByText('2 components').last()).toBeVisible();
 });
 
 test('insufficient stock shows backend details and refreshes components', async ({ page }) => {
@@ -178,10 +196,10 @@ test('insufficient stock shows backend details and refreshes components', async 
   await build(page);
   await checkout(page);
   await page.getByRole('button', { name: 'Place Order', exact: true }).click();
-  await expect(page.getByRole('alert')).toContainText('Black Panther: requested 1, available 0');
+  await expect(page.getByRole('alert').first()).toContainText('Black Panther: requested 1, available 0');
   await expect.poll(f.stockReads).toBeGreaterThan(1);
   await page.getByRole('button', { name: 'Edit Design', exact: true }).click();
-  await expect(page.getByText('2 / 32 DETAILS').last()).toBeVisible();
+  await expect(page.getByText('2 components').last()).toBeVisible();
   expect(f.orderBodies).toHaveLength(1);
 });
 
@@ -190,7 +208,7 @@ test('uncertain order submission is never automatically retried, even after retu
   await build(page);
   await checkout(page);
   await page.getByRole('button', { name: 'Place Order', exact: true }).click();
-  await expect(page.getByRole('alert')).toContainText('could not confirm whether your order was placed');
+  await expect(page.getByRole('alert').first()).toContainText('could not confirm whether your order was placed');
   await expect(page.getByRole('button', { name: 'Place Order', exact: true })).toBeDisabled();
   await page.getByRole('button', { name: 'My Orders', exact: true }).click();
   await page.goBack();
@@ -225,7 +243,7 @@ test('customer completes their own profile separately then returns to order', as
   await build(page);
   await checkout(page);
   await page.getByRole('button', { name: 'Place Order', exact: true }).click();
-  await expect(page.getByRole('alert')).toContainText('in your profile before ordering');
+  await expect(page.getByRole('alert').first()).toContainText('in your profile before ordering');
   expect(f.profileBodies).toHaveLength(0);
   await page.getByRole('button', { name: 'Update my profile' }).click();
   await page.getByLabel('Phone', { exact: true }).fill('+48111222333');
@@ -261,7 +279,7 @@ test('customer can edit one profile field without completing delivery and clear 
   await expect.poll(() => f.profileBodies.length).toBe(3);
   expect(f.profileBodies[2]).toEqual({ postalCode: null });
   await page.getByRole('button', { name: 'Save my details' }).click();
-  await expect(page.getByText('No changes to save.')).toBeVisible();
+  await expect(page.getByText('No changes to save.', { exact: true }).first()).toBeVisible();
   expect(f.profileBodies).toHaveLength(3);
 });
 test('failed preview capture retains the editable design and can be retried', async ({ page }) => {
@@ -276,7 +294,7 @@ test('failed preview capture retains the editable design and can be retried', as
     };
   });
   await page.getByRole('button', { name: 'Save design', exact: true }).click();
-  await expect(page.getByRole('alert')).toContainText('Could not capture your design preview');
+  await expect(page.getByRole('alert').first()).toContainText('Could not capture your design preview');
   await expect(page.getByText('Total beads: 3', { exact: true })).toBeVisible();
   expect(f.productBodies).toHaveLength(0);
   await page.evaluate(() => (window as any).restoreDesignCapture());
@@ -292,7 +310,7 @@ test('order review remains editable and saves a new preview before placing an or
   await checkout(page);
   await expect(page.getByRole('img', { name: 'My bracelet image' })).toHaveAttribute('src', 'https://images.example.test/saved-preview.png');
   await page.getByRole('button', { name: 'Edit Design', exact: true }).click();
-  await expect(page.getByText('2 / 32 DETAILS').last()).toBeVisible();
+  await expect(page.getByText('2 components').last()).toBeVisible();
   await page.getByRole('button', { name: /^Add Black Panther,/ }).click();
   await page.getByRole('button', { name: 'Preview', exact: true }).click();
   await page.getByRole('button', { name: 'Review order', exact: true }).click();
@@ -324,7 +342,7 @@ test('moving a bead without changing quantities saves a fresh visual preview', a
   await page.waitForTimeout(250);
   await page.mouse.move(placed.x + placed.width / 2 - 12, placed.y + placed.height / 2 + 12, { steps: 8 });
   await page.mouse.up();
-  await expect(page.getByText('Detail moved. Hold and drag it again to adjust its position.')).toBeVisible();
+  await expect(page.getByText('Detail moved. Hold and drag it again to adjust its position.', { exact: true }).first()).toBeVisible();
   await page.getByRole('button', { name: 'Preview', exact: true }).click();
   await page.getByRole('button', { name: 'Save design', exact: true }).click();
   await expect(page.getByText('Saved price: \u20ac2.50')).toBeVisible();
@@ -332,3 +350,106 @@ test('moving a bead without changing quantities saves a fresh visual preview', a
   expect(f.productBodies[1].items).toEqual(f.productBodies[0].items);
   expect(f.previewDimensions).toEqual([[840, 840], [840, 840]]);
 });
+
+
+test('studio exports selected designs as transparent PNGs with identical pixels in both themes', async ({ context }) => {
+  const hashes: string[] = [];
+  for (const mode of ['light', 'dark']) {
+    const page = await context.newPage();
+    await page.addInitScript(() => localStorage.removeItem('homemade-commerce-v1'));
+    await page.addInitScript(mode => localStorage.setItem('homemade-theme-v1', JSON.stringify({ state: { mode }, version: 0 })), mode);
+    const f = await fixture(page);
+    await page.getByRole('button', { name: /^Add Black Panther,/ }).click();
+    await page.getByRole('button', { name: /^Add Shining bead,/ }).click();
+    await page.getByTestId(/^placed-/).first().click();
+    await page.getByRole('button', { name: 'Save design', exact: true }).click();
+    await expect.poll(() => f.previewPixelHashes.length).toBe(1);
+    hashes.push(f.previewPixelHashes[0]);
+    await expect(page.getByTestId('design-preview-canvas')).toHaveCSS('background-color', mode === 'dark' ? 'rgb(23, 27, 43)' : 'rgb(255, 255, 255)');
+    await page.close();
+  }
+  expect(hashes[0]).toBe(hashes[1]);
+});
+
+
+const categorySizes: CategorySize[] = [
+  { id: 'small', name: 'Small', measurement: 16, unit: 'cm', maxItems: 2 },
+  { id: 'medium', name: 'Medium', measurement: 18, unit: 'cm', maxItems: 3 },
+];
+
+test('category size selection limits total quantities and restores the saved size for editing', async ({ page }) => {
+  const f = await fixture(page, 'ok', categorySizes);
+  await expect(page.getByText('Up to 3 beads', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Continue to Builder', exact: true })).toBeDisabled();
+  await page.getByRole('button', { name: 'Choose Small, 16 cm, up to 2 beads', exact: true }).click();
+  await expect(page.getByTestId('selected-size-details')).toContainText('Measurement: 16 cm');
+  await expect(page.getByTestId('selected-size-details')).toContainText('Component limit: 2');
+  await page.getByRole('button', { name: 'Choose Medium, 18 cm, up to 3 beads', exact: true }).click();
+  await expect(page).toHaveURL(/\/choose-size/);
+  await expect(page.getByTestId('selected-size-details')).toContainText('Measurement: 18 cm');
+  await expect(page.getByTestId('selected-size-details')).toContainText('Component limit: 3');
+  await page.getByRole('button', { name: 'Continue to Builder', exact: true }).click();
+  await expect(page).toHaveURL(/\/designer/);
+  await expect(page.getByText('Bracelets \u2022 Medium \u2022 18 cm')).toBeVisible();
+  for (let i = 0; i < 3; i++) await page.getByRole('button', { name: /^Add Black Panther,/ }).click();
+  await expect(page.getByText('3 / 3 beads', { exact: true }).last()).toBeVisible();
+  await page.getByRole('button', { name: /^Add Shining bead,/ }).click();
+  await expect(page.getByText('3 / 3 beads', { exact: true }).last()).toBeVisible();
+  await expect(page.getByTestId('flow-toast')).toContainText('Medium supports up to 3 components.');
+  // Dragging into empty space at the limit cannot insert another component.
+  const source = (await page.getByRole('button', { name: /^Add Shining bead,/ }).boundingBox())!;
+  const canvas = (await page.getByLabel('bracelet with 3 components', { exact: true }).boundingBox())!;
+  await page.mouse.move(source.x + source.width / 2, source.y + source.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(250);
+  await page.mouse.move(canvas.x + canvas.width / 2, canvas.y + canvas.height / 2, { steps: 10 });
+  await page.mouse.up();
+  await expect(page.getByText('3 / 3 beads', { exact: true }).last()).toBeVisible();
+  // Existing canvas reorder gestures still work when the size is full.
+  const placed = (await page.getByTestId(/^placed-/).first().boundingBox())!;
+  await page.mouse.move(placed.x + placed.width / 2, placed.y + placed.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(250);
+  await page.mouse.move(placed.x + placed.width / 2 - 12, placed.y + placed.height / 2 + 12, { steps: 8 });
+  await page.mouse.up();
+  await expect.poll(async () => page.evaluate(() => JSON.parse(localStorage.getItem('homemade-draft-v1')!).state.items[0].angle)).not.toBe(0);
+  await page.getByRole('button', { name: 'Finish selecting' }).click();
+
+  await page.getByRole('button', { name: 'Select position 1, Black Panther', exact: true }).click();
+  await page.getByRole('button', { name: /^Replace with Shining bead,/ }).click();
+  await expect(page.getByText('3 / 3 beads', { exact: true }).last()).toBeVisible();
+  await page.getByRole('button', { name: 'Remove selected detail' }).click();
+  await expect(page.getByText('2 / 3 beads', { exact: true }).last()).toBeVisible();
+  await page.getByRole('button', { name: /^Add Black Panther,/ }).click();
+  await expect(page.getByText('3 / 3 beads', { exact: true }).last()).toBeVisible();
+  await page.getByRole('button', { name: 'Preview', exact: true }).click();
+  await page.getByRole('button', { name: 'Save design', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Design saved', exact: true })).toBeVisible();
+  expect(f.productBodies[0].selectedSizeId).toBe('medium');
+  expect(f.productBodies[0]).not.toHaveProperty('selectedSize');
+  expect(f.productBodies[0]).not.toHaveProperty('maxItems');
+  expect(f.productBodies[0].items.reduce((sum: number, item: any) => sum + item.quantity, 0)).toBe(3);
+  // Current category configuration changes; editing must use the Product snapshot.
+  f.category.sizes = [{ ...categorySizes[1], maxItems: 1 }];
+  await checkout(page);
+  await page.getByRole('button', { name: 'Edit Design', exact: true }).click();
+  await expect(page.getByText('3 / 3 beads', { exact: true }).last()).toBeVisible();
+  const state = await page.evaluate(() => JSON.parse(localStorage.getItem('homemade-draft-v1')!).state);
+  expect(state.selectedSize).toEqual(categorySizes[1]);
+  expect(state.items).toHaveLength(3);
+});
+
+for (const sizes of [undefined, null, []] as (CategorySize[] | null | undefined)[]) {
+  test(`category without sizes (${JSON.stringify(sizes)}) skips selection and permits over 32 components`, async ({ page }) => {
+    const f = await fixture(page, 'ok', sizes);
+    await expect(page).toHaveURL(/\/designer/);
+    for (let i = 0; i < 20; i++) await page.getByRole('button', { name: /^Add Black Panther,/ }).click();
+    for (let i = 0; i < 13; i++) await page.getByRole('button', { name: /^Add Shining bead,/ }).click();
+    await expect(page.getByText('33 components', { exact: true }).last()).toBeVisible();
+    await page.getByRole('button', { name: 'Preview', exact: true }).click();
+    await page.getByRole('button', { name: 'Save design', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Design saved', exact: true })).toBeVisible();
+    expect(f.productBodies[0]).not.toHaveProperty('selectedSizeId');
+    expect(f.products[0].itemCount).toBe(33);
+  });
+}

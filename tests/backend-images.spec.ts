@@ -57,7 +57,7 @@ async function setup(page: Page) {
   await page.getByLabel('Email or username', { exact: true }).fill('mila@example.com');
   await page.getByLabel('Password', { exact: true }).fill('Password123!');
   await page.getByRole('button', { name: 'Log In', exact: true }).click();
-  await expect(page.getByText(/Small beads\./)).toBeVisible();
+  await expect(page.getByText(/Your idea\./)).toBeVisible();
   return bodies;
 }
 

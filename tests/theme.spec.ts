@@ -4,10 +4,10 @@ test('theme toggle updates mounted screens, preserves input, and survives reload
   page,
 }) => {
   await page.goto('/');
-  await page.getByLabel('Search jewelry').fill('pearl');
+  await page.getByLabel('Search products').fill('pearl');
   await page.getByRole('button', { name: 'Switch to light mode' }).click();
   await expect(page.getByTestId('screen')).toHaveCSS('background-color', 'rgb(250, 247, 242)');
-  await expect(page.getByLabel('Search jewelry')).toHaveValue('pearl');
+  await expect(page.getByLabel('Search products')).toHaveValue('pearl');
   await page.reload();
   await expect(page.getByRole('button', { name: 'Switch to dark mode' })).toBeVisible();
   await expect(page.getByTestId('screen')).toHaveCSS('background-color', 'rgb(250, 247, 242)');

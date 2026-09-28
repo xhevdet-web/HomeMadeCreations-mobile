@@ -13,14 +13,17 @@ export function SavedProductSummary({ product }: { product: SavedProduct }) {
       </View>
       <Text style={ui.sectionTitle}>{product.name}</Text>
       {!!product.description && <Text style={ui.body}>{product.description}</Text>}
-      {product.items.map((item) => (
+      {product.productType !== 'READY_MADE' && product.items.map((item) => (
         <Text key={item.id} style={ui.body}>
           {item.subCategory.name}: {item.quantity} × {money(item.unitPrice)} ={' '}
           {money(item.quantity * item.unitPrice)}
         </Text>
       ))}
-      <Text style={ui.label}>Total beads: {product.itemCount}</Text>
-      <Text style={ui.label}>Saved price: {money(product.price)}</Text>
+      {product.productType === 'READY_MADE' ? <>
+        <Text style={ui.body}>Available stock: {Number.isSafeInteger(product.stock) ? product.stock : 'Unavailable'}</Text>
+        {!!product.color && <Text style={ui.body}>Color: {product.color}</Text>}
+      </> : <Text style={ui.label}>Total beads: {product.itemCount}</Text>}
+      <Text style={ui.label}>{product.productType === 'READY_MADE' ? 'Price' : 'Saved price'}: {money(product.price)}</Text>
     </View>
   );
 }

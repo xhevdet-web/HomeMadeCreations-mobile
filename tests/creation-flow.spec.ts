@@ -9,7 +9,7 @@ for (const mode of ['dark', 'light']) {
       await page.goto('/');
       if (mode === 'light')
         await page.getByRole('button', { name: 'Switch to light mode' }).click();
-      await expect(page.getByText('Small beads.')).toBeVisible();
+      await expect(page.getByText(/Your idea\./)).toBeVisible();
       await page.screenshot({ path: 'test-results/home-' + mode + '-mobile.png', fullPage: true });
       await page.getByRole('button', { name: 'Create your own' }).click();
       await page.getByRole('button', { name: 'Create your design' }).click();
@@ -83,7 +83,7 @@ for (const mode of ['dark', 'light']) {
 test('search, filters, and empty states work on a narrow screen', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 740 });
   await page.goto('/');
-  await page.getByLabel('Search jewelry').fill('pearl');
+  await page.getByLabel('Search products').fill('pearl');
   await expect(page.getByRole('button', { name: /Customize Pearl & Petal/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /Customize Classic Bracelet/ })).toHaveCount(0);
   await page.goto('/designer');

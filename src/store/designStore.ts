@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Design, DesignItem } from '@/types/models';
+import { CategorySize, Design, DesignItem } from '@/types/models';
 import { itemById, productById } from '@/services/catalog';
 import { normalizePositions, uniqueId } from '@/helper/design';
 import { storage } from './storage';
@@ -11,12 +11,13 @@ interface DesignState {
   productId: string;
   name: string;
   size: string;
+  selectedSize: CategorySize | null;
   designId: string | null;
   items: DesignItem[];
   selectedId: string | null;
   history: DesignItem[][];
   historyIndex: number;
-  start: (productId: string, size?: string) => void;
+  start: (productId: string, size?: string, selectedSize?: CategorySize | null) => void;
   load: (design: Design) => void;
   rename: (name: string) => void;
   select: (id: string | null) => void;
@@ -77,16 +78,19 @@ export const useDesignStore = create<DesignState>()(
         productId: 'bracelet-classic',
         name: 'My little masterpiece',
         size: 'M · 17 cm',
+        selectedSize: null,
         designId: null,
         items: [],
         selectedId: null,
         history: [[]],
         historyIndex: 0,
-        start: (productId, size) =>
+        start: (productId, size, selectedSize = null) =>
           set({
             description: '',
             productId,
-            size: size ?? productById[productId].sizes[1],
+            selectedSize,
+            size: selectedSize ? `${selectedSize.name} • ${selectedSize.measurement} ${selectedSize.unit}` :
+              (productById[productId].categoryId ? '' : size ?? productById[productId].sizes[1]),
             name: `My ${productById[productId].name}`,
             designId: null,
             items: [],
@@ -99,6 +103,7 @@ export const useDesignStore = create<DesignState>()(
             description: design.description ?? '',
             productId: design.productId,
             size: design.size,
+            selectedSize: design.selectedSize ?? null,
             name: design.name,
             designId: design.id,
             items: design.items,
@@ -110,12 +115,12 @@ export const useDesignStore = create<DesignState>()(
         select: (selectedId) => set({ selectedId }),
         markSaved: (designId) => set({ designId }),
         addItem: (itemId) => {
-          if (get().items.length < 32 && canAdd(itemId))
+          if (get().items.length < (get().selectedSize?.maxItems ?? Infinity) && canAdd(itemId))
             commit([...get().items, { id: uniqueId(), itemId, position: get().items.length,
               angle: nextAngle() }]);
         },
         insertItem: (itemId, index, angle) => {
-          if (get().items.length >= 32 || !canAdd(itemId)) return;
+          if (get().items.length >= (get().selectedSize?.maxItems ?? Infinity) || !canAdd(itemId)) return;
           const next = [...get().items];
           next.splice(Math.max(0, Math.min(index, next.length)), 0, {
             id: uniqueId(), itemId, position: index, angle: angle ?? nextAngle(),
@@ -174,6 +179,7 @@ export const useDesignStore = create<DesignState>()(
           name: get().name.trim() || 'My little masterpiece',
           productId: get().productId,
           size: get().size,
+          selectedSize: get().selectedSize,
           items: get().items.map((entry) => ({ ...entry })),
           updatedAt: new Date().toISOString(),
         }),

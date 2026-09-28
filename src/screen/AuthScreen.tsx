@@ -1,8 +1,10 @@
+import { toast } from '@/store/toastStore';
+import { useFeedbackState } from '@/hooks/useFeedbackState';
 import { useTheme } from '@/hooks/useTheme';
 import { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Brand, Button, Field, Icon, IconButton, Page, useUI } from '@/components/common/ui';
+import { Brand, Button, Field, IconButton, Page, useUI } from '@/components/common/ui';
 import { PasswordInput } from '@/components/common/PasswordInput';
 import { useOnboardingStore } from '@/store/onboardingStore';
 import { useThemeStore } from '@/store/themeStore';
@@ -18,7 +20,7 @@ export function AuthScreen({ register = false }: { register?: boolean }) {
     useOnboardingStore.getState().complete();
   }, []);
 
-  const { next, registered } = useLocalSearchParams<{ next?: string; registered?: string }>();
+  const { next } = useLocalSearchParams<{ next?: string; registered?: string }>();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -29,14 +31,8 @@ export function AuthScreen({ register = false }: { register?: boolean }) {
   const [postalCode, setPostalCode] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = useFeedbackState();
   const [busy, setBusy] = useState(false);
-  const [showSuccessToast, setShowSuccessToast] = useState(registered === '1');
-  useEffect(() => {
-    if (register || registered !== '1') return;
-    const timer = setTimeout(() => setShowSuccessToast(false), 4000);
-    return () => clearTimeout(timer);
-  }, [register, registered]);
   const sessionError = useAuthStore((state) => state.error);
   async function submit() {
     if (busy) return;
@@ -56,6 +52,7 @@ export function AuthScreen({ register = false }: { register?: boolean }) {
       if (password !== confirm) return setError('Your passwords do not match.');
     }
     setBusy(true);
+    toast.info(register ? 'Creating your account. Please wait for confirmation before continuing.' : 'Signing you in. Please wait while we check your account.');
     try {
       if (register) {
         await useAuthStore.getState().register({
@@ -71,10 +68,12 @@ export function AuthScreen({ register = false }: { register?: boolean }) {
         });
         setPassword('');
         setConfirm('');
+        toast.success('Account created successfully. Please log in. Next, choose a product or start your design.');
         router.replace({ pathname: '/login', params: { next, registered: '1' } });
       } else {
         await useAuthStore.getState().signIn(email, password);
         setPassword('');
+        toast.success('Signed in. Next, choose a ready-made product or create your own design.');
         // The protected navigator opens Home once the session is authenticated.
       }
     } catch (failure) {
@@ -85,37 +84,6 @@ export function AuthScreen({ register = false }: { register?: boolean }) {
   }
   return (
     <Page style={{ maxWidth: 460, gap: 22, paddingTop: 12 }}>
-      {!register && showSuccessToast && (
-        <View
-          accessibilityRole="alert"
-          accessibilityLiveRegion="polite"
-          style={{
-            position: 'absolute',
-            top: 64,
-            left: 22,
-            right: 22,
-            zIndex: 10,
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 10,
-            paddingHorizontal: 16,
-            paddingVertical: 14,
-            borderRadius: 14,
-            backgroundColor: theme.colors.successSurface,
-            borderWidth: 1,
-            borderColor: theme.colors.success,
-            shadowColor: '#000',
-            shadowOpacity: 0.14,
-            shadowRadius: 12,
-            elevation: 5,
-          }}
-        >
-          <Icon name="checkmark-circle" size={22} color={theme.colors.success} />
-          <Text style={[ui.body, { flex: 1, color: theme.colors.text, fontWeight: '600' }]}>
-            Account created successfully. Please log in.
-          </Text>
-        </View>
-      )}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         <IconButton
           name="arrow-back"

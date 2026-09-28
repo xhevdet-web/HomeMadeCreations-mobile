@@ -11,6 +11,6 @@ test('successful registration confirms the account and opens login', async ({ pa
   await page.getByRole('button', { name: 'Create Account' }).click();
 
   await expect(page).toHaveURL(/\/login\?/);
-  await expect(page.getByRole('alert')).toContainText('Account created successfully. Please log in.');
+  await expect(page.getByTestId('flow-toast')).toContainText('Account created successfully. Please log in.');
   await expect(page.getByRole('button', { name: 'Log In' })).toBeVisible();
 });

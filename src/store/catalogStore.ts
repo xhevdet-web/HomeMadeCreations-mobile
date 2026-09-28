@@ -22,7 +22,7 @@ export const useCatalogStore = create<{
       const template = products.find((product) => product.type ===
         (/neck/i.test(category.name) ? 'necklace' : 'bracelet'))!;
       const product: Product = { ...template, id: `category:${category.id}`,
-        categoryId: category.id, name: category.name, description: category.description ?? '',
+        categoryId: category.id, categorySizes: category.sizes ?? [], name: category.name, description: category.description ?? '',
         basePrice: 0, palette: [], imageUrl: category.imageUrl, imageKey: category.imageKey, available: category.isActive };
       productById[product.id] = product;
       set({ products: { ...get().products, [product.id]: product } });

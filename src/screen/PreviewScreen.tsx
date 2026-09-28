@@ -1,3 +1,5 @@
+import { toast } from '@/store/toastStore';
+import { useFeedbackState } from '@/hooks/useFeedbackState';
 import { useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { router } from 'expo-router';
@@ -10,7 +12,7 @@ import { useCommerceStore } from '@/store/commerceStore';
 import { itemById, productById } from '@/services/catalog';
 import { priceLines, money } from '@/helper/pricing';
 import { designSignature, saveCurrentDesign } from '@/services/savedDesign';
-import { captureDesignPreview } from '@/services/designPreview';
+import { useDesignPreviewCapture } from '@/hooks/useDesignPreviewCapture';
 import { useTheme } from '@/hooks/useTheme';
 export default function PreviewScreen() {
   const ui = useUI();
@@ -18,10 +20,10 @@ export default function PreviewScreen() {
   const draft = useDesignStore();
   const user = useAuthStore((state) => state.user);
   const stored = useCommerceStore((state) => state.savedDraft);
-  const [error, setError] = useState('');
+  const [error, setError] = useFeedbackState();
   const [busy, setBusy] = useState(false);
   const submitting = useRef(false);
-  const previewRef = useRef<View>(null);
+  const { ref: previewRef, exporting, capture } = useDesignPreviewCapture();
   const product = productById[draft.productId];
   let signature = '';
   try {
@@ -40,10 +42,12 @@ export default function PreviewScreen() {
     if (submitting.current) return;
     submitting.current = true;
     setBusy(true);
+    toast.info('Saving your creation. Please wait for confirmation before continuing.');
     setError('');
     try {
       const result = await saveCurrentDesign(user.id, () =>
-        captureDesignPreview(previewRef.current, useDesignStore.getState().items));
+        capture(useDesignStore.getState().items));
+      toast.success(checkout ? 'Design saved. Next, review your delivery details and place your order.' : 'Design saved. Next, tap Review order when you are ready.');
       if (checkout) {
         useCommerceStore.getState().setCheckout(user.id, result);
         router.push('/checkout');
@@ -58,9 +62,10 @@ export default function PreviewScreen() {
   return (
     <Page>
       <Header title="Your Creation" back />
+      {draft.selectedSize && <Text style={ui.label}>{`${draft.selectedSize.name} \u2022 ${draft.selectedSize.measurement} ${draft.selectedSize.unit}`}</Text>}
       <View ref={previewRef} collapsable={false} testID="design-preview-canvas"
-        style={{ width: 280, height: 280, alignSelf: 'center', backgroundColor: theme.colors.background }}>
-        <JewelryCanvas items={draft.items} type={product.type} size={280} />
+        style={{ width: 280, height: 280, alignSelf: 'center', backgroundColor: exporting ? 'transparent' : theme.colors.background }}>
+        <JewelryCanvas exportMode={exporting} items={draft.items} type={product.type} size={280} />
       </View>
       <Field
         label="Give your creation a name"
@@ -103,7 +108,7 @@ export default function PreviewScreen() {
               label={'Add one ' + line.name}
               disabled={
                 busy ||
-                draft.items.length >= 32 ||
+                draft.items.length >= (draft.selectedSize?.maxItems ?? Infinity) ||
                 line.quantity >= itemById[line.itemId].stock ||
                 !itemById[line.itemId].available
               }

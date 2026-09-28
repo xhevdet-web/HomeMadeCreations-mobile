@@ -3,8 +3,13 @@ import { parseTokens, parseUser } from './authApi';
 import { CatalogComponent } from './catalogApi';
 import { File } from 'expo-file-system';
 import { fetch } from 'expo/fetch';
+import type { CategorySize } from '@/types/models';
 
 export interface SavedProduct {
+  selectedSize?: CategorySize | null;
+  productType?: string;
+  stock?: number;
+  color?: string | null;
   imageUrl?: string | null;
   designPreviewUrl?: string | null;
   imageKey?: string | null;
@@ -28,7 +33,7 @@ export interface SavedProduct {
 }
 export type OrderedProduct = Pick<
   SavedProduct,
-  'id' | 'name' | 'description' | 'imageUrl' | 'designPreviewUrl' | 'price' | 'itemCount' | 'items'
+  'id' | 'name' | 'description' | 'imageUrl' | 'designPreviewUrl' | 'price' | 'itemCount' | 'items' | 'productType'
 >;
 export const orderStages = [
   'ORDERED',
@@ -111,7 +116,7 @@ async function request<T>(
         response.ok
           ? 'The server returned an invalid response. Check My Designs before saving again.'
           : `The server could not complete the request (HTTP ${response.status}). Please try again later.`,
-        response.status,
+        response.ok ? 0 : response.status,
       );
     }
     if (!response.ok) {
@@ -135,6 +140,7 @@ async function request<T>(
   }
 }
 export interface ProductInput {
+  selectedSizeId?: string;
   categoryId: string;
   name: string;
   description?: string;
@@ -153,6 +159,7 @@ export const commerceApi = {
     const data = new FormData();
     data.append('categoryId', input.categoryId);
     data.append('name', input.name);
+    if (input.selectedSizeId) data.append('selectedSizeId', input.selectedSizeId);
     if (input.description) data.append('description', input.description);
     data.append('items', JSON.stringify(input.items));
     if (previewUri.startsWith('data:')) {

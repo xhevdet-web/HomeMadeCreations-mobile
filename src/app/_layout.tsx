@@ -9,6 +9,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/store/authStore';
 import { useOnboardingStore } from '@/store/onboardingStore';
 import { useHydration } from '@/hooks/useHydration';
+import { ToastHost } from '@/components/common/ToastHost';
 export default function RootLayout() {
   const theme = useTheme();
 
@@ -60,6 +61,7 @@ export default function RootLayout() {
             <Stack.Protected guard={status === 'authenticated'}>
               <Stack.Screen name="(tabs)" />
               <Stack.Screen name="categories" />
+              <Stack.Screen name="choose-size" />
               <Stack.Screen name="products" />
               <Stack.Screen name="components" />
               <Stack.Screen name="details" />
@@ -84,6 +86,7 @@ export default function RootLayout() {
             />
           </View>
         )}
+        {ready && <ToastHost />}
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
