@@ -121,11 +121,13 @@ export function Page({
   scroll = true,
   style,
   stickyHeaderIndices,
+  footer,
 }: {
   children: ReactNode;
   scroll?: boolean;
   style?: ViewStyle;
   stickyHeaderIndices?: number[];
+  footer?: ReactNode;
 }) {
   const ui = useUI();
 
@@ -146,6 +148,11 @@ export function Page({
           </ScrollView>
         ) : (
           <View style={[ui.pageContent, { flex: 1 }, style]}>{children}</View>
+        )}
+        {footer && (
+          <SafeAreaView edges={['bottom']} style={{ backgroundColor: ui.page.backgroundColor }}>
+            {footer}
+          </SafeAreaView>
         )}
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -193,16 +200,41 @@ export function Brand({ compact = false, hero = false }: { compact?: boolean; he
   const panelWidth = imageSize * 0.66;
   const panelHeight = imageSize * 0.53;
   return (
-    <View accessible accessibilityLabel="HomeMade Creator" accessibilityRole="image" style={{
-      width, height, borderRadius: compact ? 14 : 24,
-      alignSelf: 'center',
-    }}>
-      <View style={{ position: 'absolute', width: panelWidth, height: panelHeight,
-        left: (width - panelWidth) / 2, top: (height - panelHeight) / 2,
-        borderRadius: compact ? 12 : 22,
-        }} />
-      <Image key={theme.mode} source={isDark ? require('../../../assets/LogoDarkMode.png') : require('../../../assets/Logo.png')} resizeMode="contain"
-        style={{ width: imageSize, height: imageSize, position: 'absolute', left: imageLeft, top: imageTop }} />
+    <View
+      accessible
+      accessibilityLabel="HomeMade Creator"
+      accessibilityRole="image"
+      style={{
+        width,
+        height,
+        borderRadius: compact ? 14 : 24,
+        alignSelf: 'center',
+      }}
+    >
+      <View
+        style={{
+          position: 'absolute',
+          width: panelWidth,
+          height: panelHeight,
+          left: (width - panelWidth) / 2,
+          top: (height - panelHeight) / 2,
+          borderRadius: compact ? 12 : 22,
+        }}
+      />
+      <Image
+        key={theme.mode}
+        source={
+          isDark ? require('../../../assets/LogoDarkMode.png') : require('../../../assets/Logo.png')
+        }
+        resizeMode="contain"
+        style={{
+          width: imageSize,
+          height: imageSize,
+          position: 'absolute',
+          left: imageLeft,
+          top: imageTop,
+        }}
+      />
     </View>
   );
 }
@@ -280,20 +312,24 @@ export function Field({
     <View style={{ gap: 8 }}>
       <Text style={ui.label}>{label}</Text>
       <View style={{ justifyContent: 'center' }}>
-      {icon && <View pointerEvents="none" style={{ position: 'absolute', left: 14, zIndex: 1 }}><Icon name={icon} size={17} color={c.muted} /></View>}
-      <TextInput
-        accessibilityLabel={label}
-        placeholderTextColor={c.muted}
-        selectionColor={c.accent}
-        keyboardAppearance={theme.mode}
-        {...props}
-        style={[
-          ui.input,
-          icon && { paddingLeft: 42 },
-          props.multiline && { minHeight: 90, textAlignVertical: 'top' },
-          props.style,
-        ]}
-      />
+        {icon && (
+          <View pointerEvents="none" style={{ position: 'absolute', left: 14, zIndex: 1 }}>
+            <Icon name={icon} size={17} color={c.muted} />
+          </View>
+        )}
+        <TextInput
+          accessibilityLabel={label}
+          placeholderTextColor={c.muted}
+          selectionColor={c.accent}
+          keyboardAppearance={theme.mode}
+          {...props}
+          style={[
+            ui.input,
+            icon && { paddingLeft: 42 },
+            props.multiline && { minHeight: 90, textAlignVertical: 'top' },
+            props.style,
+          ]}
+        />
       </View>
       {error && <Text style={ui.error}>{error}</Text>}
     </View>

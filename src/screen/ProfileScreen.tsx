@@ -40,6 +40,10 @@ function ProfileForm({ user }: { user: User }) {
     if (postalCode.trim() !== user.address.postalCode.trim())
       changes.postalCode = postalCode.trim() || null;
     if (!Object.keys(changes).length) {
+      if (next === 'checkout') {
+        router.dismissTo('/checkout');
+        return;
+      }
       setMessage('No changes to save.');
       return;
     }
@@ -56,7 +60,12 @@ function ProfileForm({ user }: { user: User }) {
       setAddress(updated.address.street);
       setPostalCode(updated.address.postalCode);
       setMessage('Your details have been saved.');
-      toast.success(next === 'checkout' ? 'Delivery details saved. Next, tap Return to order to finish your purchase.' : 'Profile saved. You can now continue shopping or designing.');
+      toast.success(
+        next === 'checkout'
+          ? 'Delivery details saved.'
+          : 'Profile saved. You can now continue shopping or designing.',
+      );
+      if (next === 'checkout') router.dismissTo('/checkout');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to save profile.';
       setMessage(message);
@@ -90,31 +99,35 @@ function ProfileForm({ user }: { user: User }) {
           {message}
         </Text>
       )}
-      <Button title="Save my details" loading={busy} onPress={() => void save()} />
-      {next === 'checkout' && (
-        <Button
-          title="Return to order"
-          secondary
-          disabled={busy}
-          onPress={() => router.replace('/checkout')}
-        />
-      )}
-      <Button title="My Designs" secondary onPress={() => router.push('/designs')} />
-      <Button title="My Orders" secondary onPress={() => router.push('/orders')} />
       <Button
-        title="Sign out"
-        secondary
-        disabled={busy}
-        onPress={() => void useAuthStore.getState().logout()}
+        title={next === 'checkout' ? 'Save and return' : 'Save my details'}
+        loading={busy}
+        onPress={() => void save()}
       />
+      {next !== 'checkout' && (
+        <>
+          <Button title="My Designs" secondary onPress={() => router.push('/designs')} />
+          <Button title="My Orders" secondary onPress={() => router.push('/orders')} />
+          <Button
+            title="Sign out"
+            secondary
+            disabled={busy}
+            onPress={() => void useAuthStore.getState().logout()}
+          />
+        </>
+      )}
     </>
   );
 }
 export default function ProfileScreen() {
   const user = useAuthStore((state) => state.user);
+  const { next } = useLocalSearchParams<{ next?: string }>();
   return (
     <Page>
-      <Header title="Your profile" />
+      <Header
+        title={next === 'checkout' ? 'Delivery details' : 'Your profile'}
+        back={next === 'checkout'}
+      />
       {user ? (
         <ProfileForm key={user.id} user={user} />
       ) : (

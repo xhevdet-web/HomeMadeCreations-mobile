@@ -1,13 +1,99 @@
 import { expect, test, Page } from '@playwright/test';
 import type { CategorySize } from '../src/types/models';
 
-async function fixture(page: Page, mode: 'ok' | 'stock' | 'uncertain' | 'profile' = 'ok', sizes?: CategorySize[] | null) {
-  const category = { ...(sizes === undefined ? {} : { sizes }), id: 'category-test', name: 'Bracelets', description: '', imageUrl: null, isActive: true, sortOrder: 1 };
+for (const mode of ['light', 'dark']) {
+  test(`streamlined checkout preserves delivery notes in ${mode} mode`, async ({
+    page,
+  }, testInfo) => {
+    await page.addInitScript((theme) => {
+      localStorage.setItem(
+        'homemade-theme-v1',
+        JSON.stringify({ state: { mode: theme }, version: 0 }),
+      );
+    }, mode);
+    const f = await fixture(page);
+    await build(page, 4, 4);
+    await page.setViewportSize({ width: 320, height: 740 });
+    await expect(
+      page.getByRole('button', { name: 'Beads & price details', exact: true }),
+    ).toHaveAttribute('aria-expanded', 'false');
+    await expect(page.getByLabel('Description (optional)', { exact: true })).toHaveCount(0);
+    await expect(
+      page.getByRole('button', { name: 'Continue to delivery', exact: true }),
+    ).toBeInViewport();
+    await page.screenshot({ path: testInfo.outputPath('preview.png') });
+    await checkout(page);
+    expect(f.productBodies).toHaveLength(1);
+    expect(f.orderBodies).toHaveLength(0);
+    await page.getByRole('button', { name: 'Add a delivery note', exact: true }).click();
+    await page.getByLabel('Customer notes (optional)', { exact: true }).fill('Call at the gate');
+    await page.getByRole('button', { name: 'Edit delivery', exact: true }).click();
+    await page.getByLabel('Address', { exact: true }).fill('Garden Street 12');
+    await page.getByRole('button', { name: 'Save and return', exact: true }).click();
+    await expect(page).toHaveURL(/\/checkout$/);
+    await expect(page.getByText('Garden Street 12, Poland', { exact: true })).toBeVisible();
+    await expect(page.getByLabel('Customer notes (optional)', { exact: true })).toHaveValue(
+      'Call at the gate',
+    );
+    await expect(page.getByRole('button', { name: 'Place Order', exact: true })).toBeInViewport();
+    await page.screenshot({ path: testInfo.outputPath('checkout.png') });
+    await page.getByRole('button', { name: 'Place Order', exact: true }).click();
+    await expect(page.getByText('Your order has been placed.')).toBeVisible();
+    await expect(page.getByTestId('flow-action-footer').getByRole('button')).toHaveCount(1);
+    await expect(page.getByRole('button', { name: 'Track order', exact: true })).toBeInViewport();
+    await page.screenshot({ path: testInfo.outputPath('confirmation.png') });
+    expect(f.orderBodies).toHaveLength(1);
+    expect(f.orderBodies[0].customerNotes).toBe('Call at the gate');
+  });
+}
+
+async function fixture(
+  page: Page,
+  mode: 'ok' | 'stock' | 'uncertain' | 'profile' = 'ok',
+  sizes?: CategorySize[] | null,
+) {
+  const category = {
+    ...(sizes === undefined ? {} : { sizes }),
+    id: 'category-test',
+    name: 'Bracelets',
+    description: '',
+    imageUrl: null,
+    isActive: true,
+    sortOrder: 1,
+  };
   const components = [
-    { ...category, id: 'black-api', categoryId: category.id, name: 'Black Panther', color: 'Black', type: 'Glass', price: 100, stock: 30 },
-    { ...category, id: 'shining-api', categoryId: category.id, name: 'Shining bead', color: 'Gold', type: 'Glass', price: 150, stock: 40, sortOrder: 2 },
+    {
+      ...category,
+      id: 'black-api',
+      categoryId: category.id,
+      name: 'Black Panther',
+      color: 'Black',
+      type: 'Glass',
+      price: 100,
+      stock: 30,
+    },
+    {
+      ...category,
+      id: 'shining-api',
+      categoryId: category.id,
+      name: 'Shining bead',
+      color: 'Gold',
+      type: 'Glass',
+      price: 150,
+      stock: 40,
+      sortOrder: 2,
+    },
   ];
-  let user = { id: 'customer-test', role: 'CUSTOMER', firstName: 'Mila', lastName: 'Stone', email: 'mila@example.com', phone: mode === 'profile' ? '' : '+48123456789', country: 'Poland', address: 'Main Street 1' };
+  let user = {
+    id: 'customer-test',
+    role: 'CUSTOMER',
+    firstName: 'Mila',
+    lastName: 'Stone',
+    email: 'mila@example.com',
+    phone: mode === 'profile' ? '' : '+48123456789',
+    country: 'Poland',
+    address: 'Main Street 1',
+  };
   const products: any[] = [];
   const orders: any[] = [];
   const productBodies: any[] = [];
@@ -16,16 +102,25 @@ async function fixture(page: Page, mode: 'ok' | 'stock' | 'uncertain' | 'profile
   const orderBodies: any[] = [];
   const profileBodies: any[] = [];
   let stockReads = 0;
-  await page.addInitScript(() => localStorage.setItem('homemade-onboarding-v1', JSON.stringify({ state: { completed: true }, version: 0 })));
-  await page.route('https://images.example.test/**', route => route.fulfill({
-    contentType: 'image/png', headers: { 'Access-Control-Allow-Origin': '*' },
-    path: 'assets/catalog-placeholder.png',
-  }));
-  await page.route('**/api/v1/**', async route => {
+  await page.addInitScript(() =>
+    localStorage.setItem(
+      'homemade-onboarding-v1',
+      JSON.stringify({ state: { completed: true }, version: 0 }),
+    ),
+  );
+  await page.route('https://images.example.test/**', (route) =>
+    route.fulfill({
+      contentType: 'image/png',
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      path: 'assets/catalog-placeholder.png',
+    }),
+  );
+  await page.route('**/api/v1/**', async (route) => {
     const req = route.request();
     const url = new URL(req.url());
     const path = url.pathname.replace('/api/v1', '');
-    if (path === '/auth/login') return route.fulfill({ json: { accessToken: 'test-token', expiresIn: 3600 } });
+    if (path === '/auth/login')
+      return route.fulfill({ json: { accessToken: 'test-token', expiresIn: 3600 } });
     if (path === '/auth/me') return route.fulfill({ json: user });
     if (path === '/categories') return route.fulfill({ json: [category] });
     if (path === '/categories/category-test') return route.fulfill({ json: category });
@@ -36,9 +131,12 @@ async function fixture(page: Page, mode: 'ok' | 'stock' | 'uncertain' | 'profile
     if (path === '/products' && req.method() === 'GET') return route.fulfill({ json: products });
     expect(req.headers().authorization).toBe('Bearer test-token');
     if (path === '/products' && req.method() === 'POST') {
-      const data = await new Response(req.postDataBuffer(), {
+      const data = (await new Response(req.postDataBuffer(), {
         headers: { 'Content-Type': req.headers()['content-type'] },
-      }).formData() as unknown as { get(key: string): string | File | null; has(key: string): boolean };
+      }).formData()) as unknown as {
+        get(key: string): string | File | null;
+        has(key: string): boolean;
+      };
       expect(req.headers()['content-type']).toMatch(/^multipart\/form-data; boundary=/);
       const preview = data.get('designPreview') as File;
       expect(preview?.name).toBe('design-preview.png');
@@ -47,37 +145,60 @@ async function fixture(page: Page, mode: 'ok' | 'stock' | 'uncertain' | 'profile
       const bytes = new Uint8Array(await preview.arrayBuffer());
       expect([...bytes.slice(0, 4)]).toEqual([137, 80, 78, 71]);
       const alpha = await page.evaluate(async (bytes) => {
-        const bitmap = await createImageBitmap(new Blob([new Uint8Array(bytes)], { type: 'image/png' }));
+        const bitmap = await createImageBitmap(
+          new Blob([new Uint8Array(bytes)], { type: 'image/png' }),
+        );
         const canvas = document.createElement('canvas');
-        canvas.width = bitmap.width; canvas.height = bitmap.height;
+        canvas.width = bitmap.width;
+        canvas.height = bitmap.height;
         const ctx = canvas.getContext('2d')!;
         ctx.drawImage(bitmap, 0, 0);
         const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
         const sample = (x: number, y: number) => pixels[(y * canvas.width + x) * 4 + 3];
-        const hash = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', pixels))).map(byte => byte.toString(16).padStart(2, '0')).join('');
-        return { hash, corner: sample(0, 0), center: sample(420, 420),
-          visible: pixels.some((value, index) => index % 4 === 3 && value > 0) };
+        const hash = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', pixels)))
+          .map((byte) => byte.toString(16).padStart(2, '0'))
+          .join('');
+        return {
+          hash,
+          corner: sample(0, 0),
+          center: sample(420, 420),
+          visible: pixels.some((value, index) => index % 4 === 3 && value > 0),
+        };
       }, Array.from(bytes));
       previewPixelHashes.push(alpha.hash);
       expect(alpha).toMatchObject({ corner: 0, center: 0, visible: true });
       const view = new DataView(bytes.buffer);
       previewDimensions.push([view.getUint32(16), view.getUint32(20)]);
-      const body = { categoryId: data.get('categoryId'), name: data.get('name'),
+      const body = {
+        categoryId: data.get('categoryId'),
+        name: data.get('name'),
         ...(data.has('selectedSizeId') ? { selectedSizeId: data.get('selectedSizeId') } : {}),
         ...(data.has('description') ? { description: data.get('description') } : {}),
-        items: JSON.parse(data.get('items') as string) };
+        items: JSON.parse(data.get('items') as string),
+      };
       productBodies.push(body);
       const items = body.items.map((item: any, index: number) => ({
-        ...item, id: 'item-' + index, unitPrice: components.find(c => c.id === item.subCategoryId)!.price,
-        subCategory: components.find(c => c.id === item.subCategoryId),
+        ...item,
+        id: 'item-' + index,
+        unitPrice: components.find((c) => c.id === item.subCategoryId)!.price,
+        subCategory: components.find((c) => c.id === item.subCategoryId),
       }));
-      const product = { ...body, selectedSize: sizes?.find(size => size.id === body.selectedSizeId) ?? null, designPreviewUrl: 'https://images.example.test/saved-preview.png', id: 'product-' + (products.length + 1), createdById: user.id, category, items,
+      const product = {
+        ...body,
+        selectedSize: sizes?.find((size) => size.id === body.selectedSizeId) ?? null,
+        designPreviewUrl: 'https://images.example.test/saved-preview.png',
+        id: 'product-' + (products.length + 1),
+        createdById: user.id,
+        category,
+        items,
         itemCount: items.reduce((sum: number, item: any) => sum + item.quantity, 0),
-        price: items.reduce((sum: number, item: any) => sum + item.quantity * item.unitPrice, 0) };
+        price: items.reduce((sum: number, item: any) => sum + item.quantity * item.unitPrice, 0),
+      };
       products.push(product);
       return route.fulfill({ status: 201, json: product });
     }
-    if (path.startsWith('/products/')) return route.fulfill({ json: products.find(p => p.id === path.split('/').pop()) });
+    if (path.startsWith('/products/'))
+      return route.fulfill({ json: products.find((p) => p.id === path.split('/').pop()) });
     if (path === '/users/customer-test/products') return route.fulfill({ json: products });
     if (path === '/users/me' && req.method() === 'PATCH') {
       profileBodies.push(req.postDataJSON());
@@ -85,29 +206,57 @@ async function fixture(page: Page, mode: 'ok' | 'stock' | 'uncertain' | 'profile
       return route.fulfill({ json: user });
     }
     if (path.startsWith('/users/') && req.method() === 'PATCH')
-      return route.fulfill({ status: 403, json: { message: 'Only administrators can manage users' } });
+      return route.fulfill({
+        status: 403,
+        json: { message: 'Only administrators can manage users' },
+      });
     if (path === '/orders' && req.method() === 'POST') {
       const body = req.postDataJSON();
       orderBodies.push(body);
-      if (!user.phone) return route.fulfill({ status: 400, json: { message: 'Complete firstName, lastName, phone, country and address in your profile before ordering' } });
+      if (!user.phone)
+        return route.fulfill({
+          status: 400,
+          json: {
+            message:
+              'Complete firstName, lastName, phone, country and address in your profile before ordering',
+          },
+        });
       if (mode === 'uncertain') return route.abort();
       if (mode === 'stock') {
         components[0].stock = 0;
-        return route.fulfill({ status: 400, json: { message: 'Insufficient inventory for Black Panther: requested 1, available 0' } });
+        return route.fulfill({
+          status: 400,
+          json: { message: 'Insufficient inventory for Black Panther: requested 1, available 0' },
+        });
       }
-      const product = products.find(p => p.id === body.productId);
-      const order = { ...user, id: 'order-1', userId: user.id, productId: product.id, product,
-        orderNumber: 'HM-TEST-1', totalPrice: product.price, paymentType: body.paymentType,
-        paymentStatus: 'UNPAID', status: 'ORDERED', createdAt: new Date().toISOString() };
+      const product = products.find((p) => p.id === body.productId);
+      const order = {
+        ...user,
+        id: 'order-1',
+        userId: user.id,
+        productId: product.id,
+        product,
+        orderNumber: 'HM-TEST-1',
+        totalPrice: product.price,
+        paymentType: body.paymentType,
+        paymentStatus: 'UNPAID',
+        status: 'ORDERED',
+        createdAt: new Date().toISOString(),
+      };
       orders.push(order);
-      for (const item of product.items) components.find(c => c.id === item.subCategoryId)!.stock -= item.quantity;
-      await new Promise(resolve => setTimeout(resolve, 200));
+      for (const item of product.items)
+        components.find((c) => c.id === item.subCategoryId)!.stock -= item.quantity;
+      await new Promise((resolve) => setTimeout(resolve, 200));
       return route.fulfill({ status: 201, json: order });
     }
     if (path === '/orders') {
       const current = Number(url.searchParams.get('page') ?? 1);
-      return route.fulfill({ json: { data: orders.slice((current - 1) * 20, current * 20),
-        meta: { page: current, totalPages: Math.ceil(orders.length / 20), total: orders.length } } });
+      return route.fulfill({
+        json: {
+          data: orders.slice((current - 1) * 20, current * 20),
+          meta: { page: current, totalPages: Math.ceil(orders.length / 20), total: orders.length },
+        },
+      });
     }
     if (path === '/orders/order-1') return route.fulfill({ json: orders[0] });
     return route.fulfill({ status: 404, json: { message: 'Unexpected test request: ' + path } });
@@ -120,52 +269,94 @@ async function fixture(page: Page, mode: 'ok' | 'stock' | 'uncertain' | 'profile
   await page.getByRole('button', { name: 'Browse Bracelets' }).click();
   if (sizes?.length) await expect(page.getByText('Choose Size', { exact: true })).toBeVisible();
   else await expect(page.getByText('Choose your details')).toBeVisible();
-  return { category, components, products, orders, productBodies, previewDimensions, previewPixelHashes, orderBodies, profileBodies, stockReads: () => stockReads };
+  return {
+    category,
+    components,
+    products,
+    orders,
+    productBodies,
+    previewDimensions,
+    previewPixelHashes,
+    orderBodies,
+    profileBodies,
+    stockReads: () => stockReads,
+  };
 }
 async function build(page: Page, black = 1, shining = 1) {
-  for (let i = 0; i < black; i++) await page.getByRole('button', { name: /^Add Black Panther,/ }).click();
-  for (let i = 0; i < shining; i++) await page.getByRole('button', { name: /^Add Shining bead,/ }).click();
+  for (let i = 0; i < black; i++)
+    await page.getByRole('button', { name: /^Add Black Panther,/ }).click();
+  for (let i = 0; i < shining; i++)
+    await page.getByRole('button', { name: /^Add Shining bead,/ }).click();
   await page.getByRole('button', { name: 'Preview', exact: true }).click();
   await page.getByLabel('Give your creation a name').fill('My bracelet');
 }
 async function checkout(page: Page) {
-  await page.getByRole('button', { name: 'Review order', exact: true }).click();
+  await page.getByRole('button', { name: 'Continue to delivery', exact: true }).click();
   await expect(page.getByText('Cash on Delivery', { exact: true })).toBeVisible();
   await expect(page.getByLabel('Phone', { exact: true })).toHaveCount(0);
   await expect(page.getByLabel('First name', { exact: true })).toHaveCount(0);
   await expect(page.getByText('mila@example.com', { exact: true })).toHaveCount(0);
 }
 
-test('save, COD checkout, backend totals, stock refresh and tracking', async ({ page }) => {
+test('save, COD checkout, backend totals, stock refresh and tracking', async ({
+  page,
+}, testInfo) => {
   const f = await fixture(page);
   await expect(page.getByText('Type: Glass')).toHaveCount(0);
   await expect(page.getByText(/Estimated subtotal/)).toHaveCount(0);
   await build(page, 12, 8);
-  await expect(page.getByText('Total beads: 20', { exact: true })).toBeVisible();
-  await expect(page.getByText('Estimated price: €24.00', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Save design', exact: true }).click();
-  await expect(page.getByText('Saved price: €24.00')).toBeVisible();
-  expect(f.productBodies).toEqual([{ categoryId: 'category-test', name: 'My bracelet', items: [
-    { subCategoryId: 'black-api', quantity: 12, position: 0 },
-    { subCategoryId: 'shining-api', quantity: 8, position: 12 },
-  ] }]);
+  await page.screenshot({ path: testInfo.outputPath('preview.png') });
+  await expect(page.getByText('20 beads', { exact: true })).toBeVisible();
+  await expect(
+    page.getByTestId('flow-action-footer').getByText('€24.00', { exact: true }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Save for later', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Saved', exact: true })).toBeVisible();
+  expect(f.productBodies).toEqual([
+    {
+      categoryId: 'category-test',
+      name: 'My bracelet',
+      items: [
+        { subCategoryId: 'black-api', quantity: 12, position: 0 },
+        { subCategoryId: 'shining-api', quantity: 8, position: 12 },
+      ],
+    },
+  ]);
   expect(f.previewDimensions).toEqual([[840, 840]]);
-  expect(f.components.map(c => c.stock)).toEqual([30, 40]);
+  expect(f.components.map((c) => c.stock)).toEqual([30, 40]);
   await checkout(page);
+  expect(f.productBodies).toHaveLength(1);
+  await page.screenshot({ path: testInfo.outputPath('checkout.png') });
+  await page.getByRole('button', { name: 'Add a delivery note', exact: true }).click();
   await page.getByLabel('Customer notes (optional)').fill('Call before delivery');
   await page.getByRole('button', { name: 'Place Order', exact: true }).click();
   await expect(page.getByText('Your order has been placed.')).toBeVisible();
-  await expect(page.getByRole('img', { name: 'My bracelet image' })).toHaveAttribute('src', 'https://images.example.test/saved-preview.png');
+  await page.screenshot({ path: testInfo.outputPath('confirmation.png') });
+  await expect(page.getByRole('img', { name: 'My bracelet image' })).toHaveAttribute(
+    'src',
+    'https://images.example.test/saved-preview.png',
+  );
   await expect(page.getByRole('button', { name: 'Edit Design' })).toHaveCount(0);
   await expect(page.getByText('HM-TEST-1')).toBeVisible();
-  await expect(page.getByText('Total: €24.00')).toBeVisible();
-  await expect(page.getByText('Payment status: UNPAID')).toBeVisible();
-  expect(f.orderBodies).toEqual([{ productId: 'product-1', paymentType: 'CASH_ON_DELIVERY', customerNotes: 'Call before delivery' }]);
+  await expect(page.getByText('€24.00', { exact: true })).toBeVisible();
+  await expect(page.getByText('Due on delivery', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Refresh status' })).toHaveCount(0);
+  expect(f.orderBodies).toEqual([
+    {
+      productId: 'product-1',
+      paymentType: 'CASH_ON_DELIVERY',
+      customerNotes: 'Call before delivery',
+    },
+  ]);
   expect(f.profileBodies).toHaveLength(0);
-  expect(f.components.map(c => c.stock)).toEqual([18, 32]);
+  expect(f.components.map((c) => c.stock)).toEqual([18, 32]);
   await expect.poll(f.stockReads).toBeGreaterThan(1);
-  await page.getByRole('button', { name: 'View my orders', exact: true }).click();
-  await expect(page.getByRole('img', { name: 'My bracelet image' })).toHaveAttribute('src', 'https://images.example.test/saved-preview.png');
+  await page.getByRole('button', { name: 'Track order', exact: true }).click();
+  await page.getByRole('button', { name: 'Back to my orders', exact: true }).click();
+  await expect(page.getByRole('img', { name: 'My bracelet image' })).toHaveAttribute(
+    'src',
+    'https://images.example.test/saved-preview.png',
+  );
   await page.getByRole('button', { name: 'Track HM-TEST-1' }).click();
   f.orders[0].status = 'CREATING';
   await page.getByRole('button', { name: 'Refresh status' }).click();
@@ -176,18 +367,25 @@ test('save, COD checkout, backend totals, stock refresh and tracking', async ({ 
 test('changing a saved design creates a new product', async ({ page }) => {
   const f = await fixture(page);
   await build(page);
-  await page.getByRole('button', { name: 'Save design', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Design saved', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Save for later', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Saved', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Beads & price details', exact: true }).click();
   await page.getByRole('button', { name: 'Add one Black Panther', exact: true }).click();
-  await page.getByRole('button', { name: 'Save design', exact: true }).click();
+  await page.getByRole('button', { name: 'Save for later', exact: true }).click();
   await expect.poll(() => f.products.length).toBe(2);
-  expect(f.productBodies[1].items.filter((item: any) => item.subCategoryId === 'black-api')
-    .reduce((sum: number, item: any) => sum + item.quantity, 0)).toBe(2);
+  expect(
+    f.productBodies[1].items
+      .filter((item: any) => item.subCategoryId === 'black-api')
+      .reduce((sum: number, item: any) => sum + item.quantity, 0),
+  ).toBe(2);
   await page.getByRole('button', { name: 'Go back', exact: true }).click();
   await page.getByRole('button', { name: 'Go back', exact: true }).click();
   await page.getByRole('button', { name: 'Go back', exact: true }).click();
   await page.getByRole('tab', { name: 'My Designs', exact: true }).click();
-  await page.getByRole('button', { name: 'Edit a copy of My bracelet', exact: true }).first().click();
+  await page
+    .getByRole('button', { name: 'Edit a copy of My bracelet', exact: true })
+    .first()
+    .click();
   await expect(page.getByText('2 components').last()).toBeVisible();
 });
 
@@ -196,37 +394,56 @@ test('insufficient stock shows backend details and refreshes components', async 
   await build(page);
   await checkout(page);
   await page.getByRole('button', { name: 'Place Order', exact: true }).click();
-  await expect(page.getByRole('alert').first()).toContainText('Black Panther: requested 1, available 0');
+  await expect(page.getByRole('alert').first()).toContainText(
+    'Black Panther: requested 1, available 0',
+  );
   await expect.poll(f.stockReads).toBeGreaterThan(1);
   await page.getByRole('button', { name: 'Edit Design', exact: true }).click();
   await expect(page.getByText('2 components').last()).toBeVisible();
   expect(f.orderBodies).toHaveLength(1);
 });
 
-test('uncertain order submission is never automatically retried, even after returning', async ({ page }) => {
+test('uncertain order submission is never automatically retried, even after returning', async ({
+  page,
+}) => {
   const f = await fixture(page, 'uncertain');
   await build(page);
   await checkout(page);
   await page.getByRole('button', { name: 'Place Order', exact: true }).click();
-  await expect(page.getByRole('alert').first()).toContainText('could not confirm whether your order was placed');
-  await expect(page.getByRole('button', { name: 'Place Order', exact: true })).toBeDisabled();
-  await page.getByRole('button', { name: 'My Orders', exact: true }).click();
+  await expect(page.getByRole('alert').first()).toContainText(
+    'could not confirm whether your order was placed',
+  );
+  await expect(page.getByRole('button', { name: 'Place Order', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Check my orders', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Check my orders', exact: true }).click();
   await page.goBack();
-  await expect(page.getByRole('button', { name: 'Place Order', exact: true })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Place Order', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Check my orders', exact: true })).toBeVisible();
   expect(f.orderBodies).toHaveLength(1);
 });
 
 test('order list follows backend pagination metadata', async ({ page }) => {
   const f = await fixture(page);
   await build(page);
-  await page.getByRole('button', { name: 'Save design', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Design saved', exact: true })).toBeVisible();
-  for (let index = 1; index <= 21; index++) f.orders.push({
-    id: 'history-' + index, orderNumber: 'HISTORY-' + index, userId: 'customer-test',
-    productId: f.products[0].id, product: f.products[0], totalPrice: 250,
-    status: 'ORDERED', paymentStatus: 'UNPAID', paymentType: 'CASH_ON_DELIVERY',
-    firstName: 'Mila', lastName: 'Stone', phone: '123', address: 'Main Street 1', country: 'Poland',
-  });
+  await page.getByRole('button', { name: 'Save for later', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Saved', exact: true })).toBeVisible();
+  for (let index = 1; index <= 21; index++)
+    f.orders.push({
+      id: 'history-' + index,
+      orderNumber: 'HISTORY-' + index,
+      userId: 'customer-test',
+      productId: f.products[0].id,
+      product: f.products[0],
+      totalPrice: 250,
+      status: 'ORDERED',
+      paymentStatus: 'UNPAID',
+      paymentType: 'CASH_ON_DELIVERY',
+      firstName: 'Mila',
+      lastName: 'Stone',
+      phone: '123',
+      address: 'Main Street 1',
+      country: 'Poland',
+    });
   await page.getByRole('button', { name: 'Go back', exact: true }).click();
   await page.getByRole('button', { name: 'Go back', exact: true }).click();
   await page.getByRole('button', { name: 'Go back', exact: true }).click();
@@ -242,16 +459,15 @@ test('customer completes their own profile separately then returns to order', as
   const f = await fixture(page, 'profile');
   await build(page);
   await checkout(page);
-  await page.getByRole('button', { name: 'Place Order', exact: true }).click();
-  await expect(page.getByRole('alert').first()).toContainText('in your profile before ordering');
+  await expect(page.getByRole('button', { name: 'Place Order', exact: true })).toHaveCount(0);
+  expect(f.orderBodies).toHaveLength(0);
   expect(f.profileBodies).toHaveLength(0);
-  await page.getByRole('button', { name: 'Update my profile' }).click();
+  await page.getByRole('button', { name: 'Add delivery details' }).click();
   await page.getByLabel('Phone', { exact: true }).fill('+48111222333');
-  await page.getByRole('button', { name: 'Save my details' }).click();
-  await expect(page.getByText('Your details have been saved.')).toBeVisible();
+  await page.getByRole('button', { name: 'Save and return' }).click();
+  await expect(page).toHaveURL(/\/checkout$/);
   expect(f.profileBodies).toHaveLength(1);
   expect(f.profileBodies[0]).toEqual({ phone: '+48111222333' });
-  await page.getByRole('button', { name: 'Return to order' }).click();
   await expect(page).toHaveURL(/\/checkout$/);
   await expect(page.getByLabel('Phone', { exact: true })).not.toBeVisible();
   await page.getByRole('button', { name: 'Place Order', exact: true }).click();
@@ -260,7 +476,9 @@ test('customer completes their own profile separately then returns to order', as
   expect(f.orders).toHaveLength(1);
 });
 
-test('customer can edit one profile field without completing delivery and clear postal code', async ({ page }) => {
+test('customer can edit one profile field without completing delivery and clear postal code', async ({
+  page,
+}) => {
   const f = await fixture(page, 'profile');
   await page.getByRole('button', { name: 'Go back', exact: true }).click();
   await page.getByRole('button', { name: 'Go back', exact: true }).click();
@@ -287,118 +505,166 @@ test('failed preview capture retains the editable design and can be retried', as
   await build(page, 2, 1);
   await page.evaluate(() => {
     const original = HTMLCanvasElement.prototype.toDataURL;
-    (window as any).restoreDesignCapture = () => { HTMLCanvasElement.prototype.toDataURL = original; };
+    (window as any).restoreDesignCapture = () => {
+      HTMLCanvasElement.prototype.toDataURL = original;
+    };
     HTMLCanvasElement.prototype.toDataURL = function (...args) {
       if (this.width === 840 && this.height === 840) throw new Error('Capture unavailable');
       return original.apply(this, args);
     };
   });
-  await page.getByRole('button', { name: 'Save design', exact: true }).click();
-  await expect(page.getByRole('alert').first()).toContainText('Could not capture your design preview');
-  await expect(page.getByText('Total beads: 3', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Save for later', exact: true }).click();
+  await expect(page.getByRole('alert').first()).toContainText(
+    'Could not capture your design preview',
+  );
+  await expect(page.getByText('3 beads', { exact: true })).toBeVisible();
   expect(f.productBodies).toHaveLength(0);
   await page.evaluate(() => (window as any).restoreDesignCapture());
-  await page.getByRole('button', { name: 'Save design', exact: true }).click();
-  await expect(page.getByText('Saved price: \u20ac3.50')).toBeVisible();
+  await page.getByRole('button', { name: 'Save for later', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Saved', exact: true })).toBeVisible();
   expect(f.productBodies).toHaveLength(1);
-  expect(f.components.map(c => c.stock)).toEqual([30, 40]);
+  expect(f.components.map((c) => c.stock)).toEqual([30, 40]);
 });
 
-test('order review remains editable and saves a new preview before placing an order', async ({ page }) => {
+test('order review remains editable and saves a new preview before placing an order', async ({
+  page,
+}) => {
   const f = await fixture(page);
   await build(page, 1, 1);
   await checkout(page);
-  await expect(page.getByRole('img', { name: 'My bracelet image' })).toHaveAttribute('src', 'https://images.example.test/saved-preview.png');
+  await expect(page.getByRole('img', { name: 'My bracelet image' })).toHaveAttribute(
+    'src',
+    'https://images.example.test/saved-preview.png',
+  );
   await page.getByRole('button', { name: 'Edit Design', exact: true }).click();
   await expect(page.getByText('2 components').last()).toBeVisible();
   await page.getByRole('button', { name: /^Add Black Panther,/ }).click();
   await page.getByRole('button', { name: 'Preview', exact: true }).click();
-  await page.getByRole('button', { name: 'Review order', exact: true }).click();
-  await expect(page.getByText('Total beads: 3', { exact: true }).last()).toBeVisible();
+  await page.getByRole('button', { name: 'Continue to delivery', exact: true }).click();
+  await expect(page.getByText('3 beads · Custom design', { exact: true })).toBeVisible();
   await expect.poll(() => f.productBodies.length).toBe(2);
-  expect(f.previewDimensions).toEqual([[840, 840], [840, 840]]);
+  expect(f.previewDimensions).toEqual([
+    [840, 840],
+    [840, 840],
+  ]);
   expect(f.products[0].itemCount).toBe(2);
   expect(f.products[1].itemCount).toBe(3);
-  expect(f.components.map(c => c.stock)).toEqual([30, 40]);
+  expect(f.components.map((c) => c.stock)).toEqual([30, 40]);
   await page.getByRole('button', { name: 'Place Order', exact: true }).click();
   await expect(page.getByText('Your order has been placed.')).toBeVisible();
   expect(f.orderBodies[0].productId).toBe(f.products[1].id);
-  await expect(page.getByRole('button', { name: 'Back to Home', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'View Order', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Close confirmation', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Track order', exact: true }).click();
   await expect(page.getByText('Status: Ordered', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Edit Design' })).toHaveCount(0);
-  await expect(page.getByRole('img', { name: 'My bracelet image' })).toHaveAttribute('src', 'https://images.example.test/saved-preview.png');
+  await expect(page.getByRole('img', { name: 'My bracelet image' })).toHaveAttribute(
+    'src',
+    'https://images.example.test/saved-preview.png',
+  );
 });
 
 test('moving a bead without changing quantities saves a fresh visual preview', async ({ page }) => {
   const f = await fixture(page);
   await build(page, 1, 1);
-  await page.getByRole('button', { name: 'Save design', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Design saved', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Keep creating', exact: true }).click();
-  const placed = (await page.getByTestId(/^placed-/).first().boundingBox())!;
+  await page.getByRole('button', { name: 'Save for later', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Saved', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Edit design', exact: true }).click();
+  const placed = (await page
+    .getByTestId(/^placed-/)
+    .first()
+    .boundingBox())!;
   await page.mouse.move(placed.x + placed.width / 2, placed.y + placed.height / 2);
   await page.mouse.down();
   await page.waitForTimeout(250);
-  await page.mouse.move(placed.x + placed.width / 2 - 12, placed.y + placed.height / 2 + 12, { steps: 8 });
+  await page.mouse.move(placed.x + placed.width / 2 - 12, placed.y + placed.height / 2 + 12, {
+    steps: 8,
+  });
   await page.mouse.up();
-  await expect(page.getByText('Detail moved. Hold and drag it again to adjust its position.', { exact: true }).first()).toBeVisible();
+  await expect(
+    page
+      .getByText('Detail moved. Hold and drag it again to adjust its position.', { exact: true })
+      .first(),
+  ).toBeVisible();
   await page.getByRole('button', { name: 'Preview', exact: true }).click();
-  await page.getByRole('button', { name: 'Save design', exact: true }).click();
-  await expect(page.getByText('Saved price: \u20ac2.50')).toBeVisible();
+  await page.getByRole('button', { name: 'Save for later', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Saved', exact: true })).toBeVisible();
   expect(f.productBodies).toHaveLength(2);
   expect(f.productBodies[1].items).toEqual(f.productBodies[0].items);
-  expect(f.previewDimensions).toEqual([[840, 840], [840, 840]]);
+  expect(f.previewDimensions).toEqual([
+    [840, 840],
+    [840, 840],
+  ]);
 });
 
-
-test('studio exports selected designs as transparent PNGs with identical pixels in both themes', async ({ context }) => {
+test('studio exports selected designs as transparent PNGs with identical pixels in both themes', async ({
+  context,
+}) => {
   const hashes: string[] = [];
   for (const mode of ['light', 'dark']) {
     const page = await context.newPage();
     await page.addInitScript(() => localStorage.removeItem('homemade-commerce-v1'));
-    await page.addInitScript(mode => localStorage.setItem('homemade-theme-v1', JSON.stringify({ state: { mode }, version: 0 })), mode);
+    await page.addInitScript(
+      (mode) =>
+        localStorage.setItem('homemade-theme-v1', JSON.stringify({ state: { mode }, version: 0 })),
+      mode,
+    );
     const f = await fixture(page);
     await page.getByRole('button', { name: /^Add Black Panther,/ }).click();
     await page.getByRole('button', { name: /^Add Shining bead,/ }).click();
-    await page.getByTestId(/^placed-/).first().click();
+    await page
+      .getByTestId(/^placed-/)
+      .first()
+      .click();
     await page.getByRole('button', { name: 'Save design', exact: true }).click();
     await expect.poll(() => f.previewPixelHashes.length).toBe(1);
     hashes.push(f.previewPixelHashes[0]);
-    await expect(page.getByTestId('design-preview-canvas')).toHaveCSS('background-color', mode === 'dark' ? 'rgb(23, 27, 43)' : 'rgb(255, 255, 255)');
+    await expect(page.getByTestId('design-preview-canvas')).toHaveCSS(
+      'background-color',
+      mode === 'dark' ? 'rgb(23, 27, 43)' : 'rgb(255, 255, 255)',
+    );
     await page.close();
   }
   expect(hashes[0]).toBe(hashes[1]);
 });
-
 
 const categorySizes: CategorySize[] = [
   { id: 'small', name: 'Small', measurement: 16, unit: 'cm', maxItems: 2 },
   { id: 'medium', name: 'Medium', measurement: 18, unit: 'cm', maxItems: 3 },
 ];
 
-test('category size selection limits total quantities and restores the saved size for editing', async ({ page }) => {
+test('category size selection limits total quantities and restores the saved size for editing', async ({
+  page,
+}) => {
   const f = await fixture(page, 'ok', categorySizes);
   await expect(page.getByText('Up to 3 beads', { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Continue to Builder', exact: true })).toBeDisabled();
-  await page.getByRole('button', { name: 'Choose Small, 16 cm, up to 2 beads', exact: true }).click();
+  await expect(
+    page.getByRole('button', { name: 'Continue to Builder', exact: true }),
+  ).toBeDisabled();
+  await page
+    .getByRole('button', { name: 'Choose Small, 16 cm, up to 2 beads', exact: true })
+    .click();
   await expect(page.getByTestId('selected-size-details')).toContainText('Measurement: 16 cm');
   await expect(page.getByTestId('selected-size-details')).toContainText('Component limit: 2');
-  await page.getByRole('button', { name: 'Choose Medium, 18 cm, up to 3 beads', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Choose Medium, 18 cm, up to 3 beads', exact: true })
+    .click();
   await expect(page).toHaveURL(/\/choose-size/);
   await expect(page.getByTestId('selected-size-details')).toContainText('Measurement: 18 cm');
   await expect(page.getByTestId('selected-size-details')).toContainText('Component limit: 3');
   await page.getByRole('button', { name: 'Continue to Builder', exact: true }).click();
   await expect(page).toHaveURL(/\/designer/);
   await expect(page.getByText('Bracelets \u2022 Medium \u2022 18 cm')).toBeVisible();
-  for (let i = 0; i < 3; i++) await page.getByRole('button', { name: /^Add Black Panther,/ }).click();
+  for (let i = 0; i < 3; i++)
+    await page.getByRole('button', { name: /^Add Black Panther,/ }).click();
   await expect(page.getByText('3 / 3 beads', { exact: true }).last()).toBeVisible();
   await page.getByRole('button', { name: /^Add Shining bead,/ }).click();
   await expect(page.getByText('3 / 3 beads', { exact: true }).last()).toBeVisible();
   await expect(page.getByTestId('flow-toast')).toContainText('Medium supports up to 3 components.');
   // Dragging into empty space at the limit cannot insert another component.
   const source = (await page.getByRole('button', { name: /^Add Shining bead,/ }).boundingBox())!;
-  const canvas = (await page.getByLabel('bracelet with 3 components', { exact: true }).boundingBox())!;
+  const canvas = (await page
+    .getByLabel('bracelet with 3 components', { exact: true })
+    .boundingBox())!;
   await page.mouse.move(source.x + source.width / 2, source.y + source.height / 2);
   await page.mouse.down();
   await page.waitForTimeout(250);
@@ -406,13 +672,24 @@ test('category size selection limits total quantities and restores the saved siz
   await page.mouse.up();
   await expect(page.getByText('3 / 3 beads', { exact: true }).last()).toBeVisible();
   // Existing canvas reorder gestures still work when the size is full.
-  const placed = (await page.getByTestId(/^placed-/).first().boundingBox())!;
+  const placed = (await page
+    .getByTestId(/^placed-/)
+    .first()
+    .boundingBox())!;
   await page.mouse.move(placed.x + placed.width / 2, placed.y + placed.height / 2);
   await page.mouse.down();
   await page.waitForTimeout(250);
-  await page.mouse.move(placed.x + placed.width / 2 - 12, placed.y + placed.height / 2 + 12, { steps: 8 });
+  await page.mouse.move(placed.x + placed.width / 2 - 12, placed.y + placed.height / 2 + 12, {
+    steps: 8,
+  });
   await page.mouse.up();
-  await expect.poll(async () => page.evaluate(() => JSON.parse(localStorage.getItem('homemade-draft-v1')!).state.items[0].angle)).not.toBe(0);
+  await expect
+    .poll(async () =>
+      page.evaluate(
+        () => JSON.parse(localStorage.getItem('homemade-draft-v1')!).state.items[0].angle,
+      ),
+    )
+    .not.toBe(0);
   await page.getByRole('button', { name: 'Finish selecting' }).click();
 
   await page.getByRole('button', { name: 'Select position 1, Black Panther', exact: true }).click();
@@ -423,32 +700,40 @@ test('category size selection limits total quantities and restores the saved siz
   await page.getByRole('button', { name: /^Add Black Panther,/ }).click();
   await expect(page.getByText('3 / 3 beads', { exact: true }).last()).toBeVisible();
   await page.getByRole('button', { name: 'Preview', exact: true }).click();
-  await page.getByRole('button', { name: 'Save design', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Design saved', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Save for later', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Saved', exact: true })).toBeVisible();
   expect(f.productBodies[0].selectedSizeId).toBe('medium');
   expect(f.productBodies[0]).not.toHaveProperty('selectedSize');
   expect(f.productBodies[0]).not.toHaveProperty('maxItems');
-  expect(f.productBodies[0].items.reduce((sum: number, item: any) => sum + item.quantity, 0)).toBe(3);
+  expect(f.productBodies[0].items.reduce((sum: number, item: any) => sum + item.quantity, 0)).toBe(
+    3,
+  );
   // Current category configuration changes; editing must use the Product snapshot.
   f.category.sizes = [{ ...categorySizes[1], maxItems: 1 }];
   await checkout(page);
   await page.getByRole('button', { name: 'Edit Design', exact: true }).click();
   await expect(page.getByText('3 / 3 beads', { exact: true }).last()).toBeVisible();
-  const state = await page.evaluate(() => JSON.parse(localStorage.getItem('homemade-draft-v1')!).state);
+  const state = await page.evaluate(
+    () => JSON.parse(localStorage.getItem('homemade-draft-v1')!).state,
+  );
   expect(state.selectedSize).toEqual(categorySizes[1]);
   expect(state.items).toHaveLength(3);
 });
 
 for (const sizes of [undefined, null, []] as (CategorySize[] | null | undefined)[]) {
-  test(`category without sizes (${JSON.stringify(sizes)}) skips selection and permits over 32 components`, async ({ page }) => {
+  test(`category without sizes (${JSON.stringify(sizes)}) skips selection and permits over 32 components`, async ({
+    page,
+  }) => {
     const f = await fixture(page, 'ok', sizes);
     await expect(page).toHaveURL(/\/designer/);
-    for (let i = 0; i < 20; i++) await page.getByRole('button', { name: /^Add Black Panther,/ }).click();
-    for (let i = 0; i < 13; i++) await page.getByRole('button', { name: /^Add Shining bead,/ }).click();
+    for (let i = 0; i < 20; i++)
+      await page.getByRole('button', { name: /^Add Black Panther,/ }).click();
+    for (let i = 0; i < 13; i++)
+      await page.getByRole('button', { name: /^Add Shining bead,/ }).click();
     await expect(page.getByText('33 components', { exact: true }).last()).toBeVisible();
     await page.getByRole('button', { name: 'Preview', exact: true }).click();
-    await page.getByRole('button', { name: 'Save design', exact: true }).click();
-    await expect(page.getByRole('button', { name: 'Design saved', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Save for later', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Saved', exact: true })).toBeVisible();
     expect(f.productBodies[0]).not.toHaveProperty('selectedSizeId');
     expect(f.products[0].itemCount).toBe(33);
   });
