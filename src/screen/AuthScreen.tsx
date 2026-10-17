@@ -6,8 +6,8 @@ import { Pressable, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Brand, Button, Field, IconButton, Page, useUI } from '@/components/common/ui';
 import { PasswordInput } from '@/components/common/PasswordInput';
+import { ThemeToggleButton } from '@/components/common/ThemeToggleButton';
 import { useOnboardingStore } from '@/store/onboardingStore';
-import { useThemeStore } from '@/store/themeStore';
 import { useAuthStore } from '@/store/authStore';
 import { useLoginMutation } from '@/api/endpoints/authSlice';
 import { useCreateUserMutation } from '@/api/endpoints/userSlice';
@@ -18,7 +18,6 @@ import { hasRequiredValues, isValidEmail } from '@/helper/validation';
 export function AuthScreen({ register = false }: { register?: boolean }) {
   const theme = useTheme();
   const ui = useUI();
-  const toggleTheme = useThemeStore((state) => state.toggle);
   useEffect(() => {
     useOnboardingStore.getState().complete();
   }, []);
@@ -104,11 +103,7 @@ export function AuthScreen({ register = false }: { register?: boolean }) {
           label={register ? 'Back to login' : 'Go to registration'}
           onPress={() => router.replace(register ? '/login' : '/register')}
         />
-        <IconButton
-          name={theme.mode === 'dark' ? 'sunny-outline' : 'moon-outline'}
-          label={theme.mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-          onPress={toggleTheme}
-        />
+        <ThemeToggleButton />
       </View>
       <View style={{ alignItems: 'center', paddingVertical: register ? 8 : 0, marginBottom: register ? 0 : -16 }}>
         <Brand />

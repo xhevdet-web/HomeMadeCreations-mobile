@@ -24,7 +24,7 @@ interface DesignState {
   addItem: (itemId: string) => void;
   insertItem: (itemId: string, index: number, angle?: number) => void;
   replaceItemAt: (id: string, itemId: string) => void;
-  placeItem: (id: string, angle: number) => void;
+  placeItem: (id: string, index: number) => void;
   replaceItem: (itemId: string) => void;
   removeItem: () => void;
   moveItem: (direction: number) => void;
@@ -37,8 +37,10 @@ interface DesignState {
 export const useDesignStore = create<DesignState>()(
   persist(
     (set, get) => {
+      // Array order is the bead sequence along the cord; beads are always evenly spaced,
+      // so free-form angles are dropped and the saved positions match what is shown.
       const commit = (next: DesignItem[]) => {
-        const items = normalizePositions(next);
+        const items = normalizePositions(next.map(({ angle: _angle, ...entry }) => entry));
         const state = get();
         const history = [...state.history.slice(0, state.historyIndex + 1), items].slice(-60);
         set({
@@ -55,22 +57,6 @@ export const useDesignStore = create<DesignState>()(
           get().items.filter((entry) => entry.itemId === id && entry.id !== excluding).length <
             item.stock
         );
-      };
-      const nextAngle = () => {
-        const entries = get().items;
-        if (!entries.length) return 0;
-        const angles = entries.map((entry, index) => entry.angle ?? index / entries.length)
-          .sort((a, b) => a - b);
-        let largestGap = -1;
-        let choice = 0;
-        angles.forEach((angle, index) => {
-          const next = index === angles.length - 1 ? angles[0] + 1 : angles[index + 1];
-          if (next - angle > largestGap) {
-            largestGap = next - angle;
-            choice = (angle + largestGap / 2) % 1;
-          }
-        });
-        return choice;
       };
       return {
         description: '',
@@ -116,14 +102,13 @@ export const useDesignStore = create<DesignState>()(
         markSaved: (designId) => set({ designId }),
         addItem: (itemId) => {
           if (get().items.length < (get().selectedSize?.maxItems ?? Infinity) && canAdd(itemId))
-            commit([...get().items, { id: uniqueId(), itemId, position: get().items.length,
-              angle: nextAngle() }]);
+            commit([...get().items, { id: uniqueId(), itemId, position: get().items.length }]);
         },
-        insertItem: (itemId, index, angle) => {
+        insertItem: (itemId, index) => {
           if (get().items.length >= (get().selectedSize?.maxItems ?? Infinity) || !canAdd(itemId)) return;
           const next = [...get().items];
           next.splice(Math.max(0, Math.min(index, next.length)), 0, {
-            id: uniqueId(), itemId, position: index, angle: angle ?? nextAngle(),
+            id: uniqueId(), itemId, position: index,
           });
           commit(next);
         },
@@ -131,9 +116,13 @@ export const useDesignStore = create<DesignState>()(
           if (canAdd(itemId, id))
             commit(get().items.map((entry) => entry.id === id ? { ...entry, itemId } : entry));
         },
-        placeItem: (id, angle) => {
-          if (!get().items.some((entry) => entry.id === id)) return;
-          commit(get().items.map((entry) => entry.id === id ? { ...entry, angle } : entry));
+        placeItem: (id, index) => {
+          const entry = get().items.find((item) => item.id === id);
+          if (!entry) return;
+          // Move the bead to the strand position nearest to where it was dropped.
+          const others = get().items.filter((item) => item.id !== id);
+          others.splice(Math.max(0, Math.min(index, others.length)), 0, entry);
+          commit(others);
         },
         replaceItem: (itemId) => {
           if (get().selectedId && canAdd(itemId, get().selectedId))
@@ -152,10 +141,6 @@ export const useDesignStore = create<DesignState>()(
           const from = next.findIndex((entry) => entry.id === get().selectedId);
           const to = from + direction;
           if (from < 0 || to < 0 || to >= next.length) return;
-          const fromAngle = next[from].angle ?? from / next.length;
-          const toAngle = next[to].angle ?? to / next.length;
-          next[from] = { ...next[from], angle: toAngle };
-          next[to] = { ...next[to], angle: fromAngle };
           [next[from], next[to]] = [next[to], next[from]];
           commit(next);
         },

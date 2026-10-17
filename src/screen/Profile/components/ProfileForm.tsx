@@ -1,17 +1,19 @@
 import { toast } from '@/store/toastStore';
 import { useFeedbackState } from '@/hooks/useFeedbackState';
 import { useState } from 'react';
-import { Text } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
-import { Button, Field, Header, Page, useUI } from '@/components/common/ui';
+import { Text, View } from 'react-native';
+import { router } from 'expo-router';
+import { Button, Field, useUI } from '@/components/common/ui';
 import { useAuthStore } from '@/store/authStore';
 import type { DeliveryInput } from '@/api/commerceModels';
 import { useUpdateProfileMutation } from '@/api/endpoints/userSlice';
 import { apiError } from '@/api/apiSlice';
 import { User } from '@/types/models';
 
-function ProfileForm({ user }: { user: User }) {
-  const { next } = useLocalSearchParams<{ next?: string }>();
+export function ProfileForm({ user, returnToCheckout = false }: {
+  user: User;
+  returnToCheckout?: boolean;
+}) {
   const ui = useUI();
   const [firstName, setFirstName] = useState(user.firstName);
   const [lastName, setLastName] = useState(user.lastName);
@@ -43,7 +45,7 @@ function ProfileForm({ user }: { user: User }) {
     if (postalCode.trim() !== user.address.postalCode.trim())
       changes.postalCode = postalCode.trim() || null;
     if (!Object.keys(changes).length) {
-      if (next === 'checkout') {
+      if (returnToCheckout) {
         router.dismissTo('/checkout');
         return;
       }
@@ -64,11 +66,11 @@ function ProfileForm({ user }: { user: User }) {
       setPostalCode(updated.address.postalCode);
       setMessage('Your details have been saved.');
       toast.success(
-        next === 'checkout'
+        returnToCheckout
           ? 'Delivery details saved.'
           : 'Profile saved. You can now continue shopping or designing.',
       );
-      if (next === 'checkout') router.dismissTo('/checkout');
+      if (returnToCheckout) router.dismissTo('/checkout');
     } catch (error) {
       const message = apiError(error).message;
       setMessage(message);
@@ -79,63 +81,43 @@ function ProfileForm({ user }: { user: User }) {
   }
   return (
     <>
-      <Text style={ui.body}>{user.email}</Text>
-      <Field label="First name" value={firstName} onChangeText={setFirstName} maxLength={100} />
-      <Field label="Last name" value={lastName} onChangeText={setLastName} maxLength={100} />
-      <Field
-        label="Phone"
-        value={phone}
-        onChangeText={setPhone}
-        keyboardType="phone-pad"
-        maxLength={32}
-      />
-      <Field label="Country" value={country} onChangeText={setCountry} maxLength={100} />
-      <Field label="Address" value={address} onChangeText={setAddress} multiline maxLength={300} />
-      <Field
-        label="Postal code (optional)"
-        value={postalCode}
-        onChangeText={setPostalCode}
-        maxLength={20}
-      />
+      <View style={[ui.card, { gap: 18 }]}>
+        <Text style={ui.eyebrow}>PERSONAL INFORMATION</Text>
+        <Field label="First name" value={firstName} onChangeText={setFirstName} maxLength={100} />
+        <Field label="Last name" value={lastName} onChangeText={setLastName} maxLength={100} />
+        <Field
+          label="Phone"
+          value={phone}
+          onChangeText={setPhone}
+          keyboardType="phone-pad"
+          maxLength={32}
+        />
+        <View style={{ gap: 4 }}>
+          <Text style={ui.label}>Email</Text>
+          <Text style={ui.body}>{user.email}</Text>
+        </View>
+      </View>
+      <View style={[ui.card, { gap: 18 }]}>
+        <Text style={ui.eyebrow}>DELIVERY ADDRESS</Text>
+        <Field label="Country" value={country} onChangeText={setCountry} maxLength={100} />
+        <Field label="Address" value={address} onChangeText={setAddress} multiline maxLength={300} />
+        <Field
+          label="Postal code (optional)"
+          value={postalCode}
+          onChangeText={setPostalCode}
+          maxLength={20}
+        />
+      </View>
       {!!message && (
         <Text accessibilityRole="alert" style={ui.body}>
           {message}
         </Text>
       )}
       <Button
-        title={next === 'checkout' ? 'Save and return' : 'Save my details'}
+        title={returnToCheckout ? 'Save and return' : 'Save my details'}
         loading={busy}
         onPress={() => void save()}
       />
-      {next !== 'checkout' && (
-        <>
-          <Button title="My Designs" secondary onPress={() => router.push('/designs')} />
-          <Button title="My Orders" secondary onPress={() => router.push('/orders')} />
-          <Button
-            title="Sign out"
-            secondary
-            disabled={busy}
-            onPress={() => void useAuthStore.getState().logout()}
-          />
-        </>
-      )}
     </>
-  );
-}
-export default function ProfileScreen() {
-  const user = useAuthStore((state) => state.user);
-  const { next } = useLocalSearchParams<{ next?: string }>();
-  return (
-    <Page>
-      <Header
-        title={next === 'checkout' ? 'Delivery details' : 'Your profile'}
-        back={next === 'checkout'}
-      />
-      {user ? (
-        <ProfileForm key={user.id} user={user} />
-      ) : (
-        <Button title="Sign in" onPress={() => router.push('/login')} />
-      )}
-    </Page>
   );
 }

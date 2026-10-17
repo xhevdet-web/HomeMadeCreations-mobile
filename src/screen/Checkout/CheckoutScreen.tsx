@@ -1,18 +1,15 @@
 import { useFeedbackState } from '@/hooks/useFeedbackState';
 import { useRef, useState } from 'react';
-import { Text, View } from 'react-native';
+import { Text } from 'react-native';
 import { router } from 'expo-router';
-import { Button, Field, Header, Icon, Page, useUI } from '@/components/common/ui';
+import { Button, Field, Header, Page, useUI } from '@/components/common/ui';
 import { CatalogState } from '@/components/products/CatalogState';
-import {
-  ActionFooter,
-  Disclosure,
-  FlowStep,
-  ProductOverview,
-  TextAction,
-  DetailRow,
-} from '@/components/checkout/Flow';
-import { useTheme } from '@/hooks/useTheme';
+import { Disclosure } from '@/components/common/Disclosure';
+import { TextAction } from '@/components/common/TextAction';
+import { ActionFooter } from '@/components/checkout/ActionFooter';
+import { FlowStep } from '@/components/checkout/FlowStep';
+import { DetailRow, ProductOverview } from '@/components/checkout/ProductOverview';
+import { CashOnDeliveryCard, DeliveryCard } from './components/CheckoutCards';
 import { money } from '@/helper/pricing';
 import { useApiResult } from '@/api/useApiResult';
 import { apiError } from '@/api/apiSlice';
@@ -30,7 +27,6 @@ import { useDesignStore } from '@/store/designStore';
 
 function CheckoutForm({ product, user }: { product: SavedProduct; user: User }) {
   const ui = useUI();
-  const theme = useTheme();
   const readyMade = product.productType === 'READY_MADE';
   const [currentProduct, setCurrentProduct] = useState(product);
   const missingDelivery = ![
@@ -202,39 +198,8 @@ function CheckoutForm({ product, user }: { product: SavedProduct; user: User }) 
           )
         }
       />
-      <View style={ui.card}>
-        <View style={ui.between}>
-          <View style={ui.row}>
-            <Icon name="location-outline" color={theme.colors.accent} />
-            <Text style={ui.label}>Deliver to</Text>
-          </View>
-          <TextAction title="Edit delivery" onPress={updateDelivery} disabled={busy || pending} />
-        </View>
-        <View style={{ gap: 5 }}>
-          <Text style={ui.label}>
-            {user.firstName} {user.lastName}
-          </Text>
-          <Text style={ui.body}>
-            {[
-              user.address?.street,
-              user.address?.city,
-              user.address?.postalCode,
-              user.address?.country,
-            ]
-              .filter(Boolean)
-              .join(', ') || 'Add your delivery address'}
-          </Text>
-          <Text style={ui.caption}>{user.phone || 'Add a phone number'}</Text>
-        </View>
-      </View>
-      <View style={[ui.card, { flexDirection: 'row', gap: 14, alignItems: 'center' }]}>
-        <Icon name="wallet-outline" color={theme.colors.accent} size={24} />
-        <View style={{ flex: 1, gap: 5 }}>
-          <Text style={ui.label}>Cash on Delivery</Text>
-          <Text style={ui.caption}>Nothing to pay now. Pay when your piece arrives.</Text>
-        </View>
-        <Icon name="checkmark-circle" color={theme.colors.accent} size={20} />
-      </View>
+      <DeliveryCard user={user} onEdit={updateDelivery} disabled={busy || pending} />
+      <CashOnDeliveryCard />
       <Disclosure
         title="Add a delivery note"
         summary="Optional · anything your courier should know"

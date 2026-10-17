@@ -34,6 +34,18 @@ export type OrderedProduct = Pick<
 export const orderStages = [
   'ORDERED', 'CREATING', 'CREATED', 'READY_FOR_COURIER', 'PICKED_UP_BY_COURIER', 'COMPLETED',
 ] as const;
+export const orderStatusLabels: Record<string, string> = {
+  ORDERED: 'Ordered',
+  CREATING: 'Being made',
+  CREATED: 'Created',
+  READY_FOR_COURIER: 'Ready for courier',
+  PICKED_UP_BY_COURIER: 'With courier',
+  COMPLETED: 'Completed',
+};
+export const orderStatusLabel = (status: string) =>
+  orderStatusLabels[status] ?? status.replaceAll('_', ' ').toLowerCase();
+export const paymentLabel = (paymentType: string) =>
+  paymentType === 'CASH_ON_DELIVERY' ? 'Cash on Delivery' : paymentType.replaceAll('_', ' ').toLowerCase();
 export interface ApiOrder {
   id: string;
   userId: string;

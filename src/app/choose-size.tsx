@@ -1,1 +1,1 @@
-export { default } from '@/screen/ChooseSizeScreen';
+export { default } from '@/screen/ChooseSize/ChooseSizeScreen';

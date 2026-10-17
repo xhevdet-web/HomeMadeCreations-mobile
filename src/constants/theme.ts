@@ -1,6 +1,8 @@
 import { Platform } from 'react-native';
 
-// Shared navy and apricot palette from the supplied light and dark reference.
+// Navy and apricot palette. Navy carries structure and primary actions; apricot/copper
+// is the warm accent in both modes. Status colors stay distinct so errors never look
+// like success. Light text colors meet WCAG AA (4.5:1) on `surface` and `background`.
 export type ThemeMode = 'dark' | 'light';
 
 export const darkTheme = {
@@ -8,21 +10,19 @@ export const darkTheme = {
   colors: {
     background: '#171B2B', surface: '#20253A', elevated: '#2D3250', border: '#424769',
     text: '#FFFFFF', muted: '#B8BDD5', accent: '#F9B17A', gold: '#F9B17A',
-    soft: '#2D3250', success: '#F9B17A', danger: '#F9B17A',
+    soft: '#2D3250', success: '#7BC8A4', danger: '#F28B82',
     primary: '#F9B17A', onPrimary: '#2D3250', navigation: '#1B2032',
-    canvas: '#20253A', preview: '#242A40', thumbnail: '#2D3250',
-    bottomBar: '#20253A', badge: '#2D3250E6', heroBorder: '#424769',
-    heroRing: '#676F9D40', heroRingSoft: '#676F9D26', heroText: '#FFFFFF',
-    heroNote: '#B8BDD5', studioBorder: '#424769', successSurface: '#2D3250',
-    statusSurface: '#2D3250', avatar: '#424769',
-    confirmationSurface: '#F9B17A', confirmationBorder: '#F9B17A',
+    preview: '#242A40', thumbnail: '#2D3250',
+    bottomBar: '#20253A', badge: '#2D3250E6', successSurface: '#22343A',
+    overlayCard: '#20253AEF', overlayBorder: '#FFFFFF33',
   },
   gradients: {
-    hero: ['#424769', '#2D3250', '#171B2B'] as readonly [string, string, string],
-    studio: ['#424769', '#2D3250'] as readonly [string, string],
     product: ['#424769', '#20253A'] as readonly [string, string],
     pearl: ['#424769', '#2D3250'] as readonly [string, string],
     details: ['#424769', '#20253A'] as readonly [string, string],
+    welcome: ['#171B2BE6', '#171B2B99', '#171B2BF5'] as readonly [string, string, string],
+    // Studio stage: centre and edge of a soft, linen-like jewelry tray.
+    stage: ['#2A3048', '#161A29'] as readonly [string, string],
   },
   fonts: {
     editorial: Platform.select({
@@ -39,23 +39,20 @@ export const lightTheme: Theme = {
   ...darkTheme,
   mode: 'light',
   colors: {
-    background: '#FFFFFF', surface: '#FFFFFF', elevated: '#F4F5FA', border: '#E2E5F0',
-    text: '#2D3250', muted: '#676F9D', accent: '#424769', gold: '#C7773F',
-    soft: '#F0F1FA', success: '#424769', danger: '#A94646',
+    background: '#FAF7F2', surface: '#FFFFFF', elevated: '#F1ECE4', border: '#E8E1D6',
+    text: '#2D3250', muted: '#676F9D', accent: '#A65B2A', gold: '#A65B2A',
+    soft: '#F5EFE7', success: '#3F7D5C', danger: '#A94646',
     primary: '#424769', onPrimary: '#FFFFFF', navigation: '#FFFFFF',
-    canvas: '#F4F5FA', preview: '#F7F7FB', thumbnail: '#F4F5FA',
-    bottomBar: '#FFFFFF', badge: '#FFFFFFE6', heroBorder: '#E2E5F0',
-    heroRing: '#676F9D29', heroRingSoft: '#676F9D1A', heroText: '#424769',
-    heroNote: '#676F9D', studioBorder: '#E2E5F0', successSurface: '#F0F1FA',
-    statusSurface: '#F0F1FA', avatar: '#F0F1FA',
-    confirmationSurface: '#F9B17A', confirmationBorder: '#F9B17A',
+    preview: '#F8F4EE', thumbnail: '#F5F0E8',
+    bottomBar: '#FFFFFF', badge: '#FFFFFFE6', successSurface: '#EDF5F0',
+    overlayCard: '#FFFFFFEF', overlayBorder: '#FFFFFFD9',
   },
   gradients: {
-    hero: ['#F0F1FA', '#FAF8F8', '#FFFFFF'],
-    studio: ['#F0F1FA', '#FFFFFF'],
-    product: ['#F4F5FA', '#FFFFFF'],
-    pearl: ['#F4F5FA', '#FFFFFF'],
-    details: ['#F4F5FA', '#FFFFFF'],
+    product: ['#F5F0E8', '#FFFFFF'],
+    pearl: ['#F5F0E8', '#FFFFFF'],
+    details: ['#F5F0E8', '#FFFFFF'],
+    welcome: ['#FAF7F2CC', '#FAF7F266', '#FAF7F2F5'],
+    stage: ['#FBF8F3', '#EBE1D2'],
   },
 };
 export const themes: Record<ThemeMode, Theme> = { dark: darkTheme, light: lightTheme };

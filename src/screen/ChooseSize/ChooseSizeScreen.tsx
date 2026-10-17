@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Button, Header, Icon, Page, useUI } from '@/components/common/ui';
-import { useTheme } from '@/hooks/useTheme';
+import { Button, Header, Page, useUI } from '@/components/common/ui';
 import { CatalogState } from '@/components/products/CatalogState';
 import { useGetCategoryByIdQuery } from '@/api/endpoints/categorySlice';
 import { useApiResult } from '@/api/useApiResult';
@@ -10,11 +9,11 @@ import type { CatalogCategory } from '@/api/catalogModels';
 import { useCatalogStore } from '@/store/catalogStore';
 import { useDesignStore } from '@/store/designStore';
 import { CategorySize } from '@/types/models';
+import { SelectedSizeDetails, SizeOption } from './components/SizeCards';
 
 export default function ChooseSizeScreen() {
   const { categoryId } = useLocalSearchParams<{ categoryId: string }>();
   const ui = useUI();
-  const theme = useTheme();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const opening = useRef(false);
   const result = useApiResult<CatalogCategory>(useGetCategoryByIdQuery(categoryId ?? '', { skip: !categoryId }));
@@ -37,31 +36,10 @@ export default function ChooseSizeScreen() {
         <Text style={ui.sectionTitle}>{category.name}</Text>
         <Text style={ui.body}>Compare the measurements and component limits. Select a size to see its details before continuing.</Text>
         <View style={{ gap: 12 }}>
-          {category.sizes?.map(size => <Pressable key={size.id} accessibilityRole="button"
-            accessibilityState={{ selected: size.id === selectedId }}
-            accessibilityLabel={`Choose ${size.name}, ${size.measurement} ${size.unit}, up to ${size.maxItems} beads`}
-            onPress={() => setSelectedId(size.id)}
-            style={({ pressed }) => [ui.card, {
-              opacity: pressed ? 0.7 : 1,
-              borderColor: size.id === selectedId ? theme.colors.accent : theme.colors.border,
-              backgroundColor: size.id === selectedId ? theme.colors.soft : theme.colors.surface,
-            }]}>
-            <View style={ui.between}>
-              <Text style={ui.sectionTitle}>{size.name}</Text>
-              <Icon name={size.id === selectedId ? 'checkmark-circle' : 'ellipse-outline'}
-                color={size.id === selectedId ? theme.colors.accent : theme.colors.muted} />
-            </View>
-            <Text style={ui.label}>{size.measurement} {size.unit}</Text>
-            <Text style={ui.caption}>Up to {size.maxItems} beads</Text>
-          </Pressable>)}
+          {category.sizes?.map(size => <SizeOption key={size.id} size={size}
+            selected={size.id === selectedId} onPress={() => setSelectedId(size.id)} />)}
         </View>
-        {selectedSize ? <View style={ui.card} accessibilityLiveRegion="polite" testID="selected-size-details">
-          <Text style={ui.eyebrow}>YOUR SELECTED SIZE</Text>
-          <Text style={ui.sectionTitle}>{selectedSize.name}</Text>
-          <Text style={ui.body}>Measurement: {selectedSize.measurement} {selectedSize.unit}</Text>
-          <Text style={ui.body}>Component limit: {selectedSize.maxItems}</Text>
-          <Text style={ui.caption}>You can place up to {selectedSize.maxItems} components. Once full, you can still rearrange, replace, or remove them.</Text>
-        </View> : <Text style={ui.caption}>Select a size above to review its details.</Text>}
+        {selectedSize ? <SelectedSizeDetails size={selectedSize} /> : <Text style={ui.caption}>Select a size above to review its details.</Text>}
         <Button title="Continue to Builder" icon="arrow-forward" disabled={!selectedSize}
           onPress={() => { if (selectedSize) openBuilder(selectedSize); }} />
       </>}

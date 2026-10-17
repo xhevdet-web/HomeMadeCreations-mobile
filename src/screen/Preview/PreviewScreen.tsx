@@ -1,8 +1,11 @@
 import { useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { EmptyState, Field, Header, IconButton, Page, useUI } from '@/components/common/ui';
-import { ActionFooter, Disclosure, FlowStep, TextAction } from '@/components/checkout/Flow';
+import { EmptyState, Field, Header, Page, useUI } from '@/components/common/ui';
+import { Disclosure } from '@/components/common/Disclosure';
+import { TextAction } from '@/components/common/TextAction';
+import { ActionFooter } from '@/components/checkout/ActionFooter';
+import { FlowStep } from '@/components/checkout/FlowStep';
 import { JewelryCanvas } from '@/components/designer/JewelryCanvas';
 import { useDesignStore } from '@/store/designStore';
 import { useAuthStore } from '@/store/authStore';
@@ -16,6 +19,7 @@ import { useFeedbackState } from '@/hooks/useFeedbackState';
 import { toast, useToastStore } from '@/store/toastStore';
 import { useCreateProductMutation } from '@/api/endpoints/productSlice';
 import { apiError } from '@/api/apiSlice';
+import { PriceLineRow } from './components/PriceLineRow';
 
 export default function PreviewScreen() {
   const ui = useUI();
@@ -42,6 +46,15 @@ export default function PreviewScreen() {
   const total =
     saved?.price ?? lines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
   const edit = () => router.dismissTo('/designer');
+
+  function removeOne(itemId: string) {
+    const entry = draft.items.find((item) => item.itemId === itemId);
+    if (entry) {
+      draft.select(entry.id);
+      useDesignStore.getState().removeItem();
+      draft.select(null);
+    }
+  }
 
   async function save(checkout: boolean) {
     if (!user) {
@@ -139,6 +152,7 @@ export default function PreviewScreen() {
             items={draft.items}
             type={product.type}
             size={280}
+            capacity={draft.selectedSize?.maxItems}
           />
         </View>
         <Text style={ui.caption}>
@@ -167,42 +181,18 @@ export default function PreviewScreen() {
         disabled={busy}
       >
         {lines.map((line) => (
-          <View key={line.itemId} style={{ gap: 8 }}>
-            <View style={ui.between}>
-              <Text style={[ui.label, { flex: 1 }]}>{line.name}</Text>
-              <Text style={ui.label}>{money(line.quantity * line.unitPrice)}</Text>
-            </View>
-            <View style={ui.between}>
-              <Text style={ui.caption}>{money(line.unitPrice)} each</Text>
-              <View style={ui.row}>
-                <IconButton
-                  name="remove"
-                  label={'Remove one ' + line.name}
-                  disabled={busy}
-                  onPress={() => {
-                    const entry = draft.items.find((item) => item.itemId === line.itemId);
-                    if (entry) {
-                      draft.select(entry.id);
-                      useDesignStore.getState().removeItem();
-                      draft.select(null);
-                    }
-                  }}
-                />
-                <Text style={ui.label}>{line.quantity}</Text>
-                <IconButton
-                  name="add"
-                  label={'Add one ' + line.name}
-                  disabled={
-                    busy ||
-                    draft.items.length >= (draft.selectedSize?.maxItems ?? Infinity) ||
-                    line.quantity >= (itemById[line.itemId]?.stock ?? 0) ||
-                    !itemById[line.itemId]?.available
-                  }
-                  onPress={() => draft.addItem(line.itemId)}
-                />
-              </View>
-            </View>
-          </View>
+          <PriceLineRow
+            key={line.itemId}
+            line={line}
+            disabled={busy}
+            addDisabled={
+              draft.items.length >= (draft.selectedSize?.maxItems ?? Infinity) ||
+              line.quantity >= (itemById[line.itemId]?.stock ?? 0) ||
+              !itemById[line.itemId]?.available
+            }
+            onRemove={() => removeOne(line.itemId)}
+            onAdd={() => draft.addItem(line.itemId)}
+          />
         ))}
       </Disclosure>
       <Disclosure

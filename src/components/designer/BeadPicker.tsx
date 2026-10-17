@@ -75,7 +75,7 @@ export function BeadPicker({
           <Text style={[ui.sectionTitle, { fontSize: 19 }]}>Choose your details</Text>
           <Text style={ui.caption}>
             {disabled
-              ? 'Your piece is full. Drag a detail onto a bead to replace it.'
+              ? 'Your piece is full. Drag a bead onto your piece to swap one.'
               : replacing
                 ? 'Tap to replace, or hold and drag onto your piece'
                 : 'Tap to add, or hold and drag onto your piece'}
@@ -169,25 +169,43 @@ const DraggableBead = memo(function DraggableBead({ item, replacing, disabled, n
   return (
     <GestureDetector gesture={gesture}>
       <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={
-              (replacing ? 'Replace with ' : 'Add ') + item.name + ', ' + money(item.price)
-            }
-            disabled={unavailable}
-            onPress={() => onPick(item)}
-            style={({ pressed }) => [styles.item, narrow && styles.itemNarrow, item.categoryId && { width: '47%', maxWidth: '49%' },
-              { opacity: unavailable ? 0.4 : pressed ? 0.6 : 1 }]}
-          >
-            <DesignItem item={item} size={48} />
-            {<Text numberOfLines={1} style={styles.name}>
-              {item.name}
-            </Text>}
-            {item.categoryId && <>
-              <Text style={styles.name}>Color: {item.color}</Text>
-              <Text style={styles.name}>{money(item.price)} per bead</Text>
-              <Text style={styles.name}>{atStockLimit && item.stock ? `Only ${item.stock} available ? all selected` : item.stock ? `${item.stock} available` : 'Out of stock'}</Text>
-            </>}
-            {!item.categoryId && <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}><Text style={styles.price}>{money(item.price)}</Text><Icon name={disabled ? 'hand-left-outline' : 'add-circle'} size={22} color={theme.colors.primary} /></View>}
+        accessibilityRole="button"
+        accessibilityLabel={
+          (replacing ? 'Replace with ' : 'Add ') + item.name + ', ' + money(item.price)
+        }
+        disabled={unavailable}
+        onPress={() => onPick(item)}
+        style={({ pressed }) => [
+          styles.item,
+          narrow && styles.itemNarrow,
+          item.categoryId && styles.tile,
+          quantity > 0 && { borderColor: theme.colors.accent },
+          { opacity: unavailable ? 0.45 : pressed ? 0.6 : 1 },
+        ]}
+      >
+        {quantity > 0 && (
+          <View style={styles.count} accessibilityElementsHidden>
+            <Text style={styles.countText}>×{quantity}</Text>
+          </View>
+        )}
+        <DesignItem item={item} size={item.categoryId ? 44 : 48} />
+        <Text numberOfLines={1} style={[styles.name, item.categoryId && styles.tileName]}>
+          {item.name}
+        </Text>
+        {item.categoryId ? (
+          <>
+            <Text numberOfLines={1} style={styles.stock}>Color: {item.color}</Text>
+            <Text numberOfLines={1} style={styles.tilePrice}>{money(item.price)} per bead</Text>
+            <Text numberOfLines={1} style={[styles.stock, !item.stock && { color: theme.colors.danger }]}>
+              {!item.stock ? 'Out of stock' : atStockLimit ? `All ${item.stock} in use` : `${item.stock} available`}
+            </Text>
+          </>
+        ) : (
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+            <Text style={styles.price}>{money(item.price)}</Text>
+            <Icon name={disabled ? 'hand-left-outline' : 'add-circle'} size={22} color={theme.colors.primary} />
+          </View>
+        )}
       </Pressable>
     </GestureDetector>
   );
@@ -208,6 +226,16 @@ const createStyles = (theme: Theme) => {
       gap: 6,
     },
     itemNarrow: { width: '30%', maxWidth: '33%' },
+    tile: { width: '31%', maxWidth: '33%', paddingVertical: 10, gap: 3 },
+    tileName: { fontSize: 11, fontWeight: '600', marginTop: 3 },
+    tilePrice: { fontSize: 11, color: theme.colors.gold, fontWeight: '600' },
+    stock: { fontSize: 9, color: theme.colors.muted },
+    count: {
+      position: 'absolute', top: 6, right: 6, zIndex: 1,
+      minWidth: 22, paddingHorizontal: 5, paddingVertical: 1, borderRadius: 9,
+      backgroundColor: theme.colors.primary, alignItems: 'center',
+    },
+    countText: { fontSize: 9, fontWeight: '700', color: theme.colors.onPrimary },
     name: { fontSize: 10, color: theme.colors.text, textAlign: 'center' },
     price: { fontSize: 10, color: theme.colors.text, fontWeight: '600' },
   });
