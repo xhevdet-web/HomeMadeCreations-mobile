@@ -1,16 +1,16 @@
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Button, Header, Page, useUI } from '@/components/common/ui';
 import { CatalogState } from '@/components/products/CatalogState';
 import { OrderSummary } from '@/components/products/OrderSummary';
-import { commerceApi } from '@/services/commerceApi';
-import { useRemote } from '@/hooks/useRemote';
+import { useGetOrdersQuery } from '@/api/endpoints/orderSlice';
+import { useApiResult } from '@/api/useApiResult';
+import type { OrderPage } from '@/api/commerceModels';
 export default function OrdersScreen() {
   const ui = useUI();
   const [page, setPage] = useState(1);
-  const load = useCallback((signal: AbortSignal) => commerceApi.orders(page, signal), [page]);
-  const result = useRemote(load);
+  const result = useApiResult<OrderPage>(useGetOrdersQuery(page));
   return (
     <Page>
       <Header title="My Orders" />

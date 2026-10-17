@@ -1,5 +1,10 @@
-import { commerceApi, ProductInput, SavedProduct } from './commerceApi';
-import { fetchCategory, fetchCategoryComponents, parseCategorySize } from './catalogApi';
+import type { ProductInput, SavedProduct } from '@/api/commerceModels';
+import { parseCategorySize } from '@/api/catalogModels';
+import { productFormData, productSlice } from '@/api/endpoints/productSlice';
+import { categorySlice } from '@/api/endpoints/categorySlice';
+import { subCategorySlice } from '@/api/endpoints/subCategorySlice';
+import { apiStore } from '@/api/store';
+import { apiError } from '@/api/apiSlice';
 import { useCatalogStore } from '@/store/catalogStore';
 import { useDesignStore } from '@/store/designStore';
 import { useCommerceStore } from '@/store/commerceStore';
@@ -39,6 +44,7 @@ export function designSignature(): string {
 export async function saveCurrentDesign(
   userId: string,
   capturePreview: () => Promise<string>,
+  createProduct: (formData: FormData) => Promise<SavedProduct>,
 ): Promise<SavedProduct> {
   const input = productInput();
   const signature = designSignature();
@@ -46,18 +52,24 @@ export async function saveCurrentDesign(
   if (saved?.userId === userId && saved.signature === signature && saved.product.designPreviewUrl)
     return saved.product;
   const previewUri = await capturePreview();
-  const product = await commerceApi.save(input, previewUri);
+  const product = await createProduct(await productFormData(input, previewUri));
   useCommerceStore.getState().saveDraft(userId, signature, product);
   return product;
 }
 export async function editSavedDesign(id: string, userId: string) {
-  const saved = await commerceApi.product(id);
+  const request = apiStore.dispatch(productSlice.endpoints.getOwnedProductById.initiate(id, { forceRefetch: true }));
+  let saved: SavedProduct;
+  try { saved = await request.unwrap(); } catch (error) { throw apiError(error); }
+  finally { request.unsubscribe(); }
   if (saved.createdById !== userId) throw new Error('This design belongs to another account.');
   const selectedSize = saved.selectedSize == null ? null : parseCategorySize(saved.selectedSize);
-  const [category, components] = await Promise.all([
-    fetchCategory(saved.categoryId),
-    fetchCategoryComponents(saved.categoryId),
-  ]);
+  const categoryRequest = apiStore.dispatch(categorySlice.endpoints.getCategoryById.initiate(saved.categoryId, { forceRefetch: true }));
+  const componentRequest = apiStore.dispatch(subCategorySlice.endpoints.getCategoryComponents.initiate(saved.categoryId, { forceRefetch: true }));
+  let category, components;
+  try {
+    [category, components] = await Promise.all([categoryRequest.unwrap(), componentRequest.unwrap()]);
+  } catch (error) { throw apiError(error); }
+  finally { categoryRequest.unsubscribe(); componentRequest.unsubscribe(); }
   const registry = useCatalogStore.getState();
   const productId = registry.registerCategory(category);
   registry.registerComponents(

@@ -13,6 +13,8 @@ import { BeadPicker } from '@/components/designer/BeadPicker';
 import { CategoryBeadPicker } from '@/components/designer/CategoryBeadPicker';
 import { useDesignStore } from '@/store/designStore';
 import { saveCurrentDesign } from '@/services/savedDesign';
+import { useCreateProductMutation } from '@/api/endpoints/productSlice';
+import { apiError } from '@/api/apiSlice';
 import { useAuthStore } from '@/store/authStore';
 import { itemById, productById } from '@/services/catalog';
 import { type Theme } from '@/constants/theme';
@@ -51,6 +53,7 @@ export default function DesignerScreen() {
   const sizeLabel = design.selectedSize ? `${design.selectedSize.name} \u2022 ${design.selectedSize.measurement} ${design.selectedSize.unit}` : design.size;
   const [message, setMessage, setInlineMessage] = useFeedbackState('info');
   const [saving, setSaving] = useState(false);
+  const [createProduct] = useCreateProductMutation();
   const savingRef = useRef(false);
   const [reorderingItem, setReorderingItem] = useState<CustomizationItem | null>(null);
   const [draggingItem, setDraggingItem] = useState<CustomizationItem | null>(null);
@@ -194,10 +197,10 @@ export default function DesignerScreen() {
     toast.info('Saving your design. Please wait for confirmation before continuing.');
     try {
       const saved = await saveCurrentDesign(user.id, () =>
-        capture(useDesignStore.getState().items));
+        capture(useDesignStore.getState().items), (formData) => createProduct(formData).unwrap());
       setMessage(`Saved to My Designs. ${saved.itemCount} beads · ${money(saved.price)}. Stock is not reserved. Next, preview your creation and review your order.`, 'success');
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unable to save design.';
+      const message = apiError(error).message;
       setMessage(message + ' Your design is still here. Check the issue, then save again.', 'error');
     }
     finally { savingRef.current = false; setSaving(false); }

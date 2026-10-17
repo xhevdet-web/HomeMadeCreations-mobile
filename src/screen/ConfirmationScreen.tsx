@@ -1,28 +1,23 @@
-import { useCallback } from 'react';
 import { Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Header, Icon, IconButton, Page, useUI } from '@/components/common/ui';
 import { ActionFooter, DetailRow, ProductOverview } from '@/components/checkout/Flow';
 import { CatalogState } from '@/components/products/CatalogState';
 import { OrderSummary } from '@/components/products/OrderSummary';
-import { commerceApi } from '@/services/commerceApi';
-import { useRemote } from '@/hooks/useRemote';
+import { useGetOrderByIdQuery } from '@/api/endpoints/orderSlice';
+import { useApiResult } from '@/api/useApiResult';
 import { useTheme } from '@/hooks/useTheme';
 import { useCommerceStore } from '@/store/commerceStore';
 import { useAuthStore } from '@/store/authStore';
 import { money } from '@/helper/pricing';
+import type { ApiOrder } from '@/api/commerceModels';
 
 export default function ConfirmationScreen() {
   const ui = useUI();
   const theme = useTheme();
   const { id, placed } = useLocalSearchParams<{ id: string; placed?: string }>();
   const user = useAuthStore((state) => state.user);
-  const load = useCallback(
-    (signal: AbortSignal) =>
-      id && user ? commerceApi.orderDetails(id, signal) : Promise.resolve(null),
-    [id, user],
-  );
-  const result = useRemote(load);
+  const result = useApiResult<ApiOrder>(useGetOrderByIdQuery(id ?? '', { skip: !id || !user }));
   const cached = useCommerceStore((state) => state.lastOrder);
   const fetched = result.data?.id === id && result.data.userId === user?.id ? result.data : null;
   const order = fetched ?? (cached?.id === id && cached.userId === user?.id ? cached : null);

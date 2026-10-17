@@ -4,7 +4,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { IconButton, useUI } from '@/components/common/ui';
 import { useTheme } from '@/hooks/useTheme';
 import { money } from '@/helper/pricing';
-import { SavedProduct } from '@/services/commerceApi';
+import { SavedProduct } from '@/api/commerceModels';
 import { CatalogImage } from './CatalogImage';
 
 export function ProductImagePreview({ product, onClose }: {

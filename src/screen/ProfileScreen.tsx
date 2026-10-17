@@ -5,7 +5,9 @@ import { Text } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Button, Field, Header, Page, useUI } from '@/components/common/ui';
 import { useAuthStore } from '@/store/authStore';
-import { commerceApi, DeliveryInput } from '@/services/commerceApi';
+import type { DeliveryInput } from '@/api/commerceModels';
+import { useUpdateProfileMutation } from '@/api/endpoints/userSlice';
+import { apiError } from '@/api/apiSlice';
 import { User } from '@/types/models';
 
 function ProfileForm({ user }: { user: User }) {
@@ -18,6 +20,7 @@ function ProfileForm({ user }: { user: User }) {
   const [address, setAddress] = useState(user.address.street);
   const [postalCode, setPostalCode] = useState(user.address.postalCode);
   const [busy, setBusy] = useState(false);
+  const [updateProfile] = useUpdateProfileMutation();
   const [message, setMessage] = useFeedbackState('info');
   async function save() {
     if (busy) return;
@@ -51,7 +54,7 @@ function ProfileForm({ user }: { user: User }) {
     toast.info('Saving your delivery details. Please wait for confirmation.');
     setMessage('');
     try {
-      const updated = await commerceApi.updateProfile(changes);
+      const updated = await updateProfile(changes).unwrap();
       useAuthStore.getState().update(updated);
       setFirstName(updated.firstName);
       setLastName(updated.lastName);
@@ -67,7 +70,7 @@ function ProfileForm({ user }: { user: User }) {
       );
       if (next === 'checkout') router.dismissTo('/checkout');
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unable to save profile.';
+      const message = apiError(error).message;
       setMessage(message);
       toast.error(message + ' Check your details and try saving again.');
     } finally {

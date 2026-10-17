@@ -5,6 +5,8 @@ import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, AppState, Appearance, Platform, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { Provider } from 'react-redux';
+import { apiStore } from '@/api/store';
 
 import { useAuthStore } from '@/store/authStore';
 import { useOnboardingStore } from '@/store/onboardingStore';
@@ -40,6 +42,7 @@ export default function RootLayout() {
     if (ready && Platform.OS !== 'web') Appearance.setColorScheme(theme.mode);
   }, [ready, theme.mode]);
   return (
+    <Provider store={apiStore}>
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <StatusBar style={theme.mode === 'dark' ? 'light' : 'dark'} />
@@ -89,5 +92,6 @@ export default function RootLayout() {
         {ready && <ToastHost />}
       </SafeAreaProvider>
     </GestureHandlerRootView>
+    </Provider>
   );
 }

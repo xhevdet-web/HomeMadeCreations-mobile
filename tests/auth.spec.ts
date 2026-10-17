@@ -1,5 +1,12 @@
 import { expect, test } from '@playwright/test';
 
+async function openLogin(page: import('@playwright/test').Page) {
+  await page.goto('/');
+  const welcome = page.getByRole('button', { name: 'Already have an account? Sign In' });
+  if (await welcome.isVisible()) await welcome.click();
+  await expect(page.getByRole('button', { name: 'Log In', exact: true })).toBeVisible();
+}
+
 test('guests and old local profiles cannot access protected routes', async ({ page }) => {
   await page.addInitScript(() =>
     localStorage.setItem(
@@ -22,7 +29,9 @@ test('guests and old local profiles cannot access protected routes', async ({ pa
     '/confirmation',
   ]) {
     await page.goto(route);
-    await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
+    const welcome = page.getByRole('button', { name: 'Already have an account? Sign In' });
+    if (await welcome.isVisible()) await welcome.click();
+    await expect(page.getByRole('button', { name: 'Log In', exact: true })).toBeVisible();
     await expect(page).toHaveURL(/\/login$/);
     await expect(page.getByText(/Your idea\./)).toHaveCount(0);
   }
@@ -41,29 +50,29 @@ test('login validates session, opens Home, logout locks routes and clears memory
       json: { id: 'test-user', firstName: 'Mila', lastName: 'Stone', email: 'mila@example.com' },
     }),
   );
-  await page.goto('/');
+  await openLogin(page);
   await page.getByLabel('Email or username', { exact: true }).fill('mila@example.com');
   await page.getByLabel('Password', { exact: true }).fill('ValidPassword123!');
-  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await page.getByRole('button', { name: 'Log In', exact: true }).click();
   await expect(page.getByText(/Your idea\./)).toBeVisible();
   const stored = await page.evaluate(() => JSON.stringify({ ...localStorage, ...sessionStorage }));
   expect(stored).not.toContain('access-test');
   expect(stored).not.toContain('refresh-test');
   await page.getByRole('tab', { name: 'Profile', exact: true }).click();
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Log In', exact: true })).toBeVisible();
   await page.goBack();
-  await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Log In', exact: true })).toBeVisible();
 });
 
 test('failed credentials never open the main app', async ({ page }) => {
   await page.route('**/api/v1/auth/login', (route) => route.fulfill({ status: 401, json: {} }));
-  await page.goto('/');
+  await openLogin(page);
   await page.getByLabel('Email or username', { exact: true }).fill('mila@example.com');
   await page.getByLabel('Password', { exact: true }).fill('incorrect');
-  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await expect(page.getByRole('alert')).toContainText('incorrect');
-  await expect(page).toHaveURL(/\/login$/);
+  await page.getByRole('button', { name: 'Log In', exact: true }).click();
+  await expect(page.getByRole('alert').first()).toContainText('incorrect');
+  await expect(page).toHaveURL(/\/login(?:\?.*)?$/);
 });
 
 test('web reload requires login because bearer tokens are not persisted on web', async ({
@@ -77,13 +86,13 @@ test('web reload requires login because bearer tokens are not persisted on web',
       json: { id: 'test-user', firstName: 'Mila', lastName: 'Stone', email: 'mila@example.com' },
     }),
   );
-  await page.goto('/');
+  await openLogin(page);
   await page.getByLabel('Email or username', { exact: true }).fill('mila@example.com');
   await page.getByLabel('Password', { exact: true }).fill('ValidPassword123!');
-  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await page.getByRole('button', { name: 'Log In', exact: true }).click();
   await expect(page.getByText(/Your idea\./)).toBeVisible();
   await page.reload();
-  await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Log In', exact: true })).toBeVisible();
 });
 
 test('registration sends account details to Users API and shows success', async ({ page }) => {
@@ -103,8 +112,8 @@ test('registration sends account details to Users API and shows success', async 
   await page.getByLabel('Email address', { exact: true }).fill('MILA@example.com');
   await page.getByLabel('Password', { exact: true }).fill('ValidPassword123!');
   await page.getByLabel('Confirm password', { exact: true }).fill('ValidPassword123!');
-  await page.getByRole('button', { name: 'Create my account' }).click();
-  await expect(page.getByRole('alert')).toHaveText('Account created. You can now sign in.');
+  await page.getByRole('button', { name: 'Create Account' }).click();
+  await expect(page).toHaveURL(/\/login(?:\?.*)?$/);
   expect(payload).toEqual({
     firstName: 'Mila',
     lastName: 'Stone',
@@ -116,7 +125,6 @@ test('registration sends account details to Users API and shows success', async 
     address: '12 Main Street',
     postalCode: '10000',
   });
-  await expect(page).toHaveURL(/\/register$/);
 });
 
 test('registration displays backend validation errors', async ({ page }) => {
@@ -132,8 +140,8 @@ test('registration displays backend validation errors', async ({ page }) => {
   await page.getByLabel('Email address', { exact: true }).fill('mila@example.com');
   await page.getByLabel('Password', { exact: true }).fill('ValidPassword123!');
   await page.getByLabel('Confirm password', { exact: true }).fill('ValidPassword123!');
-  await page.getByRole('button', { name: 'Create my account' }).click();
-  await expect(page.getByRole('alert')).toContainText('firstName must be shorter');
+  await page.getByRole('button', { name: 'Create Account' }).click();
+  await expect(page.getByRole('alert').first()).toContainText('firstName must be shorter');
 });
 
 test('login accepts a username and submits it as identifier', async ({ page }) => {
@@ -159,9 +167,10 @@ test('login accepts a username and submits it as identifier', async ({ page }) =
   await page.goto('/login');
   await page.getByLabel('Email or username', { exact: true }).fill('Mila.Stone');
   await page.getByLabel('Password', { exact: true }).fill('ValidPassword123!');
-  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await page.getByRole('button', { name: 'Log In', exact: true }).click();
   await expect(page.getByText(/Your idea\./)).toBeVisible();
   expect(payload).toEqual({ identifier: 'mila.stone', password: 'ValidPassword123!' });
   await page.getByRole('tab', { name: 'Profile', exact: true }).click();
-  await expect(page.getByLabel('Street address', { exact: true })).toHaveValue('12 Main Street');
+  await expect(page.getByLabel('Address', { exact: true })).toHaveValue('12 Main Street');
 });
+

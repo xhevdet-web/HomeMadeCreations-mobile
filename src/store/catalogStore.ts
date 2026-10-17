@@ -1,8 +1,8 @@
-import type { SavedProduct } from '@/services/commerceApi';
+import type { SavedProduct } from '@/api/commerceModels';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { itemById, productById, products } from '@/services/catalog';
-import { CatalogCategory, CatalogComponent, fetchProducts, fetchProduct } from '@/services/catalogApi';
+import { CatalogCategory, CatalogComponent } from '@/api/catalogModels';
 import { CustomizationItem, Product } from '@/types/models';
 import { storage } from './storage';
 
@@ -13,6 +13,7 @@ export const useCatalogStore = create<{
   items: Record<string, CustomizationItem>;
   registerCategory: (category: CatalogCategory) => string;
   registerComponents: (components: CatalogComponent[]) => CustomizationItem[];
+  registerSavedProduct: (product: SavedProduct) => Product;
 }>()(
   persist((set, get) => ({
     products: {}, items: {},
@@ -42,6 +43,7 @@ export const useCatalogStore = create<{
       set({ items: { ...get().items, ...entries } });
       return mapped;
     },
+    registerSavedProduct: (product) => registerProduct(product),
   }), {
     name: 'homemade-catalog-v1', storage,
     onRehydrateStorage: () => (state) => {
@@ -64,11 +66,3 @@ function registerProduct(saved: SavedProduct): Product {
   useCatalogStore.setState((state) => ({ products: { ...state.products, [product.id]: product } }));
   return product;
 }
-export const loadProducts = async (signal: AbortSignal) => {
-  const products = await fetchProducts(signal);
-  return signal.aborted ? [] : products.map(registerProduct);
-};
-export const loadProduct = async (id: string, signal: AbortSignal) => {
-  const product = await fetchProduct(id, signal);
-  return signal.aborted ? undefined : registerProduct(product);
-};

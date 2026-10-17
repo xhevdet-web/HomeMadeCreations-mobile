@@ -1,12 +1,13 @@
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { FlatList, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Button, Header, IconButton, Page, useUI } from '@/components/common/ui';
 import { CatalogImage } from '@/components/products/CatalogImage';
 import { CatalogState } from '@/components/products/CatalogState';
-import { useCatalog } from '@/hooks/useCatalog';
+import { useGetCategoryComponentsQuery } from '@/api/endpoints/subCategorySlice';
+import { useApiResult } from '@/api/useApiResult';
 import { useTheme } from '@/hooks/useTheme';
-import { CatalogComponent, fetchCategoryComponents } from '@/services/catalogApi';
+import { CatalogComponent } from '@/api/catalogModels';
 import { money } from '@/helper/pricing';
 
 function ComponentCard({
@@ -73,14 +74,10 @@ function ComponentCard({
 
 function ComponentList({ categoryId }: { categoryId: string }) {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
-  const load = useCallback(
-    (signal: AbortSignal) => fetchCategoryComponents(categoryId, signal),
-    [categoryId],
-  );
-  const catalog = useCatalog(load);
+  const catalog = useApiResult<CatalogComponent[]>(useGetCategoryComponentsQuery(categoryId));
   return (
     <FlatList
-      data={catalog.data}
+      data={catalog.data ?? []}
       extraData={quantities}
       keyExtractor={(item) => item.id}
       contentContainerStyle={{ gap: 12, paddingBottom: 24 }}

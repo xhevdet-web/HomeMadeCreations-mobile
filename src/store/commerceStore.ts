@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { ApiOrder, SavedProduct } from '@/services/commerceApi';
+import { ApiOrder, SavedProduct } from '@/api/commerceModels';
 import { storage } from './storage';
 export const useCommerceStore = create<{
   checkout: { userId: string; product: SavedProduct; notes?: string } | null;

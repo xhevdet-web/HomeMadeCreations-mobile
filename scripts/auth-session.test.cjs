@@ -29,22 +29,9 @@ function load(file, mocks = {}, globals = {}) {
   );
   return module.exports;
 }
-const { parseTokens } = load('src/services/authApi.ts');
-test('native cancellation after the request deadline reports a timeout', async () => {
-  let deadline;
-  let cleared = false;
-  const { authApi } = load('src/services/authApi.ts', {}, {
-    process: { env: { EXPO_PUBLIC_API_URL: 'http://api.test/api/v1' } },
-    AbortController,
-    setTimeout: (callback) => { deadline = callback; return 1; },
-    clearTimeout: () => { cleared = true; },
-    fetch: async (_url, { signal }) => new Promise((_resolve, reject) => {
-      signal.addEventListener('abort', () => reject(new Error('FetchRequestCanceledException: fetch req has been canceled')));
-      deadline();
-    }),
-  });
-  await assert.rejects(authApi.login('test@example.com', 'test'), /request timed out/);
-  assert.equal(cleared, true);
+const { parseTokens } = load('src/api/authModels.ts');
+test('token parser rejects expired sessions', () => {
+  assert.throws(() => parseTokens({ accessToken: 'expired', expiresAt: Date.now() - 1 }), /expired/);
 });
 const user = { id: '1', firstName: 'Mila', lastName: 'Stone', email: 'mila@example.com' };
 const tokens = () => ({
@@ -66,10 +53,24 @@ function fixture(initial = null) {
       saved = null;
     },
   };
+  const authSlice = { endpoints: {
+    login: { initiate: (input) => ({ name: 'login', input }) },
+    getMe: { initiate: (input) => ({ name: 'me', input }) },
+  } };
+  const userSlice = { endpoints: { createUser: { initiate: (input) => ({ name: 'register', input }) } } };
+  const apiStore = { dispatch: (action) => action.name === 'reset' ? undefined : ({
+    unwrap: () => action.name === 'login' ? api.login(action.input.identifier, action.input.password)
+      : action.name === 'me' ? api.me(action.input) : api.register(action.input),
+    unsubscribe() {}, reset() {},
+  }) };
   const create = () =>
     load('src/store/authStore.ts', {
-      '../services/authApi': { authApi: api, parseTokens },
+      '../api/authModels': { parseTokens },
       '../services/authStorage': { authStorage: storage },
+      '@/api/endpoints/authSlice': { authSlice },
+      '@/api/endpoints/userSlice': { userSlice },
+      '@/api/store': { apiStore },
+      '@/api/apiSlice': { apiError: error => error, apiSlice: { util: { resetApiState: () => ({ name: 'reset' }) } } },
     }).useAuthStore;
   return { create, api, storage, saved: () => saved, writes: () => writes };
 }
@@ -152,8 +153,7 @@ test('late login cannot resurrect a logged-out session', async () => {
       resolve = done;
     });
   const pending = store.getState().signIn('mila@example.com', 'secret');
-  await Promise.resolve();
-  await Promise.resolve();
+  while (!resolve) await new Promise(setImmediate);
   await store.getState().logout();
   resolve(user);
   await pending;

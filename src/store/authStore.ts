@@ -1,7 +1,11 @@
 import { create } from 'zustand';
 import type { User } from '../types/models';
-import { authApi, parseTokens, type Tokens } from '../services/authApi';
+import { parseTokens, type Tokens } from '../api/authModels';
 import { authStorage } from '../services/authStorage';
+import { authSlice } from '@/api/endpoints/authSlice';
+import { userSlice, type RegistrationInput } from '@/api/endpoints/userSlice';
+import { apiStore } from '@/api/store';
+import { apiError, apiSlice } from '@/api/apiSlice';
 
 interface AuthState {
   user: User | null;
@@ -10,17 +14,9 @@ interface AuthState {
   error: string | null;
   restore: () => Promise<void>;
   signIn: (identifier: string, password: string) => Promise<void>;
-  register: (input: {
-    firstName: string;
-    lastName: string;
-    email: string;
-    password: string;
-    userName?: string;
-    phone?: string;
-    country?: string;
-    address?: string;
-    postalCode?: string;
-  }) => Promise<void>;
+  beginLogin: () => number;
+  acceptLogin: (tokens: Tokens, ticket: number) => Promise<boolean>;
+  register: (input: RegistrationInput) => Promise<void>;
   update: (user: User) => void;
   logout: () => Promise<void>;
 }
@@ -34,7 +30,10 @@ function stored<T>(operation: () => Promise<T>): Promise<T> {
 }
 async function validate(tokens: Tokens) {
   if (tokens.expiresAt <= Date.now()) throw new Error('Session expired.');
-  const user = await authApi.me(tokens.accessToken);
+  const request = apiStore.dispatch(authSlice.endpoints.getMe.initiate(tokens.accessToken, { forceRefetch: true }));
+  let user;
+  try { user = await request.unwrap(); } catch (error) { throw apiError(error); }
+  finally { request.unsubscribe(); }
   if (tokens.expiresAt <= Date.now()) throw new Error('Session expired.');
   return user;
 }
@@ -76,18 +75,35 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     return restoring;
   },
   signIn: async (identifier, password) => {
-    const current = ++generation;
+    const ticket = get().beginLogin();
+    const request = apiStore.dispatch(authSlice.endpoints.login.initiate({ identifier, password }));
+    try {
+      await get().acceptLogin(await request.unwrap(), ticket);
+    } catch (error) { throw apiError(error); }
+    finally { request.reset(); }
+  },
+  beginLogin: () => {
+    const ticket = ++generation;
     set({ error: null });
-    const tokens = await authApi.login(identifier, password);
+    return ticket;
+  },
+  acceptLogin: async (tokens, current) => {
+    if (current !== generation) return false;
     const user = await validate(tokens);
-    if (current !== generation) return;
+    if (current !== generation) return false;
     await stored(async () => {
       if (current === generation) await authStorage.write(JSON.stringify(tokens));
     });
-    if (current === generation) set({ user, status: 'authenticated', expiresAt: tokens.expiresAt });
+    if (current === generation) {
+      set({ user, status: 'authenticated', expiresAt: tokens.expiresAt });
+      return true;
+    }
+    return false;
   },
   register: async (input) => {
-    await authApi.register(input);
+    const request = apiStore.dispatch(userSlice.endpoints.createUser.initiate(input));
+    try { await request.unwrap(); } catch (error) { throw apiError(error); }
+    finally { request.reset(); }
     // Registration creates an account only; it never grants a simulated session.
   },
   update: (user) => {
@@ -97,6 +113,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     ++generation;
     // Lock routing immediately, even if secure storage takes time or fails.
     set({ user: null, status: 'anonymous', expiresAt: null, error: null });
+    apiStore.dispatch(apiSlice.util.resetApiState());
     try {
       await stored(authStorage.clear);
     } catch {

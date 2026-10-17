@@ -1,6 +1,6 @@
 import { Text, View } from 'react-native';
 import { useUI } from '@/components/common/ui';
-import { SavedProduct } from '@/services/commerceApi';
+import { SavedProduct } from '@/api/commerceModels';
 import { money } from '@/helper/pricing';
 import { CatalogImage } from './CatalogImage';
 export function SavedProductSummary({ product }: { product: SavedProduct }) {

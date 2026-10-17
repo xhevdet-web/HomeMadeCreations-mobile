@@ -3,9 +3,10 @@ import { Text, View, useWindowDimensions } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { Chips, Field, Header, Page, useUI } from '@/components/common/ui';
 import { ProductCard } from '@/components/products/ProductCard';
-import { loadProducts } from '@/store/catalogStore';
-import { useRemote } from '@/hooks/useRemote';
+import { useGetAllProductsQuery } from '@/api/endpoints/productSlice';
+import { useApiResult } from '@/api/useApiResult';
 import { CatalogState } from '@/components/products/CatalogState';
+import type { Product } from '@/types/models';
 
 export default function ProductsScreen() {
   const { category } = useLocalSearchParams<{ category?: string }>();
@@ -15,7 +16,7 @@ export default function ProductsScreen() {
   const [search, setSearch] = useState('');
   const { width } = useWindowDimensions();
   const ui = useUI();
-  const result = useRemote(loadProducts);
+  const result = useApiResult<Product[]>(useGetAllProductsQuery());
   const visible = (result.data ?? []).filter(
     (product) =>
       (filter === 'All' || product.type === (filter === 'Bracelets' ? 'bracelet' : 'necklace')) &&

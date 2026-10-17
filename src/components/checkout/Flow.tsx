@@ -4,7 +4,7 @@ import { Button, Icon, IconName, useUI } from '@/components/common/ui';
 import { CatalogImage } from '@/components/products/CatalogImage';
 import { useTheme } from '@/hooks/useTheme';
 import { money } from '@/helper/pricing';
-import { OrderedProduct, SavedProduct } from '@/services/commerceApi';
+import { OrderedProduct, SavedProduct } from '@/api/commerceModels';
 
 export function TextAction({
   title,

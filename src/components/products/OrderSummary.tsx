@@ -1,7 +1,7 @@
 import { Text, View } from 'react-native';
 import { Icon, useUI } from '@/components/common/ui';
 import { DetailRow, Disclosure, ProductOverview } from '@/components/checkout/Flow';
-import { ApiOrder, orderStages } from '@/services/commerceApi';
+import { ApiOrder, orderStages } from '@/api/commerceModels';
 import { money } from '@/helper/pricing';
 import { useTheme } from '@/hooks/useTheme';
 import { CatalogImage } from './CatalogImage';

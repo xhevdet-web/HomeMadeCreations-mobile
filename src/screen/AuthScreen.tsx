@@ -9,6 +9,9 @@ import { PasswordInput } from '@/components/common/PasswordInput';
 import { useOnboardingStore } from '@/store/onboardingStore';
 import { useThemeStore } from '@/store/themeStore';
 import { useAuthStore } from '@/store/authStore';
+import { useLoginMutation } from '@/api/endpoints/authSlice';
+import { useCreateUserMutation } from '@/api/endpoints/userSlice';
+import { apiError } from '@/api/apiSlice';
 
 import { hasRequiredValues, isValidEmail } from '@/helper/validation';
 
@@ -33,6 +36,8 @@ export function AuthScreen({ register = false }: { register?: boolean }) {
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useFeedbackState();
   const [busy, setBusy] = useState(false);
+  const [login, loginState] = useLoginMutation();
+  const [createUser, createUserState] = useCreateUserMutation();
   const sessionError = useAuthStore((state) => state.error);
   async function submit() {
     if (busy) return;
@@ -55,7 +60,7 @@ export function AuthScreen({ register = false }: { register?: boolean }) {
     toast.info(register ? 'Creating your account. Please wait for confirmation before continuing.' : 'Signing you in. Please wait while we check your account.');
     try {
       if (register) {
-        await useAuthStore.getState().register({
+        await createUser({
           firstName,
           lastName,
           email,
@@ -65,20 +70,29 @@ export function AuthScreen({ register = false }: { register?: boolean }) {
           country,
           address,
           postalCode,
-        });
+        }).unwrap();
         setPassword('');
         setConfirm('');
         toast.success('Account created successfully. Please log in. Next, choose a product or start your design.');
         router.replace({ pathname: '/login', params: { next, registered: '1' } });
       } else {
-        await useAuthStore.getState().signIn(email, password);
+        const ticket = useAuthStore.getState().beginLogin();
+        const tokens = await login({ identifier: email, password }).unwrap();
+        if (!await useAuthStore.getState().acceptLogin(tokens, ticket)) return;
         setPassword('');
         toast.success('Signed in. Next, choose a ready-made product or create your own design.');
         // The protected navigator opens Home once the session is authenticated.
       }
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : 'Unable to sign in. Please try again.');
+      const error = apiError(failure);
+      setError(error.status === 401
+        ? 'Your email, username or password is incorrect, or your session has expired.'
+        : error.status === 409 ? error.message === 'Username is already in use'
+          ? 'This username is already taken.' : 'This email already has an account.'
+          : error.message);
     } finally {
+      loginState.reset();
+      createUserState.reset();
       setBusy(false);
     }
   }

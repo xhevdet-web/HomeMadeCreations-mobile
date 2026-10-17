@@ -81,31 +81,31 @@ test('catalog filters, sorts, falls back for images and caps bead quantities', a
   await increase.click();
   await increase.click();
   await increase.click();
-  await expect(page.getByText('3 / 32 DETAILS')).toBeVisible();
+  await expect(page.getByText(/3 components/)).toBeVisible();
   await expect(increase).toBeDisabled();
   await expect(page.getByRole('button', { name: /^Add Sold bead,/ })).toBeDisabled();
-  await expect(page.getByText('3 / 32 DETAILS')).toBeVisible();
+  await expect(page.getByText(/3 components/)).toBeVisible();
   await expect(page.getByRole('img', { name: 'Shining bead image', exact: true }).first()).toHaveAttribute(
     'src',
     /catalog-placeholder/,
   );
   await page.getByRole('button', { name: 'Undo', exact: true }).click();
-  await expect(page.getByText('2 / 32 DETAILS')).toBeVisible();
+  await expect(page.getByText(/2 components/)).toBeVisible();
   await expect(increase).toBeEnabled();
   await page.getByRole('button', { name: 'Redo', exact: true }).click();
-  await expect(page.getByText('3 / 32 DETAILS')).toBeVisible();
+  await expect(page.getByText(/3 components/)).toBeVisible();
   await page.getByRole('button', { name: 'Preview', exact: true }).click();
   await expect(page).toHaveURL(/\/preview$/);
-  await expect(page.getByText('Estimated price: \u20ac4.50', { exact: true })).toBeVisible();
+  await expect(page.getByTestId('flow-action-footer').getByText('\u20ac4.50', { exact: true })).toBeVisible();
   await page.reload();
   await page.getByLabel('Email or username', { exact: true }).fill('mila@example.com');
   await page.getByLabel('Password', { exact: true }).fill('ValidPassword123!');
   await page.getByRole('button', { name: 'Log In', exact: true }).click();
   await page.getByRole('tab', { name: 'Create', exact: true }).click();
   await page.getByRole('button', { name: 'Continue my design' }).click();
-  await expect(page.getByText('3 / 32 DETAILS')).toBeVisible();
+  await expect(page.getByText(/3 components/)).toBeVisible();
   await page.getByRole('button', { name: 'Preview', exact: true }).click();
-  await expect(page.getByText('Estimated price: \u20ac4.50', { exact: true })).toBeVisible();
+  await expect(page.getByTestId('flow-action-footer').getByText('\u20ac4.50', { exact: true })).toBeVisible();
 });
 
 test('category and component errors retry into empty states', async ({ page }) => {

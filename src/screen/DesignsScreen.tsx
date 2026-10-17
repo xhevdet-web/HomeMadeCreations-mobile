@@ -1,6 +1,6 @@
 import { toast } from '@/store/toastStore';
 import { useFeedbackState } from '@/hooks/useFeedbackState';
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Button, Header, Page, useUI } from '@/components/common/ui';
@@ -8,19 +8,16 @@ import { CatalogState } from '@/components/products/CatalogState';
 import { SavedProductSummary } from '@/components/products/SavedProductSummary';
 import { useAuthStore } from '@/store/authStore';
 import { useCommerceStore } from '@/store/commerceStore';
-import { commerceApi } from '@/services/commerceApi';
+import { useGetUserProductsQuery } from '@/api/endpoints/productSlice';
+import { useApiResult } from '@/api/useApiResult';
+import type { SavedProduct } from '@/api/commerceModels';
 import { editSavedDesign } from '@/services/savedDesign';
-import { useRemote } from '@/hooks/useRemote';
 export default function DesignsScreen() {
   const ui = useUI();
   const user = useAuthStore((state) => state.user);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useFeedbackState();
-  const load = useCallback(
-    (signal: AbortSignal) => (user ? commerceApi.products(user.id, signal) : Promise.resolve([])),
-    [user],
-  );
-  const result = useRemote(load);
+  const result = useApiResult<SavedProduct[]>(useGetUserProductsQuery(user?.id ?? '', { skip: !user }));
   async function edit(id: string) {
     if (!user || busy) return;
     setBusy(true);

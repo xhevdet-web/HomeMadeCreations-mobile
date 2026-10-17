@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { FlatList, Pressable, Text, useWindowDimensions, View } from 'react-native';
 import { router } from 'expo-router';
 import { Icon, SectionTitle, useUI } from '@/components/common/ui';
-import { SavedProduct } from '@/services/commerceApi';
+import { SavedProduct } from '@/api/commerceModels';
 import { useTheme } from '@/hooks/useTheme';
-import { useRemote } from '@/hooks/useRemote';
-import { fetchReadyMadeProducts, readyMadeUnavailable } from '@/services/catalogApi';
+import { useGetReadyMadeProductsQuery } from '@/api/endpoints/productSlice';
+import { useApiResult } from '@/api/useApiResult';
+import { readyMadeUnavailable } from '@/api/catalogModels';
 import { money } from '@/helper/pricing';
 import { CatalogImage } from './CatalogImage';
 import { CatalogState } from './CatalogState';
@@ -16,7 +17,7 @@ export function ReadyMadeCollection({ search }: { search: string }) {
   const theme = useTheme();
   const { width } = useWindowDimensions();
   const [preview, setPreview] = useState<SavedProduct | null>(null);
-  const result = useRemote(fetchReadyMadeProducts);
+  const result = useApiResult<SavedProduct[]>(useGetReadyMadeProductsQuery());
   const products = (result.data ?? []).filter(product =>
     product.stock !== 0 && product.name.toLowerCase().includes(search.trim().toLowerCase()));
   const cardWidth = Math.min(210, Math.min(width, 760) - 72);

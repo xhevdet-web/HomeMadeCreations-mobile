@@ -4,8 +4,9 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Button, Header, Icon, Page, useUI } from '@/components/common/ui';
 import { useTheme } from '@/hooks/useTheme';
 import { CatalogState } from '@/components/products/CatalogState';
-import { useRemote } from '@/hooks/useRemote';
-import { fetchCategory } from '@/services/catalogApi';
+import { useGetCategoryByIdQuery } from '@/api/endpoints/categorySlice';
+import { useApiResult } from '@/api/useApiResult';
+import type { CatalogCategory } from '@/api/catalogModels';
 import { useCatalogStore } from '@/store/catalogStore';
 import { useDesignStore } from '@/store/designStore';
 import { CategorySize } from '@/types/models';
@@ -16,13 +17,8 @@ export default function ChooseSizeScreen() {
   const theme = useTheme();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const opening = useRef(false);
-  const load = useCallback(async (signal: AbortSignal) => {
-    const category = await fetchCategory(categoryId ?? '', signal);
-    if (!category.isActive) throw new Error('This category is unavailable. Choose another category.');
-    return category;
-  }, [categoryId]);
-  const result = useRemote(load);
-  const category = result.data;
+  const result = useApiResult<CatalogCategory>(useGetCategoryByIdQuery(categoryId ?? '', { skip: !categoryId }));
+  const category = result.data?.isActive ? result.data : undefined;
   const selectedSize = category?.sizes?.find(size => size.id === selectedId);
   const openBuilder = useCallback((selectedSize?: CategorySize) => {
     if (!category || opening.current) return;

@@ -1,5 +1,5 @@
 import { useFeedbackState } from '@/hooks/useFeedbackState';
-import { useCallback, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Button, Field, Header, Icon, Page, useUI } from '@/components/common/ui';
@@ -14,12 +14,16 @@ import {
 } from '@/components/checkout/Flow';
 import { useTheme } from '@/hooks/useTheme';
 import { money } from '@/helper/pricing';
-import { useRemote } from '@/hooks/useRemote';
+import { useApiResult } from '@/api/useApiResult';
+import { apiError } from '@/api/apiSlice';
+import { useGetOwnedProductByIdQuery, useLazyGetOwnedProductByIdQuery } from '@/api/endpoints/productSlice';
+import { useLazyGetCategoryComponentsQuery } from '@/api/endpoints/subCategorySlice';
+import { useCreateOrderMutation, useLazyGetOrdersQuery } from '@/api/endpoints/orderSlice';
 import { useAuthStore } from '@/store/authStore';
 import { useCommerceStore } from '@/store/commerceStore';
 import { useCatalogStore } from '@/store/catalogStore';
-import { ApiError, commerceApi, SavedProduct } from '@/services/commerceApi';
-import { fetchProduct, readyMadeUnavailable, fetchCategoryComponents } from '@/services/catalogApi';
+import type { SavedProduct } from '@/api/commerceModels';
+import { readyMadeUnavailable } from '@/api/catalogModels';
 import { User } from '@/types/models';
 import { designSignature, editSavedDesign } from '@/services/savedDesign';
 import { useDesignStore } from '@/store/designStore';
@@ -42,15 +46,19 @@ function CheckoutForm({ product, user }: { product: SavedProduct; user: User }) 
   const [error, setError] = useFeedbackState();
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [createOrder] = useCreateOrderMutation();
+  const [getProduct] = useLazyGetOwnedProductByIdQuery();
+  const [getComponents] = useLazyGetCategoryComponentsQuery();
+  const [getOrders] = useLazyGetOrdersQuery();
   const placing = useRef(false);
   const key = user.id + ':' + product.id;
   const pending = useCommerceStore((state) => !!state.pending[key]);
   async function refreshStock() {
     if (readyMade) {
-      setCurrentProduct(await fetchProduct(product.id));
+      setCurrentProduct(await getProduct(product.id, false).unwrap());
       return;
     }
-    const components = await fetchCategoryComponents(product.categoryId);
+    const components = await getComponents(product.categoryId, false).unwrap();
     useCatalogStore.getState().registerComponents(components);
   }
   async function place() {
@@ -69,7 +77,7 @@ function CheckoutForm({ product, user }: { product: SavedProduct; user: User }) 
     try {
       useCommerceStore.getState().setPending(key, true);
       sent = true;
-      const order = await commerceApi.order(product.id, notes);
+      const order = await createOrder({ productId: product.id, notes }).unwrap();
       useCommerceStore.getState().rememberOrder(order);
       // Only clear the matching local draft after the backend confirms the Order.
       // An unrelated draft may also be open, so leave that one alone.
@@ -90,27 +98,25 @@ function CheckoutForm({ product, user }: { product: SavedProduct; user: User }) 
       }
       // Keep this checkout locked after success to prevent submitting it again.
       router.replace({ pathname: '/confirmation', params: { id: order.id, placed: '1' } });
-      void Promise.allSettled([refreshStock(), commerceApi.orders()]);
+      void Promise.allSettled([refreshStock(), getOrders(1, false).unwrap()]);
     } catch (failure) {
-      const uncertain =
-        sent && (!(failure instanceof ApiError) || failure.status === 0 || failure.status >= 500);
+      const requestError = apiError(failure);
+      const uncertain = sent && (requestError.status === 0 || requestError.status >= 500);
       if (sent && !uncertain) useCommerceStore.getState().setPending(key, false);
       setError(
         uncertain
           ? 'We could not confirm whether your order was placed. Check My Orders before doing anything else. This checkout will not submit again.'
-          : failure instanceof Error
-            ? failure.message
-            : 'Unable to place the order.',
+          : requestError.message,
       );
-      if (failure instanceof ApiError && [400, 409, 422].includes(failure.status)) {
-        setNeedsProfile(/profile|firstName|lastName|phone|country|address/i.test(failure.message));
-        if (readyMade && /stock|inventory|insufficient/i.test(failure.message)) {
+      if ([400, 409, 422].includes(requestError.status)) {
+        setNeedsProfile(/profile|firstName|lastName|phone|country|address/i.test(requestError.message));
+        if (readyMade && /stock|inventory|insufficient/i.test(requestError.message)) {
           setCurrentProduct((current) => ({ ...current, stock: undefined }));
           try {
             await refreshStock();
           } catch {
             setError(
-              failure.message +
+              requestError.message +
                 ' Could not refresh stock. Reopen this order review to check availability.',
             );
           }
@@ -287,21 +293,10 @@ export default function CheckoutScreen() {
   const checkout = useCommerceStore((state) => state.checkout);
   const userId = user?.id;
   const id = checkout?.userId === user?.id ? checkout?.product.id : undefined;
-  const load = useCallback(
-    async (signal: AbortSignal) => {
-      if (!id || !userId) return null;
-      const product = await commerceApi.product(id, signal);
-      if (product.productType === 'READY_MADE') {
-        const unavailable = readyMadeUnavailable(product);
-        if (product.isActive !== true) throw new Error(unavailable ?? 'Product unavailable.');
-      } else if (product.createdById !== userId)
-        throw new Error('This design belongs to another account.');
-      return product;
-    },
-    [id, userId],
-  );
-  const result = useRemote(load);
-  if (result.data && user && !result.loading && !result.error) {
+  const result = useApiResult<SavedProduct>(useGetOwnedProductByIdQuery(id ?? '', { skip: !id || !userId }));
+  const validProduct = result.data && (result.data.productType === 'READY_MADE'
+    ? result.data.isActive === true : result.data.createdById === userId);
+  if (result.data && validProduct && user && !result.loading && !result.error) {
     return <CheckoutForm key={result.data.id + user.id} product={result.data} user={user} />;
   }
   return (

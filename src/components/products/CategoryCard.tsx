@@ -2,7 +2,7 @@ import { Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Icon, useUI } from '@/components/common/ui';
 import { useTheme } from '@/hooks/useTheme';
-import { CatalogCategory } from '@/services/catalogApi';
+import { CatalogCategory } from '@/api/catalogModels';
 import { CatalogImage } from './CatalogImage';
 import { useCatalogStore } from '@/store/catalogStore';
 import { useDesignStore } from '@/store/designStore';

@@ -14,6 +14,8 @@ import { useDesignPreviewCapture } from '@/hooks/useDesignPreviewCapture';
 import { useTheme } from '@/hooks/useTheme';
 import { useFeedbackState } from '@/hooks/useFeedbackState';
 import { toast, useToastStore } from '@/store/toastStore';
+import { useCreateProductMutation } from '@/api/endpoints/productSlice';
+import { apiError } from '@/api/apiSlice';
 
 export default function PreviewScreen() {
   const ui = useUI();
@@ -25,6 +27,7 @@ export default function PreviewScreen() {
   const [intent, setIntent] = useState<'save' | 'checkout' | null>(null);
   const submitting = useRef(false);
   const { ref: previewRef, exporting, capture } = useDesignPreviewCapture();
+  const [createProduct] = useCreateProductMutation();
   const product = productById[draft.productId];
   const busy = intent !== null;
   let signature = '';
@@ -50,8 +53,10 @@ export default function PreviewScreen() {
     setIntent(checkout ? 'checkout' : 'save');
     setError('');
     try {
-      const result = await saveCurrentDesign(user.id, () =>
-        capture(useDesignStore.getState().items),
+      const result = await saveCurrentDesign(
+        user.id,
+        () => capture(useDesignStore.getState().items),
+        (formData) => createProduct(formData).unwrap(),
       );
       if (checkout) {
         const notification = useToastStore.getState().current;
@@ -62,7 +67,7 @@ export default function PreviewScreen() {
         toast.success('Saved to My Designs. Come back whenever you’re ready.');
       }
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : 'Unable to save your design.');
+      setError(apiError(failure).message);
     } finally {
       submitting.current = false;
       setIntent(null);

@@ -1,16 +1,17 @@
 import { useTheme } from '@/hooks/useTheme';
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { Text, useWindowDimensions, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Button, Chips, Header, Icon, Page, useUI } from '@/components/common/ui';
 import { CatalogImage } from '@/components/products/CatalogImage';
 import { CatalogState } from '@/components/products/CatalogState';
-import { useRemote } from '@/hooks/useRemote';
-import { loadProduct } from '@/store/catalogStore';
+import { useGetCanvasProductByIdQuery } from '@/api/endpoints/productSlice';
+import { useApiResult } from '@/api/useApiResult';
 import { products } from '@/services/catalog';
 import { money } from '@/helper/pricing';
 import { useDesignStore } from '@/store/designStore';
+import type { Product } from '@/types/models';
 
 import ReadyMadeScreen from './ReadyMadeScreen';
 
@@ -24,15 +25,12 @@ function CustomDetailsScreen() {
   const ui = useUI();
 
   const { id } = useLocalSearchParams<{ id: string }>();
-  const load = useCallback((signal: AbortSignal) => {
-    const local = products.find((product) => product.id === id);
-    return local ? Promise.resolve(local) : loadProduct(id ?? '', signal);
-  }, [id]);
-  const result = useRemote(load);
-  const product = result.data;
+  const local = products.find((product) => product.id === id);
+  const result = useApiResult<Product>(useGetCanvasProductByIdQuery(id ?? '', { skip: !!local || !id }));
+  const product = local ?? result.data;
   const [size, setSize] = useState<string | null>(null);
   const { width } = useWindowDimensions();
-  if (result.loading || result.error) return <Page><Header title="Product details" back />
+  if (!local && (result.loading || result.error)) return <Page><Header title="Product details" back />
     <CatalogState {...result} error={result.error ?? ''} empty="Product unavailable." /></Page>;
   if (!product)
     return (
