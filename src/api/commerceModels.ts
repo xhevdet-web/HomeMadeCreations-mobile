@@ -31,6 +31,20 @@ export type OrderedProduct = Pick<
   SavedProduct,
   'id' | 'name' | 'description' | 'imageUrl' | 'designPreviewUrl' | 'price' | 'itemCount' | 'items' | 'productType'
 >;
+// A finished piece by another customer, shown for inspiration. The backend excludes the
+// current user's products and ready-made products, and never exposes customer details.
+export interface CommunityCreation {
+  /** Stable list key only; never shown to the user. */
+  completedOrderId: string;
+  completedOrderUpdatedAt: string;
+  product: Pick<
+    SavedProduct,
+    | 'id' | 'name' | 'description' | 'imageUrl' | 'designPreviewUrl' | 'price' | 'itemCount'
+    | 'items' | 'categoryId' | 'selectedSize'
+  > & {
+    createdBy: { id: string; firstName: string; lastName: string; userName?: string | null };
+  };
+}
 export const orderStages = [
   'ORDERED', 'CREATING', 'CREATED', 'READY_FOR_COURIER', 'PICKED_UP_BY_COURIER', 'COMPLETED',
 ] as const;

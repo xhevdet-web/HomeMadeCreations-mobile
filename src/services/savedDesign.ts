@@ -9,6 +9,7 @@ import { useCatalogStore } from '@/store/catalogStore';
 import { useDesignStore } from '@/store/designStore';
 import { useCommerceStore } from '@/store/commerceStore';
 import { productById } from './catalog';
+import { uniqueId } from '@/helper/design';
 export function productInput(): ProductInput {
   const draft = useDesignStore.getState();
   const categoryId = productById[draft.productId]?.categoryId;
@@ -62,6 +63,23 @@ export async function editSavedDesign(id: string, userId: string) {
   try { saved = await request.unwrap(); } catch (error) { throw apiError(error); }
   finally { request.unsubscribe(); }
   if (saved.createdById !== userId) throw new Error('This design belongs to another account.');
+  await loadIntoStudio(saved, userId, saved.id);
+}
+
+type DesignSource = Pick<SavedProduct,
+  'categoryId' | 'name' | 'description' | 'selectedSize' | 'items'>;
+
+/**
+ * Starts a new design from another customer's finished creation. Customers can only
+ * order their own products, so the copy is saved as the buyer's new Product when they
+ * continue to delivery, using today's bead prices and stock.
+ */
+export async function copyCreation(product: DesignSource, userId: string) {
+  if (!product.items?.length) throw new Error('This creation has no beads to copy.');
+  await loadIntoStudio(product, userId, uniqueId());
+}
+
+async function loadIntoStudio(saved: DesignSource, userId: string, designId: string) {
   const selectedSize = saved.selectedSize == null ? null : parseCategorySize(saved.selectedSize);
   const categoryRequest = apiStore.dispatch(categorySlice.endpoints.getCategoryById.initiate(saved.categoryId, { forceRefetch: true }));
   const componentRequest = apiStore.dispatch(subCategorySlice.endpoints.getCategoryComponents.initiate(saved.categoryId, { forceRefetch: true }));
@@ -101,7 +119,7 @@ export async function editSavedDesign(id: string, userId: string) {
   useDesignStore
     .getState()
     .load({
-      id: saved.id,
+      id: designId,
       userId,
       productId,
       name: saved.name,

@@ -95,9 +95,9 @@ test('web reload requires login because bearer tokens are not persisted on web',
   await expect(page.getByRole('button', { name: 'Log In', exact: true })).toBeVisible();
 });
 
-test('registration sends account details to Users API and shows success', async ({ page }) => {
+test('registration sends account details to the register API and shows success', async ({ page }) => {
   let payload: unknown;
-  await page.route('**/api/v1/users', async (route) => {
+  await page.route('**/api/v1/auth/register', async (route) => {
     payload = route.request().postDataJSON();
     await route.fulfill({ status: 201, json: { id: 'registered-user' } });
   });
@@ -128,7 +128,7 @@ test('registration sends account details to Users API and shows success', async 
 });
 
 test('registration displays backend validation errors', async ({ page }) => {
-  await page.route('**/api/v1/users', (route) =>
+  await page.route('**/api/v1/auth/register', (route) =>
     route.fulfill({
       status: 400,
       json: { message: ['firstName must be shorter than or equal to 100 characters'] },

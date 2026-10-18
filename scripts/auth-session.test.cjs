@@ -56,8 +56,8 @@ function fixture(initial = null) {
   const authSlice = { endpoints: {
     login: { initiate: (input) => ({ name: 'login', input }) },
     getMe: { initiate: (input) => ({ name: 'me', input }) },
+    register: { initiate: (input) => ({ name: 'register', input }) },
   } };
-  const userSlice = { endpoints: { createUser: { initiate: (input) => ({ name: 'register', input }) } } };
   const apiStore = { dispatch: (action) => action.name === 'reset' ? undefined : ({
     unwrap: () => action.name === 'login' ? api.login(action.input.identifier, action.input.password)
       : action.name === 'me' ? api.me(action.input) : api.register(action.input),
@@ -68,7 +68,6 @@ function fixture(initial = null) {
       '../api/authModels': { parseTokens },
       '../services/authStorage': { authStorage: storage },
       '@/api/endpoints/authSlice': { authSlice },
-      '@/api/endpoints/userSlice': { userSlice },
       '@/api/store': { apiStore },
       '@/api/apiSlice': { apiError: error => error, apiSlice: { util: { resetApiState: () => ({ name: 'reset' }) } } },
     }).useAuthStore;

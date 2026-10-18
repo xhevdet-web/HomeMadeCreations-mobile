@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 test('successful registration confirms the account and opens login', async ({ page }) => {
-  await page.route('**/users', (route) => route.fulfill({ status: 201, json: {} }));
+  await page.route('**/auth/register', (route) => route.fulfill({ status: 201, json: {} }));
   await page.goto('/register');
   await page.getByLabel('First name').fill('Mila');
   await page.getByLabel('Last name').fill('Stone');

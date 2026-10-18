@@ -106,11 +106,3 @@ export interface Order {
   delivery: number;
   total: number;
 }
-export interface RegistrationInput {
-  firstName: string;
-  lastName: string;
-  email: string;
-  address: string;
-  password: string;
-  confirmPassword: string;
-}

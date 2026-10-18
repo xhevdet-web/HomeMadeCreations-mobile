@@ -3,7 +3,7 @@ import { fetch } from 'expo/fetch';
 import { apiSlice, ApiError } from '../apiSlice';
 import { PRODUCT_URL, USER_URL } from '../constants';
 import { parseProduct } from '@/api/catalogModels';
-import type { ProductInput, SavedProduct } from '@/api/commerceModels';
+import type { CommunityCreation, ProductInput, SavedProduct } from '@/api/commerceModels';
 import { useCatalogStore } from '@/store/catalogStore';
 
 export async function productFormData(input: ProductInput, previewUri: string): Promise<FormData> {
@@ -66,6 +66,14 @@ export const productSlice = apiSlice.injectEndpoints({
       query: (userId) => ({ url: `${USER_URL}/${encodeURIComponent(userId)}/products`, auth: true }),
       providesTags: ['Product'],
     }),
+    getCreationsFromOthers: builder.query<CommunityCreation[], void>({
+      query: () => ({ url: `${PRODUCT_URL}/creations/from-others`, auth: true }),
+      transformResponse: (value: { data?: unknown } | null) => {
+        if (!Array.isArray(value?.data)) throw new Error('The server returned an invalid creations list.');
+        return value.data as CommunityCreation[];
+      },
+      providesTags: ['Product'],
+    }),
     createProduct: builder.mutation<SavedProduct, FormData>({
       query: (body) => ({ url: PRODUCT_URL, method: 'POST', body, auth: true }),
       invalidatesTags: ['Product'],
@@ -73,4 +81,4 @@ export const productSlice = apiSlice.injectEndpoints({
   }),
 });
 
-export const { useGetAllProductsQuery, useGetProductByIdQuery, useGetOwnedProductByIdQuery, useLazyGetOwnedProductByIdQuery, useGetCanvasProductByIdQuery, useGetReadyMadeProductsQuery, useGetUserProductsQuery, useCreateProductMutation } = productSlice;
+export const { useGetAllProductsQuery, useGetProductByIdQuery, useGetOwnedProductByIdQuery, useLazyGetOwnedProductByIdQuery, useGetCanvasProductByIdQuery, useGetReadyMadeProductsQuery, useGetUserProductsQuery, useGetCreationsFromOthersQuery, useCreateProductMutation } = productSlice;

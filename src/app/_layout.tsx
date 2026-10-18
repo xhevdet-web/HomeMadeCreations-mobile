@@ -73,6 +73,7 @@ export default function RootLayout() {
               <Stack.Screen name="checkout" />
               <Stack.Screen name="confirmation" />
               <Stack.Screen name="account" />
+              <Stack.Screen name="creation" />
             </Stack.Protected>
           </Stack>
         ) : (

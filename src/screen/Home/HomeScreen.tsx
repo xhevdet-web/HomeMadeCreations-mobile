@@ -1,5 +1,5 @@
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { router } from 'expo-router';
 import { Brand, Icon, IconButton, Page, useUI } from '@/components/common/ui';
@@ -10,13 +10,20 @@ import { useAuthStore } from '@/store/authStore';
 import { useDesignStore } from '@/store/designStore';
 import { useGetOrdersQuery } from '@/api/endpoints/orderSlice';
 import { useGetAllCategoriesQuery } from '@/api/endpoints/categorySlice';
+import {
+  useGetCreationsFromOthersQuery, useGetReadyMadeProductsQuery, useGetUserProductsQuery,
+} from '@/api/endpoints/productSlice';
+import { apiError } from '@/api/apiSlice';
+import { useApiResult } from '@/api/useApiResult';
+import type { CommunityCreation } from '@/api/commerceModels';
 import { productById } from '@/services/catalog';
 import { openCategory } from '@/services/categoryFlow';
 import { designPrice } from '@/helper/pricing';
 import { HomeHero } from './components/HomeHero';
 import { ActiveOrderCard, DraftCard } from './components/ContinueSection';
 import { CategoryRail } from './components/CategoryRail';
-import { ComingSoon, TrustStrip } from './components/Highlights';
+import { ComingNext, TrustStrip, type UpcomingFeature } from './components/Highlights';
+import { CommunityCreations, FavouriteBeads, favouriteBeads } from './components/ForYou';
 
 function greeting() {
   const hour = new Date().getHours();
@@ -34,6 +41,34 @@ export default function HomeScreen() {
   const draft = useDesignStore();
   const { data: orderPage } = useGetOrdersQuery(1, { skip: !user });
   const { data: categories } = useGetAllCategoriesQuery();
+  const { data: designs } = useGetUserProductsQuery(user?.id ?? '', { skip: !user });
+  const { data: readyMade } = useGetReadyMadeProductsQuery();
+  // Community creations need a valid session; request them once it has been restored.
+  const authenticated = useAuthStore((state) => state.status === 'authenticated');
+  const creationsQuery = useGetCreationsFromOthersQuery(undefined, { skip: !authenticated });
+  const creations = useApiResult<CommunityCreation[]>(creationsQuery);
+  const { error: creationsError, refetch: refetchCreations } = creationsQuery;
+  const unauthorized = !!creationsError && apiError(creationsError).status === 401;
+  const restoringSession = useRef(false);
+  useEffect(() => {
+    // A 401 means the token was rejected: re-validate the session once. An invalid
+    // session signs out, and the protected navigator then opens Login.
+    if (!unauthorized || restoringSession.current) return;
+    restoringSession.current = true;
+    void useAuthStore.getState().restore().then(() => {
+      if (useAuthStore.getState().status === 'authenticated') void refetchCreations();
+    });
+  }, [unauthorized, refetchCreations]);
+  const myDesigns = (designs ?? []).filter((design) => design.productType !== 'READY_MADE');
+  const favourites = favouriteBeads(myDesigns);
+  const upcoming: UpcomingFeature[] = [
+    { title: 'Best sellers', detail: 'The pieces everyone is ordering', icon: 'trophy-outline',
+      images: (readyMade ?? []).map((product) => product.designPreviewUrl ?? product.imageUrl) },
+    { title: 'Trending beads', detail: 'Popular beads this season', icon: 'trending-up-outline',
+      images: favourites.map((bead) => bead.imageUrl) },
+    { title: 'Gift wrapping', detail: 'Ready to give, with a note', icon: 'gift-outline' },
+    { title: 'Gift cards', detail: 'Let them design their own', icon: 'card-outline' },
+  ];
 
   const activeOrder = orderPage?.data.find((order) => order.status !== 'COMPLETED');
   const draftProduct = draft.items.length ? productById[draft.productId] : undefined;
@@ -106,8 +141,18 @@ export default function HomeScreen() {
       </View>
       <ReadyMadeCollection search={search} />
 
+      <CommunityCreations
+        creations={creations.data ?? []}
+        loading={creations.loading || !authenticated || unauthorized}
+        error={unauthorized ? '' : creations.error}
+        onRetry={creations.retry}
+        onOpen={(creation) =>
+          router.push({ pathname: '/creation', params: { id: creation.completedOrderId } })}
+      />
+      {favourites.length > 0 && <FavouriteBeads beads={favourites} />}
+
       <TrustStrip />
-      <ComingSoon />
+      <ComingNext features={upcoming} />
     </Page>
   );
 }

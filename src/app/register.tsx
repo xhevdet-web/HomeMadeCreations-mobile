@@ -1,4 +1,1 @@
-import { AuthScreen } from '@/screen/AuthScreen';
-export default function Register() {
-  return <AuthScreen register />;
-}
+export { default } from '@/screen/Auth/RegisterScreen';

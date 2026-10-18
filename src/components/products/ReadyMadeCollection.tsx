@@ -1,68 +1,153 @@
 import { useState } from 'react';
-import { FlatList, Pressable, Text, useWindowDimensions, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { Icon, SectionTitle, useUI } from '@/components/common/ui';
+import { Icon, useUI } from '@/components/common/ui';
 import { SavedProduct } from '@/api/commerceModels';
-import { useTheme } from '@/hooks/useTheme';
+import { useTheme, useThemedStyles } from '@/hooks/useTheme';
 import { useGetReadyMadeProductsQuery } from '@/api/endpoints/productSlice';
 import { useApiResult } from '@/api/useApiResult';
 import { readyMadeUnavailable } from '@/api/catalogModels';
 import { money } from '@/helper/pricing';
+import { type Theme } from '@/constants/theme';
 import { CatalogImage } from './CatalogImage';
 import { CatalogState } from './CatalogState';
 import { ProductImagePreview } from './ProductImagePreview';
 
+const CARD_WIDTH = 172;
+const GAP = 12;
+
+function ReadyMadeCard({ product, onPreview }: { product: SavedProduct; onPreview: () => void }) {
+  const theme = useTheme();
+  const c = theme.colors;
+  const styles = useThemedStyles(createStyles);
+  const unavailable = readyMadeUnavailable(product);
+  const lowStock = typeof product.stock === 'number' && product.stock > 0 && product.stock < 3;
+  const order = () =>
+    router.push({ pathname: '/details', params: { id: product.id, purchase: 'ready-made' } });
+  return (
+    <View style={styles.card}>
+      <Pressable accessibilityRole="button" accessibilityLabel={`Preview ${product.name} image`}
+        onPress={onPreview} style={({ pressed }) => [styles.imageArea, { opacity: pressed ? 0.85 : 1 }]}>
+        <CatalogImage imageUrl={product.designPreviewUrl ?? product.imageUrl}
+          name={product.name} size={CARD_WIDTH - 24} />
+        {(lowStock || !!unavailable) && (
+          <View style={[styles.badge, { backgroundColor: c.danger }]}>
+            <Text style={styles.badgeText}>
+              {unavailable ?? `Only ${product.stock} left`}
+            </Text>
+          </View>
+        )}
+        <View style={styles.zoom}>
+          <Icon name="expand-outline" size={13} color={c.text} />
+        </View>
+      </Pressable>
+      <View style={styles.body}>
+        <Text style={styles.name} numberOfLines={1}>{product.name}</Text>
+        <Text style={styles.stock} numberOfLines={1}>
+          {unavailable ?? `${product.stock} available`}
+        </Text>
+        <View style={styles.footer}>
+          <Text style={styles.price}>{money(product.price)}</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel={`Order ${product.name}`}
+            onPress={order} hitSlop={6}
+            style={({ pressed }) => [styles.order, { opacity: pressed ? 0.75 : 1 }]}>
+            <Icon name="bag-add-outline" size={16} color={c.onPrimary} />
+          </Pressable>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function CardSkeleton() {
+  const styles = useThemedStyles(createStyles);
+  return (
+    <View style={styles.card} accessibilityElementsHidden>
+      <View style={[styles.imageArea, styles.skeleton]} />
+      <View style={styles.body}>
+        <View style={[styles.skeleton, { height: 14, width: '70%', borderRadius: 7 }]} />
+        <View style={[styles.skeleton, { height: 10, width: '45%', borderRadius: 5 }]} />
+      </View>
+    </View>
+  );
+}
+
 export function ReadyMadeCollection({ search }: { search: string }) {
   const ui = useUI();
-  const theme = useTheme();
-  const { width } = useWindowDimensions();
+  const styles = useThemedStyles(createStyles);
   const [preview, setPreview] = useState<SavedProduct | null>(null);
   const result = useApiResult<SavedProduct[]>(useGetReadyMadeProductsQuery());
   const products = (result.data ?? []).filter(product =>
     product.stock !== 0 && product.name.toLowerCase().includes(search.trim().toLowerCase()));
-  const cardWidth = Math.min(210, Math.min(width, 760) - 72);
-  return <>
-    <SectionTitle title="Ready to be yours" eyebrow="READY-MADE COLLECTION" />
-    {result.loading || result.error || !products.length ?
+  return <View style={{ gap: 14 }}>
+    <View style={ui.between}>
+      <View style={{ flex: 1 }}>
+        <Text style={ui.eyebrow}>READY-MADE COLLECTION</Text>
+        <Text style={styles.heading}>Ready to be yours</Text>
+      </View>
+      {!!products.length && (
+        <Text style={ui.caption}>
+          {products.length} {products.length === 1 ? 'piece' : 'pieces'}
+        </Text>
+      )}
+    </View>
+    {result.loading ? (
+      <View style={{ flexDirection: 'row', gap: GAP }}>
+        <CardSkeleton />
+        <CardSkeleton />
+      </View>
+    ) : result.error || !products.length ? (
       <CatalogState {...result} error={result.error ?? ''}
-        empty={search ? 'No products match your search.' : 'No ready-made products are available yet.'} /> :
-      <View style={{ gap: 10 }}>
+        empty={search ? 'No products match your search.' : 'No ready-made products are available yet.'} />
+    ) : (
       <FlatList
         horizontal
         data={products}
         keyExtractor={product => product.id}
         showsHorizontalScrollIndicator={false}
-        snapToInterval={cardWidth + 14}
+        snapToInterval={CARD_WIDTH + GAP}
         snapToAlignment="start"
         decelerationRate="fast"
         disableIntervalMomentum
         keyboardShouldPersistTaps="handled"
-        ItemSeparatorComponent={() => <View style={{ width: 14 }} />}
-        renderItem={({ item: product }) => <View style={[ui.card, { width: cardWidth, padding: 12, gap: 10 }]}>
-          <Pressable accessibilityRole="button" accessibilityLabel={`Preview ${product.name} image`}
-            onPress={() => setPreview(product)} style={({ pressed }) => ({ gap: 10, opacity: pressed ? 0.7 : 1 })}>
-          <CatalogImage imageUrl={product.designPreviewUrl ?? product.imageUrl}
-            name={product.name} size={Math.max(40, cardWidth - 26)} />
-          <Text numberOfLines={2} style={[ui.sectionTitle, { fontSize: 18 }]}>{product.name}</Text>
-          <View style={[ui.between, { alignItems: 'baseline', gap: 8 }]}>
-            <Text style={[ui.label, { flexShrink: 0 }]}>{money(product.price)}</Text>
-            <Text style={[ui.caption, { flexShrink: 1, textAlign: 'right' },
-              typeof product.stock === 'number' && product.stock > 0 && product.stock < 3 &&
-                { color: theme.colors.danger }]}>
-              {readyMadeUnavailable(product) ?? `${product.stock} available`}
-            </Text>
-          </View>
-          </Pressable>
-          <Pressable accessibilityRole="button" accessibilityLabel={`Order ${product.name}`}
-            onPress={() => router.push({ pathname: '/details', params: { id: product.id, purchase: 'ready-made' } })}
-            style={({ pressed }) => [ui.button, { minHeight: 44, paddingVertical: 10, paddingHorizontal: 12, opacity: pressed ? 0.75 : 1 }]}>
-            <Text style={ui.buttonText}>Order</Text>
-            <Icon name="arrow-forward" size={16} color={theme.colors.onPrimary} />
-          </Pressable>
-        </View>}
+        ItemSeparatorComponent={() => <View style={{ width: GAP }} />}
+        renderItem={({ item }) => <ReadyMadeCard product={item} onPreview={() => setPreview(item)} />}
       />
-      {products.length > 1 && <Text style={ui.caption}>Swipe to explore more creations</Text>}
-      </View>}
+    )}
     <ProductImagePreview product={preview} onClose={() => setPreview(null)} />
-  </>;
+  </View>;
 }
+
+const createStyles = (theme: Theme) => {
+  const c = theme.colors;
+  return StyleSheet.create({
+    heading: { color: c.text, fontFamily: theme.fonts.editorial, fontSize: 24 },
+    card: {
+      width: CARD_WIDTH, borderRadius: 20, overflow: 'hidden',
+      backgroundColor: c.surface, borderWidth: 1, borderColor: c.border,
+    },
+    imageArea: {
+      height: CARD_WIDTH, backgroundColor: c.thumbnail,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    badge: {
+      position: 'absolute', top: 10, left: 10, maxWidth: CARD_WIDTH - 54,
+      paddingHorizontal: 8, paddingVertical: 3, borderRadius: 9,
+    },
+    badgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: '700' },
+    zoom: {
+      position: 'absolute', top: 10, right: 10, width: 26, height: 26, borderRadius: 13,
+      backgroundColor: c.badge, alignItems: 'center', justifyContent: 'center',
+    },
+    body: { padding: 12, gap: 3 },
+    name: { color: c.text, fontFamily: theme.fonts.editorial, fontSize: 17 },
+    stock: { color: c.muted, fontSize: 11 },
+    footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 },
+    price: { color: c.gold, fontSize: 16, fontWeight: '700' },
+    order: {
+      width: 36, height: 36, borderRadius: 18, backgroundColor: c.primary,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    skeleton: { backgroundColor: c.elevated },
+  });
+};

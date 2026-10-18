@@ -2,8 +2,7 @@ import { create } from 'zustand';
 import type { User } from '../types/models';
 import { parseTokens, type Tokens } from '../api/authModels';
 import { authStorage } from '../services/authStorage';
-import { authSlice } from '@/api/endpoints/authSlice';
-import { userSlice, type RegistrationInput } from '@/api/endpoints/userSlice';
+import { authSlice, type RegistrationInput } from '@/api/endpoints/authSlice';
 import { apiStore } from '@/api/store';
 import { apiError, apiSlice } from '@/api/apiSlice';
 
@@ -101,7 +100,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     return false;
   },
   register: async (input) => {
-    const request = apiStore.dispatch(userSlice.endpoints.createUser.initiate(input));
+    const request = apiStore.dispatch(authSlice.endpoints.register.initiate(input));
     try { await request.unwrap(); } catch (error) { throw apiError(error); }
     finally { request.reset(); }
     // Registration creates an account only; it never grants a simulated session.
