@@ -1,9 +1,11 @@
 import { ReactNode } from 'react';
+import { componentCount } from '@/helper/builders';
 import { Text, View } from 'react-native';
 import { useUI } from '@/components/common/ui';
 import { CatalogImage } from '@/components/products/CatalogImage';
 import { useTheme } from '@/hooks/useTheme';
 import { OrderedProduct, SavedProduct } from '@/api/commerceModels';
+import { apparelImage, apparelMeta, isApparelProduct } from '@/services/apparelDesign';
 
 export function ProductOverview({
   product,
@@ -22,7 +24,7 @@ export function ProductOverview({
           style={{ backgroundColor: theme.colors.thumbnail, borderRadius: 16, overflow: 'hidden' }}
         >
           <CatalogImage
-            imageUrl={product.designPreviewUrl ?? product.imageUrl}
+            imageUrl={apparelImage(product)}
             name={product.name}
             size={80}
           />
@@ -32,7 +34,9 @@ export function ProductOverview({
           <Text style={ui.caption}>
             {product.productType === 'READY_MADE'
               ? 'Ready-made jewelry'
-              : `${product.itemCount} beads · Custom design`}
+              : isApparelProduct(product)
+                ? apparelMeta(product).join(' · ')
+                : `${componentCount(product.itemCount, product.category?.builderType)} · Custom design`}
           </Text>
           {size && (
             <Text style={ui.caption}>

@@ -6,7 +6,9 @@ const placeholder = require('../../../assets/catalog-placeholder.png');
 export function CatalogImage({ imageUrl, name, size }: { imageUrl?: string | null; name: string; size?: number }) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
   const uri =
-    typeof imageUrl === 'string' && /^https?:\/\//i.test(imageUrl.trim()) ? imageUrl.trim() : null;
+    // Remote catalog images, plus local picks (e.g. a customer's uploaded artwork).
+    typeof imageUrl === 'string' && /^(https?:\/\/|file:|content:|blob:|data:image\/)/i.test(imageUrl.trim())
+      ? imageUrl.trim() : null;
   return (
     <Image
       source={uri && failedUrl !== uri ? { uri } : placeholder}

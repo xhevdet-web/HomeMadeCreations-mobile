@@ -1,7 +1,17 @@
 import type { SavedProduct } from './commerceModels';
 import type { CategorySize } from '@/types/models';
+import {
+  parseBuilderConfig, parseBuilderType, parseCategoryOptions,
+  type BuilderConfig, type BuilderType, type CategoryOption,
+} from './builderModels';
 export interface CatalogCategory {
   sizes?: CategorySize[] | null;
+  /** Which studio opens this category; null keeps the original jewelry studio. */
+  builderType?: BuilderType | null;
+  options?: CategoryOption[];
+  builderConfig?: BuilderConfig | null;
+  /** Shared design library this category also offers designs from. */
+  designCategoryId?: string | null;
   id: string;
   name: string;
   description: string | null;
@@ -16,6 +26,8 @@ export interface CatalogComponent extends CatalogCategory {
   type: string | null;
   price: number;
   stock: number;
+  /** false for unlimited printed designs. */
+  trackStock?: boolean;
   category?: { id: string; name: string };
 }
 export function parseCategory(value: unknown): CatalogCategory {
@@ -33,6 +45,10 @@ export function parseCategory(value: unknown): CatalogCategory {
     sizes: item.sizes == null ? [] : parseCategorySizes(item.sizes),
     description: typeof item.description === 'string' ? item.description : null,
     imageUrl: typeof item.imageUrl === 'string' ? item.imageUrl : null,
+    builderType: parseBuilderType(item.builderType),
+    options: parseCategoryOptions(item.options),
+    builderConfig: parseBuilderConfig(item.builderConfig),
+    designCategoryId: typeof item.designCategoryId === 'string' ? item.designCategoryId : null,
   };
 }
 export function parseCategorySize(value: unknown): CategorySize {

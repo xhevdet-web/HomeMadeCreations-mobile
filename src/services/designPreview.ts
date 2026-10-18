@@ -3,9 +3,10 @@ import { captureRef } from 'react-native-view-shot';
 import { itemById } from './catalog';
 import { DesignItem } from '@/types/models';
 
-export async function captureDesignPreview(view: View | null, items: DesignItem[]): Promise<string> {
+/** Captures a design view as an 840×840 PNG once its remote images have loaded. */
+export async function captureViewPreview(view: View | null, imageUrls: (string | null | undefined)[]): Promise<string> {
   if (!view) throw new Error('The design preview is not ready. Please retry.');
-  const urls = [...new Set(items.map((entry) => itemById[entry.itemId]?.imageUrl).filter(
+  const urls = [...new Set(imageUrls.filter(
     (url): url is string => typeof url === 'string' && /^https?:\/\//i.test(url),
   ))];
   // Allow the on-screen images to finish loading before the single capture on save.
@@ -23,4 +24,8 @@ export async function captureDesignPreview(view: View | null, items: DesignItem[
   } catch {
     throw new Error('Could not capture your design preview. Your design is safe; please retry.');
   }
+}
+
+export function captureDesignPreview(view: View | null, items: DesignItem[]): Promise<string> {
+  return captureViewPreview(view, items.map((entry) => itemById[entry.itemId]?.imageUrl));
 }

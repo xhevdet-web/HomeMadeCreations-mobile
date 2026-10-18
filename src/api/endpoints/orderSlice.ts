@@ -20,7 +20,7 @@ export const orderSlice = apiSlice.injectEndpoints({
         body: { productId, paymentType: 'CASH_ON_DELIVERY',
           ...(notes.trim() ? { customerNotes: notes.trim() } : {}) },
       }),
-      invalidatesTags: ['Order', 'Product', 'SubCategory'],
+      invalidatesTags: ['Order', 'Product', 'SubCategory', 'Garment'],
     }),
   }),
 });

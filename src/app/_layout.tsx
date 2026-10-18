@@ -74,6 +74,11 @@ export default function RootLayout() {
               <Stack.Screen name="confirmation" />
               <Stack.Screen name="account" />
               <Stack.Screen name="creation" />
+              <Stack.Screen name="apparel-garments" />
+              <Stack.Screen name="apparel-options" />
+              <Stack.Screen name="apparel-studio" />
+              <Stack.Screen name="studio" />
+              <Stack.Screen name="studio-preview" />
             </Stack.Protected>
           </Stack>
         ) : (

@@ -5,9 +5,11 @@ import { useThemedStyles } from '@/hooks/useTheme';
 import { money } from '@/helper/pricing';
 import { type Theme } from '@/constants/theme';
 
-export function DesignerFooter({ total, beads, disabled, onPreview }: {
+export function DesignerFooter({ total, beads, label, disabled, onPreview }: {
   total: number;
   beads: number;
+  /** Replaces the bead count, e.g. "5 flowers" in the Bouquet Studio. */
+  label?: string;
   disabled: boolean;
   onPreview: () => void;
 }) {
@@ -18,7 +20,7 @@ export function DesignerFooter({ total, beads, disabled, onPreview }: {
       <View style={[ui.between, { width: '100%', maxWidth: 876, alignSelf: 'center' }]}>
         <View>
           <Text style={ui.caption}>
-            Your creation{beads ? ` · ${beads} ${beads === 1 ? 'bead' : 'beads'}` : ''}
+            Your creation{label ? ` · ${label}` : beads ? ` · ${beads} ${beads === 1 ? 'bead' : 'beads'}` : ''}
           </Text>
           <Text style={styles.total}>{money(total)}</Text>
         </View>

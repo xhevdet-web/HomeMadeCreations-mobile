@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { componentCount } from '@/helper/builders';
 import { Icon } from '@/components/common/ui';
 import { CatalogImage } from '@/components/products/CatalogImage';
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
@@ -42,7 +43,7 @@ export function CreationHero({ creation, width }: { creation: CommunityCreation;
           <Text style={styles.makerText}>Designed by <Text style={styles.makerName}>{creatorName}</Text></Text>
         </View>
         <Text style={styles.meta}>
-          {[`${product.itemCount} beads`, size && `${size.name} · ${size.measurement} ${size.unit}`]
+          {[componentCount(product.itemCount, product.category?.builderType), size && `${size.name} · ${size.measurement} ${size.unit}`]
             .filter(Boolean).join(' · ')}
         </Text>
         {!!product.description && <Text style={styles.description}>{product.description}</Text>}
@@ -51,12 +52,12 @@ export function CreationHero({ creation, width }: { creation: CommunityCreation;
   );
 }
 
-export function CreationBeads({ lines }: { lines: CreationLine[] }) {
+export function CreationBeads({ lines, title = 'Beads in this design' }: { lines: CreationLine[]; title?: string }) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
   return (
     <View style={styles.card}>
-      <Text style={styles.title}>Beads in this design</Text>
+      <Text style={styles.title}>{title}</Text>
       {lines.map((line) => (
         <View key={line.id} style={[styles.line, !line.available && { opacity: 0.55 }]}>
           <View style={styles.bead}>

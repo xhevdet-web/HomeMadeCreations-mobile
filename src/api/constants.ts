@@ -4,3 +4,4 @@ export const SUB_CATEGORY_URL = '/sub-categories';
 export const PRODUCT_URL = '/products';
 export const ORDER_URL = '/orders';
 export const USER_URL = '/users';
+export const GARMENT_URL = '/garments';

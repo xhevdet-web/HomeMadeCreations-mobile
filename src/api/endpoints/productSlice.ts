@@ -6,21 +6,35 @@ import { parseProduct } from '@/api/catalogModels';
 import type { CommunityCreation, ProductInput, SavedProduct } from '@/api/commerceModels';
 import { useCatalogStore } from '@/store/catalogStore';
 
-export async function productFormData(input: ProductInput, previewUri: string): Promise<FormData> {
+async function appendPreview(data: FormData, field: string, previewUri: string, name = field + '.png') {
+  // Data URIs (web) and stored URLs (re-saving an edited design) are sent as blobs.
+  if (previewUri.startsWith('data:') || /^https?:\/\//i.test(previewUri)) {
+    data.append(field, await (await fetch(previewUri)).blob(), name);
+    return;
+  }
+  const preview = new File(previewUri.startsWith('/') ? 'file://' + previewUri : previewUri);
+  if (!preview.exists || !preview.size)
+    throw new ApiError('The preview file is unavailable. Your design is safe; please capture it again.', 400);
+  data.append(field, preview);
+}
+
+/** Multipart body for a new design; the back preview is only sent for two-sided designs. */
+export async function productFormData(input: ProductInput, previewUri: string | undefined,
+  backPreviewUri?: string, customDesignUris: string[] = []): Promise<FormData> {
   const data = new FormData();
   data.append('categoryId', input.categoryId);
   data.append('name', input.name);
   if (input.selectedSizeId) data.append('selectedSizeId', input.selectedSizeId);
+  if (input.garmentVariantId) data.append('garmentVariantId', input.garmentVariantId);
+  if (input.selectedOptions) data.append('selectedOptions', JSON.stringify(input.selectedOptions));
+  if (input.textLayers?.length) data.append('textLayers', JSON.stringify(input.textLayers));
   if (input.description) data.append('description', input.description);
   data.append('items', JSON.stringify(input.items));
-  if (previewUri.startsWith('data:')) {
-    data.append('designPreview', await (await fetch(previewUri)).blob(), 'design-preview.png');
-  } else {
-    const preview = new File(previewUri.startsWith('/') ? 'file://' + previewUri : previewUri);
-    if (!preview.exists || !preview.size)
-      throw new ApiError('The preview file is unavailable. Your design is safe; please capture it again.', 400);
-    data.append('designPreview', preview);
-  }
+  if (previewUri) await appendPreview(data, 'designPreview', previewUri);
+  if (backPreviewUri) await appendPreview(data, 'backDesignPreview', backPreviewUri);
+  // Customer artwork, in the order referenced by items[].customDesignIndex.
+  for (const [index, uri] of customDesignUris.entries())
+    await appendPreview(data, 'customDesigns', uri, `custom-design-${index}.png`);
   return data;
 }
 

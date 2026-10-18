@@ -20,8 +20,11 @@ export const useCatalogStore = create<{
     registerCategory: (category) => {
       // The API has no canvas geometry field; reuse the existing necklace or
       // bracelet template, with bracelet as the default for other categories.
+      // builderConfig.silhouette decides the strand shape; the name is only a legacy fallback.
+      const silhouette = category.builderConfig?.silhouette;
+      const necklace = silhouette ? silhouette === 'NECKLACE' : /neck/i.test(category.name);
       const template = products.find((product) => product.type ===
-        (/neck/i.test(category.name) ? 'necklace' : 'bracelet'))!;
+        (necklace ? 'necklace' : 'bracelet'))!;
       const product: Product = { ...template, id: `category:${category.id}`,
         categoryId: category.id, categorySizes: category.sizes ?? [], name: category.name, description: category.description ?? '',
         basePrice: 0, palette: [], imageUrl: category.imageUrl, imageKey: category.imageKey, available: category.isActive };

@@ -24,10 +24,19 @@ import { readyMadeUnavailable } from '@/api/catalogModels';
 import { User } from '@/types/models';
 import { designSignature, editSavedDesign } from '@/services/savedDesign';
 import { useDesignStore } from '@/store/designStore';
+import { useApparelStore } from '@/store/apparelStore';
+import { isApparelProduct, loadApparelDesign } from '@/services/apparelDesign';
+import { isCanvasProduct, loadCanvasDesign, savedComponentLines } from '@/services/canvasDesign';
+import { useCanvasStore } from '@/store/canvasStore';
+import { parseTextLayers } from '@/api/builderModels';
+import { componentCount } from '@/helper/builders';
+import { ApparelSummary } from '@/components/apparel/ApparelSummary';
 
 function CheckoutForm({ product, user }: { product: SavedProduct; user: User }) {
   const ui = useUI();
   const readyMade = product.productType === 'READY_MADE';
+  const apparel = !readyMade && isApparelProduct(product);
+  const canvas = !readyMade && isCanvasProduct(product);
   const [currentProduct, setCurrentProduct] = useState(product);
   const missingDelivery = ![
     user.firstName,
@@ -78,6 +87,19 @@ function CheckoutForm({ product, user }: { product: SavedProduct; user: User }) 
       // Only clear the matching local draft after the backend confirms the Order.
       // An unrelated draft may also be open, so leave that one alone.
       const savedDraft = useCommerceStore.getState().savedDraft;
+      const apparelDraft = useApparelStore.getState();
+      if (apparel && apparelDraft.saved?.product.id === product.id && apparelDraft.categoryId)
+        apparelDraft.start(apparelDraft.categoryId, `My ${product.category.name}`);
+      const canvasDraft = useCanvasStore.getState();
+      if (canvas && canvasDraft.saved?.product.id === product.id && canvasDraft.categoryId) {
+        // Ordered: the studio starts fresh for the next bouquet or gift.
+        canvasDraft.load({
+          builderType: canvasDraft.builderType, categoryId: canvasDraft.categoryId,
+          categoryName: canvasDraft.categoryName, size: canvasDraft.size,
+          name: `My ${canvasDraft.categoryName}`, placements: [], texts: [],
+        });
+        canvasDraft.markSaved(null);
+      }
       try {
         if (
           !readyMade &&
@@ -130,6 +152,17 @@ function CheckoutForm({ product, user }: { product: SavedProduct; user: User }) 
     setEditing(true);
     setError('');
     try {
+      if (apparel) {
+        // Reopen the Apparel Studio with every placement, side and option restored.
+        if (useApparelStore.getState().saved?.product.id !== product.id) loadApparelDesign(product);
+        router.dismissTo('/apparel-studio');
+        return;
+      }
+      if (canvas) {
+        if (useCanvasStore.getState().saved?.product.id !== product.id) loadCanvasDesign(product);
+        router.dismissTo('/studio');
+        return;
+      }
       const cached = useCommerceStore.getState().savedDraft;
       let sameDraft = false;
       try {
@@ -218,7 +251,23 @@ function CheckoutForm({ product, user }: { product: SavedProduct; user: User }) 
           maxLength={2000}
         />
       </Disclosure>
-      {!readyMade && (
+      {apparel && <ApparelSummary product={currentProduct} />}
+      {canvas && (
+        <Disclosure
+          title="Price details"
+          summary={componentCount(currentProduct.itemCount, currentProduct.category.builderType) + ' · ' +
+            money(currentProduct.price)}
+        >
+          {savedComponentLines(currentProduct).map((line) => (
+            <DetailRow key={line.key} label={line.quantity + ' × ' + line.name}
+              value={money(line.quantity * line.unitPrice)} />
+          ))}
+          {parseTextLayers(currentProduct.textLayers).map((layer) => (
+            <DetailRow key={layer.id} label={'Text “' + layer.text + '”'} value="Free" />
+          ))}
+        </Disclosure>
+      )}
+      {!readyMade && !apparel && !canvas && (
         <Disclosure
           title="Price details"
           summary={currentProduct.itemCount + ' beads · ' + money(currentProduct.price)}

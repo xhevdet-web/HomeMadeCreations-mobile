@@ -13,6 +13,8 @@ import { useAuthStore } from '@/store/authStore';
 import { toast } from '@/store/toastStore';
 import { useFeedbackState } from '@/hooks/useFeedbackState';
 import { copyCreation } from '@/services/savedDesign';
+import { isApparelProduct, loadApparelDesign } from '@/services/apparelDesign';
+import { isCanvasProduct, loadCanvasDesign } from '@/services/canvasDesign';
 import { CreationBeads, CreationHero, CreationPromise, type CreationLine } from './components/CreationDetails';
 
 export default function CreationScreen() {
@@ -55,6 +57,21 @@ export default function CreationScreen() {
     setOpening(mode);
     setError('');
     try {
+      if (isApparelProduct(creation.product)) {
+        // Apparel copies open in the Apparel Studio, where they are saved as the buyer's own.
+        loadApparelDesign(creation.product, `My ${creation.product.name}`);
+        toast.info('Design opened. Review it in the studio, then continue to your order.');
+        router.push('/apparel-studio');
+        return;
+      }
+      if (isCanvasProduct(creation.product)) {
+        // A copy opens as the buyer's own design; it is saved when they continue.
+        loadCanvasDesign(creation.product, `My ${creation.product.name}`);
+        toast.info(mode === 'order' ? 'Design ready. Review it, then continue to your order.'
+          : 'Design opened. Make it yours, then preview and order.');
+        router.push(mode === 'order' ? '/studio-preview' : '/studio');
+        return;
+      }
       await copyCreation(creation.product, user.id);
       if (mode === 'order') {
         toast.info('Design ready. Review it, then continue to delivery.');
@@ -104,7 +121,9 @@ export default function CreationScreen() {
     >
       <Header title="Creation" back />
       <CreationHero creation={creation} width={Math.min(width, 600) - 44} />
-      <CreationBeads lines={lines} />
+      <CreationBeads lines={lines} title={isApparelProduct(creation.product) ? 'Designs on this piece'
+        : creation.product.category?.builderType === 'BOUQUET' ? 'Flowers in this bouquet'
+          : creation.product.category?.builderType === 'GIFT' ? 'Items in this gift' : undefined} />
       {pricesChanged && (
         <Text style={ui.caption}>
           Bead prices have changed since this piece was made, so your price is based on today’s prices.

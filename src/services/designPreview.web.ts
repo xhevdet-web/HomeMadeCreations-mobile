@@ -2,7 +2,8 @@ import { View } from 'react-native';
 import html2canvas from 'html2canvas';
 import { DesignItem } from '@/types/models';
 
-export async function captureDesignPreview(view: View | null, _items: DesignItem[]): Promise<string> {
+/** Captures a design view as an 840×840 PNG once its images have decoded. */
+export async function captureViewPreview(view: View | null, _imageUrls: (string | null | undefined)[]): Promise<string> {
   if (!view) throw new Error('The design preview is not ready. Please retry.');
   try {
     const element = view as unknown as HTMLElement;
@@ -24,4 +25,8 @@ export async function captureDesignPreview(view: View | null, _items: DesignItem
   } catch {
     throw new Error('Could not capture your design preview. Your design is safe; please retry.');
   }
+}
+
+export function captureDesignPreview(view: View | null, _items: DesignItem[]): Promise<string> {
+  return captureViewPreview(view, []);
 }

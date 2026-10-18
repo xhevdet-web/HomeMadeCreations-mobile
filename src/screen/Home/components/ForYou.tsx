@@ -1,4 +1,5 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { componentCount } from '@/helper/builders';
 import { Button, Icon, useUI } from '@/components/common/ui';
 import { CatalogImage } from '@/components/products/CatalogImage';
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
@@ -63,7 +64,7 @@ function CreationCard({ creation, onOpen }: { creation: CommunityCreation; onOpe
   return (
     <Pressable style={({ pressed }) => [styles.creation, { opacity: pressed ? 0.85 : 1 }]}
       accessibilityRole="button" onPress={onOpen}
-      accessibilityLabel={`Order ${product.name} by ${creatorName}, ${product.itemCount} beads, ${money(product.price)}`}>
+      accessibilityLabel={`Order ${product.name} by ${creatorName}, ${componentCount(product.itemCount, product.category?.builderType)}, ${money(product.price)}`}>
       <View style={styles.creationImage}>
         <CatalogImage imageUrl={product.designPreviewUrl ?? product.imageUrl} name={product.name} size={128} />
       </View>
@@ -77,7 +78,7 @@ function CreationCard({ creation, onOpen }: { creation: CommunityCreation; onOpe
       <View style={styles.cardFooter}>
         <View style={{ flex: 1 }}>
           <Text style={styles.price}>{money(product.price)}</Text>
-          <Text style={styles.caption}>{product.itemCount} beads</Text>
+          <Text style={styles.caption}>{componentCount(product.itemCount, product.category?.builderType)}</Text>
         </View>
         <View style={styles.order}>
           <Icon name="bag-add-outline" size={15} color={theme.colors.onPrimary} />

@@ -25,7 +25,7 @@ import { ReorderGestureLayer } from './components/ReorderGestureLayer';
 import { StageOverlay } from './components/StageOverlay';
 import { BeadSequence, SelectionToolbar } from './components/BeadSequence';
 import { DesignerFooter } from './components/DesignerFooter';
-import { StageBackground } from './components/StageBackground';
+import { StageBackground } from '@/components/common/StageBackground';
 
 type Rect = { x: number; y: number; width: number; height: number };
 

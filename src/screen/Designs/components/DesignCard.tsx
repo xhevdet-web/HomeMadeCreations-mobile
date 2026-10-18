@@ -1,10 +1,12 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { componentCount } from '@/helper/builders';
 import { Icon, useUI } from '@/components/common/ui';
 import { CatalogImage } from '@/components/products/CatalogImage';
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
 import { money } from '@/helper/pricing';
 import { type Theme } from '@/constants/theme';
 import type { SavedProduct } from '@/api/commerceModels';
+import { apparelImage, apparelMeta, isApparelProduct } from '@/services/apparelDesign';
 
 const VISIBLE_MATERIALS = 3;
 
@@ -43,17 +45,20 @@ export function DesignCard({
   const readyMade = product.productType === 'READY_MADE';
   const lines = readyMade ? [] : materials(product);
   const size = product.selectedSize;
-  const meta = [
-    readyMade ? 'Ready-made' : `${product.itemCount} beads`,
-    size ? `${size.name} · ${size.measurement} ${size.unit}` : product.category?.name,
-  ].filter(Boolean).join(' · ');
+  const apparel = !readyMade && isApparelProduct(product);
+  const meta = (apparel
+    ? apparelMeta(product)
+    : [
+      readyMade ? 'Ready-made' : componentCount(product.itemCount, product.category?.builderType),
+      size ? `${size.name} · ${size.measurement} ${size.unit}` : product.category?.name,
+    ]).filter(Boolean).join(' · ');
 
   return (
     <View style={styles.card}>
       <View style={styles.top}>
         <View style={styles.thumbnail}>
           <CatalogImage
-            imageUrl={product.designPreviewUrl ?? product.imageUrl}
+            imageUrl={apparelImage(product)}
             name={product.name}
             size={88}
           />

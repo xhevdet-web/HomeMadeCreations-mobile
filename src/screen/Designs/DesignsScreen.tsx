@@ -11,6 +11,8 @@ import { useGetUserProductsQuery } from '@/api/endpoints/productSlice';
 import { useApiResult } from '@/api/useApiResult';
 import type { SavedProduct } from '@/api/commerceModels';
 import { editSavedDesign } from '@/services/savedDesign';
+import { isApparelProduct, loadApparelDesign } from '@/services/apparelDesign';
+import { isCanvasProduct, loadCanvasDesign } from '@/services/canvasDesign';
 import { DesignCard } from './components/DesignCard';
 
 export default function DesignsScreen() {
@@ -22,12 +24,25 @@ export default function DesignsScreen() {
   const designs = result.data ?? [];
   const create = () => router.push('/categories');
 
-  async function edit(id: string) {
+  async function edit(product: SavedProduct) {
     if (!user || editingId) return;
-    setEditingId(id);
+    setEditingId(product.id);
     setError('');
     try {
-      await editSavedDesign(id, user.id);
+      if (isApparelProduct(product)) {
+        loadApparelDesign(product);
+        toast.info('Design opened. Edit it, then review your order.');
+        router.push('/apparel-studio');
+        return;
+      }
+      if (isCanvasProduct(product)) {
+        // Bouquets and gifts reopen with every position, layer and text restored.
+        loadCanvasDesign(product);
+        toast.info('Design opened. Edit it, then preview and order.');
+        router.push('/studio');
+        return;
+      }
+      await editSavedDesign(product.id, user.id);
       toast.info('Design opened. Next, edit and save a copy before reviewing your order.');
       router.push('/designer');
     } catch (failure) {
@@ -81,7 +96,7 @@ export default function DesignsScreen() {
             editing={editingId === product.id}
             disabled={!!editingId}
             onOrder={() => order(product)}
-            onEdit={() => void edit(product.id)}
+            onEdit={() => void edit(product)}
           />
         ))
       ) : (

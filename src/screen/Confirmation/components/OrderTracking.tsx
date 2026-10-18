@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { componentCount } from '@/helper/builders';
 import { Icon, IconName } from '@/components/common/ui';
 import { Disclosure } from '@/components/common/Disclosure';
 import { DetailRow } from '@/components/checkout/ProductOverview';
@@ -9,6 +10,8 @@ import { type Theme } from '@/constants/theme';
 import { ApiOrder, orderStages, orderStatusLabel, paymentLabel } from '@/api/commerceModels';
 import { CategorySize } from '@/types/models';
 import { OrderTimeline, stageDescriptions } from './OrderTimeline';
+import { ApparelSummary } from '@/components/apparel/ApparelSummary';
+import { apparelMeta, isApparelProduct } from '@/services/apparelDesign';
 
 function orderDate(value: string) {
   const date = new Date(value);
@@ -51,7 +54,8 @@ export function OrderTracking({ order }: { order: ApiOrder }) {
   const cashOnDelivery = order.paymentType === 'CASH_ON_DELIVERY';
   const size = (order.product as { selectedSize?: CategorySize | null }).selectedSize;
   const readyMade = order.product.productType === 'READY_MADE';
-  const lines = readyMade ? [] : beadLines(order);
+  const apparel = !readyMade && isApparelProduct(order.product);
+  const lines = readyMade || apparel ? [] : beadLines(order);
   const date = orderDate(order.createdAt);
   const address = [order.address, [order.postalCode, order.country].filter(Boolean).join(' ')]
     .filter(Boolean).join(', ');
@@ -69,8 +73,11 @@ export function OrderTracking({ order }: { order: ApiOrder }) {
             <Text style={styles.meta} numberOfLines={1}>
               {readyMade
                 ? 'Ready-made jewelry'
-                : [`${order.product.itemCount} beads`, size && `${size.name} · ${size.measurement} ${size.unit}`]
-                  .filter(Boolean).join(' · ')}
+                : apparel
+                  ? apparelMeta(order.product).join(' · ')
+                  : [componentCount(order.product.itemCount, order.product.category?.builderType),
+                    size && `${size.name} · ${size.measurement} ${size.unit}`]
+                    .filter(Boolean).join(' · ')}
             </Text>
             <View style={[styles.pill, completed && styles.pillDone]}>
               {completed && <Icon name="checkmark" size={12} color={c.success} />}
@@ -100,6 +107,8 @@ export function OrderTracking({ order }: { order: ApiOrder }) {
       </View>
 
       <OrderTimeline current={current} />
+
+      {apparel && <ApparelSummary product={order.product} />}
 
       <View style={styles.card}>
         <Text style={styles.title}>Delivery</Text>
@@ -134,8 +143,9 @@ export function OrderTracking({ order }: { order: ApiOrder }) {
       )}
 
       {lines.length > 0 && (
-        <Disclosure title="Beads & price details"
-          summary={`${order.product.itemCount} beads · ${money(order.totalPrice)}`}>
+        <Disclosure title={order.product.category?.builderType && order.product.category.builderType !== 'JEWELRY'
+          ? 'Price details' : 'Beads & price details'}
+          summary={`${componentCount(order.product.itemCount, order.product.category?.builderType)} · ${money(order.totalPrice)}`}>
           {lines.map((line) => (
             <DetailRow
               key={line.name + line.unitPrice}

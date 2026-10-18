@@ -8,6 +8,8 @@ import { useApiResult } from '@/api/useApiResult';
 import type { CatalogCategory } from '@/api/catalogModels';
 import { useCatalogStore } from '@/store/catalogStore';
 import { useDesignStore } from '@/store/designStore';
+import { isCanvasBuilder } from '@/helper/canvasStudio';
+import { openCanvasStudio } from '@/services/canvasDesign';
 import { CategorySize } from '@/types/models';
 import { SelectedSizeDetails, SizeOption } from './components/SizeCards';
 
@@ -22,6 +24,11 @@ export default function ChooseSizeScreen() {
   const openBuilder = useCallback((selectedSize?: CategorySize) => {
     if (!category || opening.current) return;
     opening.current = true;
+    // Bouquets and gifts open their own studio; the size sets how many pieces fit.
+    if (isCanvasBuilder(category.builderType)) {
+      openCanvasStudio(category, selectedSize, true);
+      return;
+    }
     const productId = useCatalogStore.getState().registerCategory(category);
     useDesignStore.getState().start(productId, undefined, selectedSize);
     router.replace('/designer');
