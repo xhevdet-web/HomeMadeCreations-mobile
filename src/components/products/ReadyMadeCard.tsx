@@ -1,22 +1,17 @@
-import { useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { Icon, useUI } from '@/components/common/ui';
+import { Icon } from '@/components/common/ui';
 import { SavedProduct } from '@/api/commerceModels';
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
-import { useGetProductsQuery } from '@/api/endpoints/productSlice';
-import { useApiResult } from '@/api/useApiResult';
 import { inStock, isSized } from '@/api/apparelModels';
 import { money } from '@/helper/pricing';
 import { type Theme } from '@/constants/theme';
 import { CatalogImage } from './CatalogImage';
-import { CatalogState } from './CatalogState';
-import { ProductImagePreview } from './ProductImagePreview';
 
-const CARD_WIDTH = 172;
-const GAP = 12;
+export const CARD_WIDTH = 172;
 
-function ReadyMadeCard({ product, onPreview }: { product: SavedProduct; onPreview: () => void }) {
+/** Company (ready-made) product card; its image opens a full preview. */
+export function ReadyMadeCard({ product, onPreview }: { product: SavedProduct; onPreview: () => void }) {
   const theme = useTheme();
   const c = theme.colors;
   const styles = useThemedStyles(createStyles);
@@ -61,7 +56,7 @@ function ReadyMadeCard({ product, onPreview }: { product: SavedProduct; onPrevie
   );
 }
 
-function CardSkeleton() {
+export function ReadyMadeSkeleton() {
   const styles = useThemedStyles(createStyles);
   return (
     <View style={styles.card} accessibilityElementsHidden>
@@ -74,58 +69,9 @@ function CardSkeleton() {
   );
 }
 
-export function ReadyMadeCollection({ search }: { search: string }) {
-  const ui = useUI();
-  const styles = useThemedStyles(createStyles);
-  const [preview, setPreview] = useState<SavedProduct | null>(null);
-  // Active company products from every category (filtered by the API, shared with Home);
-  // the search box only narrows this short rail by name.
-  const result = useApiResult<SavedProduct[]>(useGetProductsQuery({ origin: 'COMPANY' }));
-  const products = (result.data ?? []).filter((product) =>
-    inStock(product) && product.name.toLowerCase().includes(search.trim().toLowerCase()));
-  return <View style={{ gap: 14 }}>
-    <View style={ui.between}>
-      <View style={{ flex: 1 }}>
-        <Text style={ui.eyebrow}>READY-MADE COLLECTION</Text>
-        <Text style={styles.heading}>Ready to be yours</Text>
-      </View>
-      {!!products.length && (
-        <Text style={ui.caption}>
-          {products.length} {products.length === 1 ? 'piece' : 'pieces'}
-        </Text>
-      )}
-    </View>
-    {result.loading ? (
-      <View style={{ flexDirection: 'row', gap: GAP }}>
-        <CardSkeleton />
-        <CardSkeleton />
-      </View>
-    ) : result.error || !products.length ? (
-      <CatalogState {...result} error={result.error ?? ''}
-        empty={search ? 'No products match your search.' : 'No ready-made products are available yet.'} />
-    ) : (
-      <FlatList
-        horizontal
-        data={products}
-        keyExtractor={product => product.id}
-        showsHorizontalScrollIndicator={false}
-        snapToInterval={CARD_WIDTH + GAP}
-        snapToAlignment="start"
-        decelerationRate="fast"
-        disableIntervalMomentum
-        keyboardShouldPersistTaps="handled"
-        ItemSeparatorComponent={() => <View style={{ width: GAP }} />}
-        renderItem={({ item }) => <ReadyMadeCard product={item} onPreview={() => setPreview(item)} />}
-      />
-    )}
-    <ProductImagePreview product={preview} onClose={() => setPreview(null)} />
-  </View>;
-}
-
 const createStyles = (theme: Theme) => {
   const c = theme.colors;
   return StyleSheet.create({
-    heading: { color: c.text, fontFamily: theme.fonts.editorial, fontSize: 24 },
     card: {
       width: CARD_WIDTH, borderRadius: 20, overflow: 'hidden',
       backgroundColor: c.surface, borderWidth: 1, borderColor: c.border,

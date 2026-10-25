@@ -1,59 +1,12 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { componentCount } from '@/helper/builders';
-import { Button, Icon, useUI } from '@/components/common/ui';
-import { CatalogImage } from '@/components/products/CatalogImage';
+import { Button, Icon } from '@/components/common/ui';
 import { DesignThumbnail } from '@/components/products/DesignThumbnail';
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
 import { money } from '@/helper/pricing';
 import { type Theme } from '@/constants/theme';
-import type { CommunityCreation, SavedProduct } from '@/api/commerceModels';
-
-export interface FavouriteBead {
-  id: string;
-  name: string;
-  imageUrl?: string | null;
-  uses: number;
-}
-
-// Beads the customer reaches for most, counted across their saved designs.
-export function favouriteBeads(designs: SavedProduct[], limit = 8): FavouriteBead[] {
-  const totals = new Map<string, FavouriteBead>();
-  for (const design of designs) {
-    if (design.origin === 'COMPANY') continue;
-    for (const item of design.items ?? []) {
-      const bead = totals.get(item.subCategoryId);
-      if (bead) bead.uses += item.quantity;
-      else totals.set(item.subCategoryId, {
-        id: item.subCategoryId, name: item.subCategory.name,
-        imageUrl: item.subCategory.imageUrl, uses: item.quantity,
-      });
-    }
-  }
-  return [...totals.values()].sort((a, b) => b.uses - a.uses).slice(0, limit);
-}
-
-function SectionHeader({ eyebrow, title, action, onAction }: {
-  eyebrow: string;
-  title: string;
-  action?: string;
-  onAction?: () => void;
-}) {
-  const ui = useUI();
-  const styles = useThemedStyles(createStyles);
-  return (
-    <View style={ui.between}>
-      <View style={{ flex: 1 }}>
-        <Text style={ui.eyebrow}>{eyebrow}</Text>
-        <Text style={styles.heading}>{title}</Text>
-      </View>
-      {action && onAction && (
-        <Pressable accessibilityRole="button" accessibilityLabel={action} onPress={onAction} hitSlop={10}>
-          <Text style={ui.textLink}>{action}</Text>
-        </Pressable>
-      )}
-    </View>
-  );
-}
+import type { CommunityCreation } from '@/api/commerceModels';
+import { SectionHeader } from './SectionHeader';
 
 function CreationCard({ creation, onOpen }: { creation: CommunityCreation; onOpen: () => void }) {
   const theme = useTheme();
@@ -101,7 +54,7 @@ function CreationSkeleton() {
 }
 
 export function CommunityCreations({ creations, loading, error, onRetry, onOpen,
-  title = 'Creations from others',
+  eyebrow = 'COMMUNITY', title = 'Creations from others',
   intro = 'Finished pieces from the HomeMade community. Love one? Order your own.',
   hideWhenEmpty = false }: {
   creations: CommunityCreation[];
@@ -109,6 +62,7 @@ export function CommunityCreations({ creations, loading, error, onRetry, onOpen,
   loading: boolean;
   error: string;
   onRetry: () => void;
+  eyebrow?: string;
   title?: string;
   intro?: string;
   /** Leave the section out entirely when there is nothing to show yet. */
@@ -119,8 +73,7 @@ export function CommunityCreations({ creations, loading, error, onRetry, onOpen,
   if (hideWhenEmpty && !loading && !error && !creations.length) return null;
   return (
     <View style={{ gap: 14 }}>
-      <SectionHeader eyebrow="COMMUNITY" title={title} />
-      <Text style={styles.intro}>{intro}</Text>
+      <SectionHeader eyebrow={eyebrow} title={title} subtitle={intro} />
       {loading ? (
         <ScrollView horizontal scrollEnabled={false} contentContainerStyle={{ gap: 12 }}>
           {[0, 1, 2].map((index) => <CreationSkeleton key={index} />)}
@@ -152,33 +105,10 @@ export function CommunityCreations({ creations, loading, error, onRetry, onOpen,
   );
 }
 
-export function FavouriteBeads({ beads }: { beads: FavouriteBead[] }) {
-  const styles = useThemedStyles(createStyles);
-  return (
-    <View style={{ gap: 14 }}>
-      <SectionHeader eyebrow="YOUR STYLE" title="Your favourite beads" />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 14 }}>
-        {beads.map((bead) => (
-          <View key={bead.id} style={styles.bead} accessible
-            accessibilityLabel={`${bead.name}, used ${bead.uses} times in your designs`}>
-            <View style={styles.beadImage}>
-              <CatalogImage imageUrl={bead.imageUrl} name={bead.name} size={44} />
-            </View>
-            <Text style={styles.beadName} numberOfLines={1}>{bead.name}</Text>
-            <Text style={styles.caption}>{bead.uses}× used</Text>
-          </View>
-        ))}
-      </ScrollView>
-    </View>
-  );
-}
-
 const createStyles = (theme: Theme) => {
   const c = theme.colors;
   return StyleSheet.create({
-    heading: { color: c.text, fontFamily: theme.fonts.editorial, fontSize: 24 },
     caption: { color: c.muted, fontSize: 11 },
-    intro: { color: c.muted, fontSize: 13, lineHeight: 19, marginTop: -6 },
     creation: {
       width: 152, padding: 10, gap: 5, borderRadius: 18,
       borderWidth: 1, borderColor: c.border, backgroundColor: c.surface,
@@ -208,12 +138,5 @@ const createStyles = (theme: Theme) => {
       borderWidth: 1, borderStyle: 'dashed', borderColor: c.border, backgroundColor: c.surface,
     },
     stateText: { color: c.muted, fontSize: 13, lineHeight: 19, textAlign: 'center' },
-    bead: { width: 72, alignItems: 'center', gap: 4 },
-    beadImage: {
-      width: 64, height: 64, borderRadius: 32, backgroundColor: c.surface,
-      borderWidth: 1, borderColor: c.border, alignItems: 'center', justifyContent: 'center',
-      marginBottom: 2,
-    },
-    beadName: { color: c.text, fontSize: 11, fontWeight: '600', textAlign: 'center' },
   });
 };

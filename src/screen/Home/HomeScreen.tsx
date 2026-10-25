@@ -1,13 +1,14 @@
-import { useTheme, useThemedStyles } from '@/hooks/useTheme';
-import { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
-import { router } from 'expo-router';
-import { Brand, Icon, IconButton, Page, useUI } from '@/components/common/ui';
-import { ThemeToggleButton } from '@/components/common/ThemeToggleButton';
-import { ReadyMadeCollection } from '@/components/products/ReadyMadeCollection';
-import { type Theme } from '@/constants/theme';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ScrollView, View } from 'react-native';
+import { router, useFocusEffect } from 'expo-router';
+import { setStatusBarStyle } from 'expo-status-bar';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useUI } from '@/components/common/ui';
+import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
 import { useDesignStore } from '@/store/designStore';
+import { useCanvasStore } from '@/store/canvasStore';
+import { useApparelStore } from '@/store/apparelStore';
 import { useGetOrdersQuery } from '@/api/endpoints/orderSlice';
 import { useGetAllCategoriesQuery } from '@/api/endpoints/categorySlice';
 import {
@@ -15,36 +16,59 @@ import {
 } from '@/api/endpoints/productSlice';
 import { apiError } from '@/api/apiSlice';
 import { useApiResult } from '@/api/useApiResult';
-import type { CommunityCreation } from '@/api/commerceModels';
+import { inStock } from '@/api/apparelModels';
+import type { BuilderType } from '@/api/builderModels';
+import type { CatalogCategory } from '@/api/catalogModels';
+import type { CommunityCreation, SavedProduct } from '@/api/commerceModels';
 import { productById } from '@/services/catalog';
-import { openCategory } from '@/services/categoryFlow';
-import { designPrice } from '@/helper/pricing';
+import { openCategory, startDesign } from '@/services/categoryFlow';
+import { canvasSignature } from '@/services/canvasDesign';
+import { apparelSignature } from '@/services/apparelDesign';
+import { designPrice, money } from '@/helper/pricing';
+import { builderOf, takeTurns } from './homeContent';
+import { HomeHeader } from './components/HomeHeader';
+import { ContinueSection, type ContinueItem } from './components/ContinueSection';
 import { HomeHero } from './components/HomeHero';
-import { ActiveOrderCard, DraftCard } from './components/ContinueSection';
 import { CategoryRail } from './components/CategoryRail';
-import { ComingNext, TrustStrip, type UpcomingFeature } from './components/Highlights';
-import { CommunityCreations, FavouriteBeads, favouriteBeads } from './components/ForYou';
+import { OccasionSection } from './components/OccasionSection';
+import { InspirationSection } from './components/InspirationSection';
+import { CommunityCreations } from './components/ForYou';
+import { ReadyMadeSection } from './components/ReadyMadeSection';
+import { HomeSearchResults } from './components/HomeSearchResults';
+import { WhyHomeMade } from './components/Highlights';
 
-function greeting() {
-  const hour = new Date().getHours();
-  return hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+const READY_MADE_LIMIT = 10;
+const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? '' : 's'}`;
+
+/** True when a studio draft differs from the product last saved from it (or was never saved). */
+function unsaved(signature: () => string, saved: { signature: string } | null) {
+  try {
+    return saved?.signature !== signature();
+  } catch {
+    // A draft that cannot be turned into a product yet (e.g. no base chosen) is unsaved work.
+    return true;
+  }
 }
 
+/**
+ * Home orchestrates its sections: personal (continue) → create → ideas → community →
+ * ready-made → why HomeMade. Each section loads and fails on its own.
+ */
 export default function HomeScreen() {
-  const theme = useTheme();
-  const c = theme.colors;
   const ui = useUI();
-  const styles = useThemedStyles(createStyles);
+  const theme = useTheme();
   const [search, setSearch] = useState('');
-  const { width } = useWindowDimensions();
   const user = useAuthStore((state) => state.user);
-  const draft = useDesignStore();
-  const { data: orderPage } = useGetOrdersQuery(1, { skip: !user });
-  const { data: categories } = useGetAllCategoriesQuery();
-  const { data: designs } = useGetUserProductsQuery(user?.id ?? '', { skip: !user });
-  const { data: readyMade } = useGetProductsQuery({ origin: 'COMPANY' });
-  // Community creations need a valid session; request them once it has been restored.
   const authenticated = useAuthStore((state) => state.status === 'authenticated');
+  const jewelry = useDesignStore();
+  const canvas = useCanvasStore();
+  const apparel = useApparelStore();
+
+  const { data: orderPage } = useGetOrdersQuery(1, { skip: !user });
+  const categoriesResult = useApiResult<CatalogCategory[]>(useGetAllCategoriesQuery());
+  const { data: designs } = useGetUserProductsQuery(user?.id ?? '', { skip: !user });
+  const readyMadeResult = useApiResult<SavedProduct[]>(useGetProductsQuery({ origin: 'COMPANY' }));
+  // Community creations need a valid session; request them once it has been restored.
   const creationsQuery = useGetCreationsFromOthersQuery(undefined, { skip: !authenticated });
   const creations = useApiResult<CommunityCreation[]>(creationsQuery);
   const { error: creationsError, refetch: refetchCreations } = creationsQuery;
@@ -59,121 +83,93 @@ export default function HomeScreen() {
       if (useAuthStore.getState().status === 'authenticated') void refetchCreations();
     });
   }, [unauthorized, refetchCreations]);
-  const myDesigns = (designs ?? []).filter((design) => design.origin !== 'COMPANY');
-  const favourites = favouriteBeads(myDesigns);
-  const upcoming: UpcomingFeature[] = [
-    { title: 'Best sellers', detail: 'The pieces everyone is ordering', icon: 'trophy-outline',
-      images: (readyMade ?? []).map((product) => product.designPreviewUrl ?? product.imageUrl) },
-    { title: 'Trending beads', detail: 'Popular beads this season', icon: 'trending-up-outline',
-      images: favourites.map((bead) => bead.imageUrl) },
-    { title: 'Gift wrapping', detail: 'Ready to give, with a note', icon: 'gift-outline' },
-    { title: 'Gift cards', detail: 'Let them design their own', icon: 'card-outline' },
-  ];
+
+  // The navy header sits under the status bar: light icons while Home is in front.
+  useFocusEffect(useCallback(() => {
+    setStatusBarStyle('light');
+    return () => setStatusBarStyle(theme.mode === 'dark' ? 'light' : 'dark');
+  }, [theme.mode]));
+
+  const categories = categoriesResult.data ?? [];
+  const inStockProducts = useMemo(
+    () => (readyMadeResult.data ?? []).filter(inStock), [readyMadeResult.data]);
+  // Taking turns between categories keeps one category from filling the rail.
+  const readyMade = useMemo(
+    () => takeTurns(inStockProducts, (product) => product.categoryId, READY_MADE_LIMIT), [inStockProducts]);
+  const triedBuilders = useMemo(() => new Set<BuilderType>((designs ?? [])
+    .filter((design) => design.origin !== 'COMPANY' && design.category)
+    .map((design) => builderOf(design.category!))), [designs]);
 
   const activeOrder = orderPage?.data.find((order) => order.status !== 'COMPLETED');
-  const draftProduct = draft.items.length ? productById[draft.productId] : undefined;
-  const createOwn = () => router.push('/categories');
+  const continueItems: ContinueItem[] = [];
+  const jewelryProduct = jewelry.items.length ? productById[jewelry.productId] : undefined;
+  if (jewelryProduct)
+    continueItems.push({
+      key: 'jewelry', icon: 'color-palette-outline', eyebrow: 'UNSAVED DESIGN',
+      title: jewelry.name.trim() || jewelryProduct.name,
+      detail: `${plural(jewelry.items.length, 'bead')} · ${money(designPrice(jewelryProduct.basePrice, jewelry.items))}`,
+      onPress: () => router.push('/designer'),
+    });
+  const canvasPieces = canvas.placements.length + canvas.texts.length;
+  if (canvas.categoryId && canvasPieces && unsaved(canvasSignature, canvas.saved))
+    continueItems.push({
+      key: 'canvas', icon: canvas.builderType === 'BOUQUET' ? 'rose-outline' : 'gift-outline',
+      eyebrow: 'UNSAVED DESIGN', title: canvas.name.trim() || canvas.categoryName,
+      detail: `${canvas.categoryName} · ${plural(canvasPieces, 'piece')}`,
+      onPress: () => router.push('/studio'),
+    });
+  const apparelPieces = apparel.placements.length + apparel.texts.length;
+  if (apparel.categoryId && apparelPieces && unsaved(() => apparelSignature(apparel.categoryId!), apparel.saved))
+    continueItems.push({
+      key: 'apparel', icon: 'shirt-outline', eyebrow: 'UNSAVED DESIGN',
+      title: apparel.name.trim() || 'My design', detail: plural(apparelPieces, 'design'),
+      onPress: () => router.push('/apparel-studio'),
+    });
+
+  const browseCategories = () => router.push('/categories');
+  const searching = search.trim().length > 0;
 
   return (
-    <Page>
-      <View style={ui.between}>
-        <Brand compact />
-        <View style={[ui.row, { gap: 6 }]}>
-          {width >= 380 && (
-            <IconButton name="heart-outline" label="My saved designs"
-              onPress={() => router.push('/designs')} />
+    <SafeAreaView edges={['left', 'right']} style={ui.page}>
+      <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 36 }}>
+        <HomeHeader firstName={user?.firstName} lastName={user?.lastName} search={search} onSearch={setSearch}
+          activeOrder={activeOrder} />
+        <View style={[ui.pageContent, { gap: 28, paddingTop: 22 }]}>
+          {searching ? (
+            <HomeSearchResults query={search} categories={categories} products={inStockProducts}
+              onOpenCategory={openCategory} />
+          ) : (
+            <>
+              <ContinueSection items={continueItems} />
+              <HomeHero onCreate={browseCategories} />
+              <CategoryRail categories={categories} loading={categoriesResult.loading}
+                error={!!categoriesResult.error} onRetry={categoriesResult.retry}
+                onOpen={openCategory} onSeeAll={browseCategories} />
+              <OccasionSection categories={categories} onOpen={openCategory} />
+              <InspirationSection categories={categories} triedBuilders={triedBuilders} onStart={startDesign} />
+              {/* Optional: hidden when empty or unavailable rather than showing an error. */}
+              {!creations.error && (
+                <CommunityCreations
+                  eyebrow="MADE BY THE COMMUNITY"
+                  title="See what others are creating"
+                  intro="Finished pieces from other customers. Love one? Order your own."
+                  creations={creations.data ?? []}
+                  loading={creations.loading || !authenticated || unauthorized}
+                  error=""
+                  onRetry={creations.retry}
+                  hideWhenEmpty
+                  onOpen={(creation) =>
+                    router.push({ pathname: '/creation', params: { id: creation.completedOrderId } })}
+                />
+              )}
+              <ReadyMadeSection products={readyMade} loading={readyMadeResult.loading}
+                error={!!readyMadeResult.error} onRetry={readyMadeResult.retry} onSeeAll={browseCategories} />
+              <WhyHomeMade />
+            </>
           )}
-          <IconButton name="bag-handle-outline" label="Open shopping bag"
-            onPress={() => router.push('/checkout')} />
-          <ThemeToggleButton />
         </View>
-      </View>
-
-      {!!user?.firstName && (
-        <View style={{ gap: 2 }}>
-          <Text style={styles.greeting}>{greeting()}, {user.firstName}</Text>
-          <Text style={ui.body}>What will you create today?</Text>
-        </View>
-      )}
-
-      {(activeOrder || draftProduct) && (
-        <View style={{ gap: 10 }}>
-          <Text style={ui.eyebrow}>PICK UP WHERE YOU LEFT OFF</Text>
-          {activeOrder && (
-            <ActiveOrderCard
-              order={activeOrder}
-              onPress={() =>
-                router.push({ pathname: '/confirmation', params: { id: activeOrder.id } })}
-            />
-          )}
-          {draftProduct && (
-            <DraftCard
-              name={draft.name.trim() || draftProduct.name}
-              beads={draft.items.length}
-              total={designPrice(draftProduct.basePrice, draft.items)}
-              onPress={() => router.push('/designer')}
-            />
-          )}
-        </View>
-      )}
-
-      <HomeHero onCreate={createOwn} />
-
-      {!!categories?.length && (
-        <CategoryRail categories={categories} onOpen={openCategory} onSeeAll={createOwn} />
-      )}
-
-      <View style={styles.browseIntro}>
-        <Text style={styles.browseTitle}>Find something you love</Text>
-        <Text style={ui.body}>Explore ready-made creations, ready to order.</Text>
-      </View>
-      <View style={styles.search}>
-        <Icon name="search-outline" size={19} color={c.muted} />
-        <TextInput accessibilityLabel="Search products" placeholder="Search ready-made creations"
-          placeholderTextColor={c.muted} value={search} onChangeText={setSearch}
-          style={styles.searchInput} />
-        {search.length > 0 && (
-          <Pressable accessibilityRole="button" accessibilityLabel="Clear search"
-            onPress={() => setSearch('')} hitSlop={10}>
-            <Icon name="close" size={18} color={c.muted} />
-          </Pressable>
-        )}
-      </View>
-      <ReadyMadeCollection search={search} />
-
-      <CommunityCreations
-        creations={creations.data ?? []}
-        loading={creations.loading || !authenticated || unauthorized}
-        error={unauthorized ? '' : creations.error}
-        onRetry={creations.retry}
-        onOpen={(creation) =>
-          router.push({ pathname: '/creation', params: { id: creation.completedOrderId } })}
-      />
-      {favourites.length > 0 && <FavouriteBeads beads={favourites} />}
-
-      <TrustStrip />
-      <ComingNext features={upcoming} />
-    </Page>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
-
-const createStyles = (theme: Theme) => {
-  const c = theme.colors;
-  return StyleSheet.create({
-    greeting: { color: c.text, fontFamily: theme.fonts.editorial, fontSize: 26 },
-    browseIntro: { gap: 6, marginTop: 4 },
-    browseTitle: { color: c.text, fontFamily: theme.fonts.editorial, fontSize: 26 },
-    search: {
-      backgroundColor: c.surface,
-      borderWidth: 1,
-      borderColor: c.border,
-      borderRadius: 14,
-      minHeight: 49,
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: 15,
-      gap: 10,
-    },
-    searchInput: { flex: 1, color: c.text, fontSize: 13, minHeight: 48 },
-  });
-};
