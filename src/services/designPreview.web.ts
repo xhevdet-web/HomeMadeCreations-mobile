@@ -2,8 +2,13 @@ import { View } from 'react-native';
 import html2canvas from 'html2canvas';
 import { DesignItem } from '@/types/models';
 
-/** Captures a design view as an 840×840 PNG once its images have decoded. */
-export async function captureViewPreview(view: View | null, _imageUrls: (string | null | undefined)[]): Promise<string> {
+import type { PreviewFormat } from './designPreview';
+
+const PNG_PREVIEW: PreviewFormat = { format: 'png', pixels: 840 };
+
+/** Captures a design view (840×840 PNG by default) once its images have decoded. */
+export async function captureViewPreview(view: View | null, _imageUrls: (string | null | undefined)[],
+  output: PreviewFormat = PNG_PREVIEW): Promise<string> {
   if (!view) throw new Error('The design preview is not ready. Please retry.');
   try {
     const element = view as unknown as HTMLElement;
@@ -13,15 +18,15 @@ export async function captureViewPreview(view: View | null, _imageUrls: (string 
       backgroundColor: null,
       useCORS: true,
       logging: false,
-      scale: 840 / element.getBoundingClientRect().width,
+      scale: output.pixels / element.getBoundingClientRect().width,
     });
-    const output = document.createElement('canvas');
-    output.width = 840;
-    output.height = 840;
-    const context = output.getContext('2d');
+    const result = document.createElement('canvas');
+    result.width = output.pixels;
+    result.height = output.pixels;
+    const context = result.getContext('2d');
     if (!context) throw new Error('Preview canvas unavailable');
-    context.drawImage(canvas, 0, 0, 840, 840);
-    return output.toDataURL('image/png');
+    context.drawImage(canvas, 0, 0, output.pixels, output.pixels);
+    return output.format === 'jpg' ? result.toDataURL('image/jpeg', 0.85) : result.toDataURL('image/png');
   } catch {
     throw new Error('Could not capture your design preview. Your design is safe; please retry.');
   }

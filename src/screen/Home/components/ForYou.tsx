@@ -2,6 +2,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { componentCount } from '@/helper/builders';
 import { Button, Icon, useUI } from '@/components/common/ui';
 import { CatalogImage } from '@/components/products/CatalogImage';
+import { DesignThumbnail } from '@/components/products/DesignThumbnail';
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
 import { money } from '@/helper/pricing';
 import { type Theme } from '@/constants/theme';
@@ -18,7 +19,7 @@ export interface FavouriteBead {
 export function favouriteBeads(designs: SavedProduct[], limit = 8): FavouriteBead[] {
   const totals = new Map<string, FavouriteBead>();
   for (const design of designs) {
-    if (design.productType === 'READY_MADE') continue;
+    if (design.origin === 'COMPANY') continue;
     for (const item of design.items ?? []) {
       const bead = totals.get(item.subCategoryId);
       if (bead) bead.uses += item.quantity;
@@ -66,7 +67,7 @@ function CreationCard({ creation, onOpen }: { creation: CommunityCreation; onOpe
       accessibilityRole="button" onPress={onOpen}
       accessibilityLabel={`Order ${product.name} by ${creatorName}, ${componentCount(product.itemCount, product.category?.builderType)}, ${money(product.price)}`}>
       <View style={styles.creationImage}>
-        <CatalogImage imageUrl={product.designPreviewUrl ?? product.imageUrl} name={product.name} size={128} />
+        <DesignThumbnail product={product} size={128} />
       </View>
       <Text style={styles.creationName} numberOfLines={1}>{product.name}</Text>
       <View style={styles.maker}>
@@ -99,21 +100,27 @@ function CreationSkeleton() {
   );
 }
 
-export function CommunityCreations({ creations, loading, error, onRetry, onOpen }: {
+export function CommunityCreations({ creations, loading, error, onRetry, onOpen,
+  title = 'Creations from others',
+  intro = 'Finished pieces from the HomeMade community. Love one? Order your own.',
+  hideWhenEmpty = false }: {
   creations: CommunityCreation[];
   onOpen: (creation: CommunityCreation) => void;
   loading: boolean;
   error: string;
   onRetry: () => void;
+  title?: string;
+  intro?: string;
+  /** Leave the section out entirely when there is nothing to show yet. */
+  hideWhenEmpty?: boolean;
 }) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
+  if (hideWhenEmpty && !loading && !error && !creations.length) return null;
   return (
     <View style={{ gap: 14 }}>
-      <SectionHeader eyebrow="COMMUNITY" title="Creations from others" />
-      <Text style={styles.intro}>
-        Finished pieces from the HomeMade community. Love one? Order your own.
-      </Text>
+      <SectionHeader eyebrow="COMMUNITY" title={title} />
+      <Text style={styles.intro}>{intro}</Text>
       {loading ? (
         <ScrollView horizontal scrollEnabled={false} contentContainerStyle={{ gap: 12 }}>
           {[0, 1, 2].map((index) => <CreationSkeleton key={index} />)}

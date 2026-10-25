@@ -4,9 +4,9 @@ import { router } from 'expo-router';
 import { Icon, useUI } from '@/components/common/ui';
 import { SavedProduct } from '@/api/commerceModels';
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
-import { useGetReadyMadeProductsQuery } from '@/api/endpoints/productSlice';
+import { useGetProductsQuery } from '@/api/endpoints/productSlice';
 import { useApiResult } from '@/api/useApiResult';
-import { readyMadeUnavailable } from '@/api/catalogModels';
+import { inStock, isSized } from '@/api/apparelModels';
 import { money } from '@/helper/pricing';
 import { type Theme } from '@/constants/theme';
 import { CatalogImage } from './CatalogImage';
@@ -20,8 +20,10 @@ function ReadyMadeCard({ product, onPreview }: { product: SavedProduct; onPrevie
   const theme = useTheme();
   const c = theme.colors;
   const styles = useThemedStyles(createStyles);
-  const unavailable = readyMadeUnavailable(product);
-  const lowStock = typeof product.stock === 'number' && product.stock > 0 && product.stock < 3;
+  // Sized products show their sizes on the details screen; here only "sold out" matters.
+  const sized = isSized(product);
+  const unavailable = inStock(product) ? null : 'Out of stock';
+  const lowStock = !sized && typeof product.stock === 'number' && product.stock > 0 && product.stock < 3;
   const order = () =>
     router.push({ pathname: '/details', params: { id: product.id, purchase: 'ready-made' } });
   return (
@@ -44,7 +46,7 @@ function ReadyMadeCard({ product, onPreview }: { product: SavedProduct; onPrevie
       <View style={styles.body}>
         <Text style={styles.name} numberOfLines={1}>{product.name}</Text>
         <Text style={styles.stock} numberOfLines={1}>
-          {unavailable ?? `${product.stock} available`}
+          {unavailable ?? (sized ? product.color ?? 'Choose your size' : `${product.stock} available`)}
         </Text>
         <View style={styles.footer}>
           <Text style={styles.price}>{money(product.price)}</Text>
@@ -76,9 +78,11 @@ export function ReadyMadeCollection({ search }: { search: string }) {
   const ui = useUI();
   const styles = useThemedStyles(createStyles);
   const [preview, setPreview] = useState<SavedProduct | null>(null);
-  const result = useApiResult<SavedProduct[]>(useGetReadyMadeProductsQuery());
-  const products = (result.data ?? []).filter(product =>
-    product.stock !== 0 && product.name.toLowerCase().includes(search.trim().toLowerCase()));
+  // Active company products from every category (filtered by the API, shared with Home);
+  // the search box only narrows this short rail by name.
+  const result = useApiResult<SavedProduct[]>(useGetProductsQuery({ origin: 'COMPANY' }));
+  const products = (result.data ?? []).filter((product) =>
+    inStock(product) && product.name.toLowerCase().includes(search.trim().toLowerCase()));
   return <View style={{ gap: 14 }}>
     <View style={ui.between}>
       <View style={{ flex: 1 }}>

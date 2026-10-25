@@ -17,7 +17,7 @@ for (const mode of ['success', 'stock', 'uncertain', 'profile'] as const) {
       description: 'Handcrafted bracelet',
       categoryId: 'bracelets',
       createdById: 'admin',
-      productType: 'READY_MADE',
+      origin: 'COMPANY',
       isActive: true,
       stock: 2,
       color: 'Blue',
@@ -54,15 +54,15 @@ for (const mode of ['success', 'stock', 'uncertain', 'profile'] as const) {
       if (path === '/auth/login')
         return route.fulfill({ json: { accessToken: 'test-token', expiresIn: 3600 } });
       if (path === '/auth/me') return route.fulfill({ json: user });
-      if (path === '/products' && req.method() === 'GET')
-        return route.fulfill({
-          json: [
-            product,
-            { ...product, id: 'sold-out', name: 'Hidden sold out', stock: 0 },
-            { ...product, id: 'custom', name: 'Hidden custom', productType: 'CUSTOM' },
-            { ...product, id: 'inactive', name: 'Hidden inactive', isActive: false },
-          ],
+      if (path === '/products' && req.method() === 'GET') {
+        // The API returns only active company products; sold-out ones are hidden by the app.
+        expect(Object.fromEntries(new URL(req.url()).searchParams)).toMatchObject({
+          origin: 'COMPANY', isActive: 'true',
         });
+        return route.fulfill({
+          json: [product, { ...product, id: 'sold-out', name: 'Hidden sold out', stock: 0 }],
+        });
+      }
       if (path === '/products/ready') {
         stockReads++;
         return route.fulfill({ json: product });
@@ -98,8 +98,6 @@ for (const mode of ['success', 'stock', 'uncertain', 'profile'] as const) {
     await expect(
       page.getByRole('button', { name: 'Order Ready bracelet', exact: true }),
     ).toBeVisible();
-    await expect(page.getByText('Hidden custom')).toHaveCount(0);
-    await expect(page.getByText('Hidden inactive')).toHaveCount(0);
     await expect(page.getByText('Hidden sold out')).toHaveCount(0);
     await page.getByRole('button', { name: 'Preview Ready bracelet image', exact: true }).click();
     await expect(page.getByTestId('product-image-preview')).toBeVisible();
@@ -107,7 +105,7 @@ for (const mode of ['success', 'stock', 'uncertain', 'profile'] as const) {
     await page.getByRole('button', { name: 'Close image preview', exact: true }).click();
     await expect(page.getByTestId('product-image-preview')).toHaveCount(0);
     await page.getByRole('button', { name: 'Order Ready bracelet', exact: true }).click();
-    await expect(page.getByText('Color: Blue')).toBeVisible();
+    await expect(page.getByText('Blue', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Order Now', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Edit Design', exact: true })).toHaveCount(0);
     if (mode === 'profile') {
@@ -141,3 +139,51 @@ for (const mode of ['success', 'stock', 'uncertain', 'profile'] as const) {
     expect(submissions).toBe(1);
   });
 }
+
+test('a sized company product is ordered in the chosen size', async ({ page }) => {
+  const user = {
+    id: 'customer', firstName: 'Mila', lastName: 'Stone', email: 'mila@example.com',
+    phone: '123456789', country: 'Poland', address: 'Main Street 1',
+  };
+  const hoodie = {
+    id: 'black-hoodie', name: 'Black Essential Hoodie', categoryId: 'hoodies', createdById: 'admin',
+    origin: 'COMPANY', isActive: true, stock: 0, color: 'Black', colorHex: '#111111', price: 3500,
+    sizes: [{ size: 'S', stock: 0 }, { size: 'M', stock: 28 }], imageUrl: null, items: [], itemCount: 0,
+    category: { id: 'hoodies', name: 'Hoodies', builderType: 'APPAREL' },
+  };
+  let body: unknown;
+  await page.addInitScript(() =>
+    localStorage.setItem('homemade-onboarding-v1', JSON.stringify({ state: { completed: true }, version: 0 })),
+  );
+  await page.route('**/api/v1/**', async (route) => {
+    const req = route.request();
+    const path = new URL(req.url()).pathname.replace('/api/v1', '');
+    if (path === '/auth/login') return route.fulfill({ json: { accessToken: 'test-token', expiresIn: 3600 } });
+    if (path === '/auth/me') return route.fulfill({ json: user });
+    if (path === '/products' && req.method() === 'GET') return route.fulfill({ json: [hoodie] });
+    if (path === '/products/black-hoodie') return route.fulfill({ json: hoodie });
+    if (path === '/orders' && req.method() === 'POST') {
+      body = req.postDataJSON();
+      return route.fulfill({ status: 201, json: {
+        ...user, id: 'order-hoodie', userId: user.id, productId: hoodie.id, orderNumber: 'HM-HOODIE-1',
+        totalPrice: 3500, paymentType: 'CASH_ON_DELIVERY', paymentStatus: 'UNPAID', status: 'ORDERED',
+        createdAt: new Date().toISOString(), product: { ...hoodie, selectedSize: { id: 'M', name: 'M' } },
+      } });
+    }
+    if (path.startsWith('/orders')) return route.fulfill({ json: { data: [], meta: { page: 1, totalPages: 1, total: 0 } } });
+    throw new Error(`Unexpected request ${req.method()} ${path}`);
+  });
+  await page.goto('/login');
+  await page.getByLabel('Email or username', { exact: true }).fill(user.email);
+  await page.getByLabel('Password', { exact: true }).fill('ValidPassword123!');
+  await page.getByRole('button', { name: 'Log In', exact: true }).click();
+  await page.getByRole('button', { name: 'Order Black Essential Hoodie', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Choose a size', exact: true })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Size S, sold out' })).toBeDisabled();
+  await page.getByRole('button', { name: 'Size M, 28 available' }).click();
+  await page.getByRole('button', { name: 'Order Now', exact: true }).click();
+  await expect(page.getByText('Size M')).toBeVisible();
+  await page.getByRole('button', { name: 'Place Order', exact: true }).click();
+  await expect(page.getByText('HM-HOODIE-1')).toBeVisible();
+  expect(body).toEqual({ productId: 'black-hoodie', paymentType: 'CASH_ON_DELIVERY', size: 'M' });
+});

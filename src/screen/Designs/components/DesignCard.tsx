@@ -42,7 +42,7 @@ export function DesignCard({
   const ui = useUI();
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
-  const readyMade = product.productType === 'READY_MADE';
+  const readyMade = product.origin === 'COMPANY';
   const lines = readyMade ? [] : materials(product);
   const size = product.selectedSize;
   const apparel = !readyMade && isApparelProduct(product);

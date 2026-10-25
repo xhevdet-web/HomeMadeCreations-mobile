@@ -5,20 +5,17 @@ import { useThemedStyles } from '@/hooks/useTheme';
 import { money } from '@/helper/pricing';
 import { type Theme } from '@/constants/theme';
 import type { OrderedProduct } from '@/api/commerceModels';
-import { apparelImage, optionSummary } from '@/services/apparelDesign';
+import { apparelImage } from '@/services/apparelDesign';
 
-/** Front/back previews, chosen options and placed designs of a custom garment. */
+/** Front/back previews, the base piece, its size and the placed designs of a custom garment. */
 export function ApparelSummary({ product }: { product: OrderedProduct }) {
   const styles = useThemedStyles(createStyles);
-  const variant = product.garmentVariant;
-  // The garment, colour and size come first, then any extra category options.
+  const piece = product.baseProduct;
+  const size = product.selectedSize?.name;
   const options = [
-    ...(variant ? [
-      { key: 'garment', name: 'Piece', value: variant.garment.name, swatch: undefined },
-      { key: 'colour', name: 'Colour', value: variant.colorName, swatch: variant.colorValue },
-      { key: 'size', name: 'Size', value: variant.size, swatch: undefined },
-    ] : []),
-    ...optionSummary(product.category?.options, product.selectedOptions),
+    ...(piece ? [{ key: 'piece', name: 'Piece', value: piece.name, swatch: undefined }] : []),
+    ...(piece?.color ? [{ key: 'colour', name: 'Colour', value: piece.color, swatch: piece.colorHex ?? undefined }] : []),
+    ...(size ? [{ key: 'size', name: 'Size', value: size, swatch: undefined }] : []),
   ];
   const designs = (product.items ?? []).map((item) => ({
     id: item.id,
@@ -62,7 +59,7 @@ export function ApparelSummary({ product }: { product: OrderedProduct }) {
           <DetailRow key={design.id} label={`${design.name} — ${design.side}`} value={money(design.price)} />
         ))}
         <View style={styles.divider} />
-        <DetailRow label={variant ? `${variant.garment.name} · ${variant.colorName} / ${variant.size}`
+        <DetailRow label={piece ? [piece.name, size].filter(Boolean).join(' · ')
           : product.category?.name ?? 'Garment'} value={money(base)} />
         <DetailRow label="Total" value={money(product.price)} />
       </View>

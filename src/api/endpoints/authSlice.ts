@@ -38,6 +38,12 @@ export const authSlice = apiSlice.injectEndpoints({
         },
       }),
     }),
+    // The API identifies the user from the access token; passwords go in the body only.
+    changePassword: builder.mutation<{ message: string }, {
+      currentPassword: string; newPassword: string; confirmPassword: string;
+    }>({
+      query: (body) => ({ url: `${AUTH_URL}/change-password`, method: 'PATCH', auth: true, body }),
+    }),
     getMe: builder.query<User, string>({
       query: (token) => ({ url: `${AUTH_URL}/me`, token }),
       transformResponse: parseUser,
@@ -46,4 +52,4 @@ export const authSlice = apiSlice.injectEndpoints({
   }),
 });
 
-export const { useLoginMutation, useRegisterMutation, useGetMeQuery } = authSlice;
+export const { useLoginMutation, useRegisterMutation, useChangePasswordMutation, useGetMeQuery } = authSlice;

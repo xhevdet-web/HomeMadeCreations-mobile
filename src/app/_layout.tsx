@@ -64,6 +64,7 @@ export default function RootLayout() {
             <Stack.Protected guard={status === 'authenticated'}>
               <Stack.Screen name="(tabs)" />
               <Stack.Screen name="categories" />
+              <Stack.Screen name="category" />
               <Stack.Screen name="choose-size" />
               <Stack.Screen name="products" />
               <Stack.Screen name="components" />
@@ -73,12 +74,17 @@ export default function RootLayout() {
               <Stack.Screen name="checkout" />
               <Stack.Screen name="confirmation" />
               <Stack.Screen name="account" />
+              <Stack.Screen name="change-password" />
               <Stack.Screen name="creation" />
-              <Stack.Screen name="apparel-garments" />
-              <Stack.Screen name="apparel-options" />
+              <Stack.Screen name="apparel-base" />
               <Stack.Screen name="apparel-studio" />
+              <Stack.Screen name="design-base" />
               <Stack.Screen name="studio" />
               <Stack.Screen name="studio-preview" />
+              <Stack.Screen name="help" />
+              <Stack.Screen name="contact" />
+              <Stack.Screen name="terms" />
+              <Stack.Screen name="privacy" />
             </Stack.Protected>
           </Stack>
         ) : (

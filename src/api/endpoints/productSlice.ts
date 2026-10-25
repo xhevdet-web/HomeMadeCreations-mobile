@@ -3,13 +3,15 @@ import { fetch } from 'expo/fetch';
 import { apiSlice, ApiError } from '../apiSlice';
 import { PRODUCT_URL, USER_URL } from '../constants';
 import { parseProduct } from '@/api/catalogModels';
-import type { CommunityCreation, ProductInput, SavedProduct } from '@/api/commerceModels';
+import type { CommunityCreation, ProductInput, ProductOrigin, SavedProduct } from '@/api/commerceModels';
 import { useCatalogStore } from '@/store/catalogStore';
 
-async function appendPreview(data: FormData, field: string, previewUri: string, name = field + '.png') {
-  // Data URIs (web) and stored URLs (re-saving an edited design) are sent as blobs.
+async function appendPreview(data: FormData, field: string, previewUri: string, name?: string) {
+  // Data URIs (web) and stored URLs (re-saving an edited design) are sent as blobs,
+  // named after their real type (bouquet and gift previews are JPEG).
   if (previewUri.startsWith('data:') || /^https?:\/\//i.test(previewUri)) {
-    data.append(field, await (await fetch(previewUri)).blob(), name);
+    const blob = await (await fetch(previewUri)).blob();
+    data.append(field, blob, name ?? field + (blob.type === 'image/jpeg' ? '.jpg' : '.png'));
     return;
   }
   const preview = new File(previewUri.startsWith('/') ? 'file://' + previewUri : previewUri);
@@ -25,8 +27,7 @@ export async function productFormData(input: ProductInput, previewUri: string | 
   data.append('categoryId', input.categoryId);
   data.append('name', input.name);
   if (input.selectedSizeId) data.append('selectedSizeId', input.selectedSizeId);
-  if (input.garmentVariantId) data.append('garmentVariantId', input.garmentVariantId);
-  if (input.selectedOptions) data.append('selectedOptions', JSON.stringify(input.selectedOptions));
+  if (input.baseProductId) data.append('baseProductId', input.baseProductId);
   if (input.textLayers?.length) data.append('textLayers', JSON.stringify(input.textLayers));
   if (input.description) data.append('description', input.description);
   data.append('items', JSON.stringify(input.items));
@@ -36,6 +37,13 @@ export async function productFormData(input: ProductInput, previewUri: string | 
   for (const [index, uri] of customDesignUris.entries())
     await appendPreview(data, 'customDesigns', uri, `custom-design-${index}.png`);
   return data;
+}
+
+/** GET /products filters: the API filters by category and origin, never the client. */
+export interface ProductQuery {
+  categoryId?: string;
+  origin?: ProductOrigin;
+  search?: string;
 }
 
 function registerProduct(saved: SavedProduct) {
@@ -68,11 +76,15 @@ export const productSlice = apiSlice.injectEndpoints({
       transformResponse: (value: unknown) => registerProduct(parseProduct(value)),
       providesTags: ['Product'],
     }),
-    getReadyMadeProducts: builder.query<SavedProduct[], void>({
-      query: () => ({ url: PRODUCT_URL }),
+    /** Active products, e.g. a category's company catalog: { categoryId, origin: 'COMPANY' }. */
+    getProducts: builder.query<SavedProduct[], ProductQuery>({
+      query: ({ categoryId, origin, search }) => ({
+        url: PRODUCT_URL,
+        params: { categoryId, origin, search: search?.trim() || undefined, isActive: 'true' },
+      }),
       transformResponse: (value: unknown) => {
         if (!Array.isArray(value)) throw new Error('The catalog returned an invalid product list.');
-        return value.map(parseProduct).filter((product) => product.isActive === true && product.productType === 'READY_MADE');
+        return value.map(parseProduct);
       },
       providesTags: ['Product'],
     }),
@@ -80,8 +92,13 @@ export const productSlice = apiSlice.injectEndpoints({
       query: (userId) => ({ url: `${USER_URL}/${encodeURIComponent(userId)}/products`, auth: true }),
       providesTags: ['Product'],
     }),
-    getCreationsFromOthers: builder.query<CommunityCreation[], void>({
-      query: () => ({ url: `${PRODUCT_URL}/creations/from-others`, auth: true }),
+    /** Other customers' completed designs; one category's with { categoryId }. */
+    getCreationsFromOthers: builder.query<CommunityCreation[], { categoryId?: string } | void>({
+      query: (args) => ({
+        url: `${PRODUCT_URL}/creations/from-others`,
+        auth: true,
+        params: { categoryId: args?.categoryId },
+      }),
       transformResponse: (value: { data?: unknown } | null) => {
         if (!Array.isArray(value?.data)) throw new Error('The server returned an invalid creations list.');
         return value.data as CommunityCreation[];
@@ -95,4 +112,4 @@ export const productSlice = apiSlice.injectEndpoints({
   }),
 });
 
-export const { useGetAllProductsQuery, useGetProductByIdQuery, useGetOwnedProductByIdQuery, useLazyGetOwnedProductByIdQuery, useGetCanvasProductByIdQuery, useGetReadyMadeProductsQuery, useGetUserProductsQuery, useGetCreationsFromOthersQuery, useCreateProductMutation } = productSlice;
+export const { useGetAllProductsQuery, useGetProductByIdQuery, useGetOwnedProductByIdQuery, useLazyGetOwnedProductByIdQuery, useGetCanvasProductByIdQuery, useGetProductsQuery, useGetUserProductsQuery, useGetCreationsFromOthersQuery, useCreateProductMutation } = productSlice;

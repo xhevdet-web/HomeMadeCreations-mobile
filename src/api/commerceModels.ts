@@ -1,21 +1,43 @@
 import type { CatalogComponent } from './catalogModels';
 import type { CategorySize } from '@/types/models';
-import type { DesignSide, SelectedOptions, TextLayer } from './builderModels';
-import type { ProductGarmentVariant } from './garmentModels';
+import type { DesignSide, TextLayer } from './builderModels';
+import type { PrintAreas, SizeStock } from './apparelModels';
+
+/** COMPANY: the admin catalog. CUSTOMER: a design saved from a Creative Studio. */
+export type ProductOrigin = 'COMPANY' | 'CUSTOMER';
+
+/** The company product a customer design is made on, e.g. the hoodie it is printed on. */
+export interface BaseProduct {
+  id: string;
+  name: string;
+  price?: number;
+  color?: string | null;
+  colorHex?: string | null;
+  imageUrl?: string | null;
+  backImageUrl?: string | null;
+  printAreas?: PrintAreas | null;
+  sizes?: SizeStock[] | null;
+  isActive?: boolean;
+}
 
 export interface SavedProduct {
-  selectedSize?: CategorySize | null;
-  productType?: string;
+  origin?: ProductOrigin;
+  /** A design's size: a base product size ({ id: 'L', name: 'L' }) or a studio size preset. */
+  selectedSize?: (Partial<CategorySize> & { id: string; name: string }) | null;
+  /** COMPANY: stock of an unsized product; sized products keep stock per size. */
   stock?: number;
+  sizes?: SizeStock[] | null;
   color?: string | null;
+  colorHex?: string | null;
   imageUrl?: string | null;
+  /** COMPANY apparel: back canvas image. */
+  backImageUrl?: string | null;
+  printAreas?: PrintAreas | null;
   designPreviewUrl?: string | null;
   /** Back preview for two-sided designs (APPAREL). */
   backDesignPreviewUrl?: string | null;
-  /** The garment size × colour an APPAREL design is printed on. */
-  garmentVariant?: ProductGarmentVariant | null;
-  /** Options stored by the backend; colours come back as { name, value }. */
-  selectedOptions?: Record<string, unknown> | null;
+  baseProductId?: string | null;
+  baseProduct?: BaseProduct | null;
   /** Personalised text of a GIFT design (raw; read with parseTextLayers). */
   textLayers?: unknown;
   basePrice?: number;
@@ -28,7 +50,7 @@ export interface SavedProduct {
   description?: string | null;
   price: number;
   itemCount: number;
-  category: { id: string; name: string; builderType?: string | null; options?: unknown };
+  category: { id: string; name: string; builderType?: string | null; builderConfig?: unknown };
   items: {
     id: string;
     subCategoryId: string;
@@ -48,8 +70,8 @@ export interface SavedProduct {
 export type OrderedProduct = Pick<
   SavedProduct,
   | 'id' | 'name' | 'description' | 'imageUrl' | 'designPreviewUrl' | 'price' | 'itemCount' | 'items'
-  | 'productType' | 'backDesignPreviewUrl' | 'selectedOptions' | 'category' | 'basePrice'
-  | 'garmentVariant' | 'textLayers'
+  | 'origin' | 'backDesignPreviewUrl' | 'category' | 'basePrice' | 'baseProduct' | 'selectedSize'
+  | 'color' | 'colorHex' | 'textLayers'
 >;
 // A finished piece by another customer, shown for inspiration. The backend excludes the
 // current user's products and ready-made products, and never exposes customer details.
@@ -60,7 +82,7 @@ export interface CommunityCreation {
   product: Pick<
     SavedProduct,
     | 'id' | 'name' | 'description' | 'imageUrl' | 'designPreviewUrl' | 'price' | 'itemCount'
-    | 'items' | 'categoryId' | 'selectedSize' | 'selectedOptions' | 'garmentVariant'
+    | 'items' | 'categoryId' | 'selectedSize' | 'baseProduct'
   > & {
     category?: SavedProduct['category'];
     createdBy: { id: string; firstName: string; lastName: string; userName?: string | null };
@@ -105,11 +127,12 @@ export interface OrderPage {
   meta: { page: number; totalPages: number; total: number };
 }
 export interface ProductInput {
+  /** A size of the base product, or of the category's studio size presets. */
   selectedSizeId?: string;
-  garmentVariantId?: string;
-  selectedOptions?: SelectedOptions;
-  /** GIFT only: personalised text, positioned on the canvas like the items. */
-  textLayers?: TextLayer[];
+  /** The company product the design is made on; required for APPAREL. */
+  baseProductId?: string;
+  /** Personalised text (gift, bouquet, apparel), positioned like the items; apparel text names its side. */
+  textLayers?: (TextLayer & { side?: DesignSide })[];
   categoryId: string;
   name: string;
   description?: string;

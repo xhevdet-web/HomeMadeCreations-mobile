@@ -1,6 +1,8 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import type { ApparelPlacement, DesignSide } from '@/api/builderModels';
-import { mockupFor, type Garment } from '@/api/garmentModels';
+import type { ApparelPlacement, ApparelText, DesignSide } from '@/api/builderModels';
+import type { Transform } from '@/components/studio/PlacedItem';
+import { TextLayer } from '@/screen/CreativeStudio/components/TextLayer';
+import { mockupFor, type ApparelLook } from '@/api/apparelModels';
 import { printAreaFor, silhouetteOf } from '@/helper/apparel';
 import { useTheme } from '@/hooks/useTheme';
 import { GarmentImage } from './GarmentImage';
@@ -9,19 +11,18 @@ import { PlacedDesign } from './PlacedDesign';
 
 export interface DesignInfo { imageUrl?: string | null; name: string }
 
-/** What the canvas needs to draw a garment side: mockups, print areas and shape. */
-export type GarmentLook = Pick<Garment,
-  'silhouette' | 'frontPrintArea' | 'backPrintArea' | 'frontImageUrl' | 'backImageUrl'>;
-
-export function ApparelCanvas({ garment, side, color, size, placements, designs, selectedId,
-  exportMode = false, editable = true, onSelect, onChange, onRemove }: {
-  garment: GarmentLook | null | undefined;
+export function ApparelCanvas({ piece, side, color, size, placements, texts = [], designs, selectedId,
+  exportMode = false, editable = true, onSelect, onChange, onRemove, onTextChange }: {
+  /** The base product being designed on: its images, print areas and shape. */
+  piece: ApparelLook | null | undefined;
   side: DesignSide;
-  /** Variant colour; tints the drawn garment when there is no mockup photo. */
+  /** Product colour; tints the drawn garment when there is no image. */
   color: string;
   size: number;
   /** Designs on this side only. */
   placements: ApparelPlacement[];
+  /** Text on this side only, drawn above the designs. */
+  texts?: ApparelText[];
   designs: Record<string, DesignInfo>;
   selectedId?: string | null;
   exportMode?: boolean;
@@ -29,20 +30,22 @@ export function ApparelCanvas({ garment, side, color, size, placements, designs,
   onSelect?: (id: string | null) => void;
   onChange?: (id: string, patch: Partial<ApparelPlacement>) => void;
   onRemove?: (id: string) => void;
+  onTextChange?: (id: string, transform: Transform) => void;
 }) {
   const theme = useTheme();
-  const area = printAreaFor(garment, side);
-  const mockup = garment ? mockupFor(garment, side) : null;
+  const area = printAreaFor(piece, side);
+  const mockup = piece ? mockupFor(piece, side) : null;
   const editing = editable && !exportMode;
   return (
     <View style={{ width: size, height: size }}
-      accessibilityLabel={`${side === 'FRONT' ? 'Front' : 'Back'} with ${placements.length} designs`}>
+      accessibilityLabel={`${side === 'FRONT' ? 'Front' : 'Back'} with ${placements.length} designs`
+        + (texts.length ? ` and ${texts.length} text` : '')}>
       <Pressable accessible={false} style={StyleSheet.absoluteFill} disabled={!editing}
         onPress={() => onSelect?.(null)}>
         {mockup ? (
           <GarmentImage uri={mockup} size={size} />
         ) : (
-          <GarmentSilhouette silhouette={silhouetteOf(garment)} side={side} color={color} size={size} />
+          <GarmentSilhouette silhouette={silhouetteOf(piece)} side={side} color={color} size={size} />
         )}
       </Pressable>
       {editing && (
@@ -50,7 +53,7 @@ export function ApparelCanvas({ garment, side, color, size, placements, designs,
           left: area.x * size, top: area.y * size, width: area.width * size, height: area.height * size,
           borderColor: theme.colors.accent,
         }]}>
-          {!placements.length && (
+          {!placements.length && !texts.length && (
             <Text style={[styles.areaLabel, { color: theme.colors.accent }]}>PRINT AREA</Text>
           )}
         </View>
@@ -69,6 +72,12 @@ export function ApparelCanvas({ garment, side, color, size, placements, designs,
           onChange={(patch) => onChange?.(placement.id, patch)}
           onRemove={() => onRemove?.(placement.id)}
         />
+      ))}
+      {texts.map((layer, index) => (
+        <TextLayer key={layer.id} layer={layer} size={size} bounds={null}
+          frame={{ left: area.x * size, top: area.y * size, width: area.width * size, height: area.height * size }}
+          selected={layer.id === selectedId} editable={editing} zIndex={layer.id === selectedId ? 900 : 500 + index}
+          onSelect={(id) => onSelect?.(id)} onChange={onTextChange} onRemove={onRemove} />
       ))}
     </View>
   );

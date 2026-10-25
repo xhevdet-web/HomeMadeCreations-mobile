@@ -1,12 +1,12 @@
 import type { ApparelPlacement, DesignSide, PrintArea } from '@/api/builderModels';
-import type { Garment } from '@/api/garmentModels';
+import type { ApparelLook } from '@/api/apparelModels';
 
 export type Silhouette = 'HOODIE' | 'TSHIRT';
 
-type GarmentShape = Pick<Garment, 'silhouette' | 'frontPrintArea' | 'backPrintArea'>;
+type PieceShape = Pick<ApparelLook, 'silhouette' | 'printAreas'>;
 
 // Default printable areas (fractions of the square garment canvas) per silhouette and
-// side, used until a garment has its own print areas configured in the dashboard.
+// side, used until a product has its own print areas configured in the dashboard.
 const DEFAULT_PRINT_AREAS: Record<Silhouette, Record<DesignSide, PrintArea>> = {
   HOODIE: {
     FRONT: { x: 0.33, y: 0.34, width: 0.34, height: 0.26 },
@@ -22,13 +22,13 @@ const DEFAULT_PRINT_AREAS: Record<Silhouette, Record<DesignSide, PrintArea>> = {
 const BASE_DESIGN_SHARE = 0.5;
 export const MIN_DESIGN_SCALE = 0.3;
 
-export function silhouetteOf(garment?: Pick<Garment, 'silhouette'> | null): Silhouette {
-  return garment?.silhouette === 'HOODIE' ? 'HOODIE' : 'TSHIRT';
+export function silhouetteOf(piece?: Pick<ApparelLook, 'silhouette'> | null): Silhouette {
+  return piece?.silhouette === 'HOODIE' ? 'HOODIE' : 'TSHIRT';
 }
 
-export function printAreaFor(garment: GarmentShape | null | undefined, side: DesignSide): PrintArea {
-  const configured = side === 'FRONT' ? garment?.frontPrintArea : garment?.backPrintArea;
-  return configured ?? DEFAULT_PRINT_AREAS[silhouetteOf(garment)][side];
+export function printAreaFor(piece: PieceShape | null | undefined, side: DesignSide): PrintArea {
+  const configured = side === 'FRONT' ? piece?.printAreas?.front : piece?.printAreas?.back;
+  return configured ?? DEFAULT_PRINT_AREAS[silhouetteOf(piece)][side];
 }
 
 /** Edge length of a design box in canvas pixels. */
@@ -63,7 +63,7 @@ export function clampPlacement(placement: Pick<ApparelPlacement, 'x' | 'y' | 'sc
   };
 }
 
-export function apparelTotal(garmentPrice: number, placements: ApparelPlacement[],
+export function apparelTotal(basePrice: number, placements: ApparelPlacement[],
   priceOf: (subCategoryId: string) => number) {
-  return placements.reduce((sum, placement) => sum + priceOf(placement.subCategoryId), garmentPrice);
+  return placements.reduce((sum, placement) => sum + priceOf(placement.subCategoryId), basePrice);
 }

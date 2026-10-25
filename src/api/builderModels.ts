@@ -11,16 +11,7 @@ export const CUSTOM_UPLOAD = 'CUSTOM_UPLOAD';
 export const MAX_CUSTOM_UPLOADS = 4;
 export type DesignSide = (typeof DESIGN_SIDES)[number];
 
-export type CategoryOption =
-  | { key: string; name: string; required: boolean; type: 'select'; values: string[] }
-  | { key: string; name: string; required: boolean; type: 'color'; values: { name: string; value: string }[] }
-  | { key: string; name: string; required: boolean; type: 'number'; min?: number; max?: number }
-  | { key: string; name: string; required: boolean; type: 'text'; maxLength?: number };
-
-/** What the customer picked; colours are sent as their configured `value`. */
-export type SelectedOptions = Record<string, string | number>;
-
-/** Fractions (0–1) of a garment mockup. */
+/** Fractions (0–1) of a piece image. */
 export interface PrintArea { x: number; y: number; width: number; height: number }
 
 /** Builder-wide category settings, e.g. { silhouette: 'NECKLACE' } for a strand. */
@@ -57,6 +48,8 @@ export interface CanvasPlacement {
 
 export const TEXT_FONTS = ['SERIF', 'SANS', 'SCRIPT'] as const;
 export type TextFont = (typeof TEXT_FONTS)[number];
+export const TEXT_WEIGHTS = ['LIGHT', 'REGULAR', 'BOLD'] as const;
+export type TextWeight = (typeof TEXT_WEIGHTS)[number];
 /** Backend limit for personalised text layers on a gift. */
 export const MAX_TEXT_LAYERS = 6;
 export const MAX_TEXT_LENGTH = 80;
@@ -71,6 +64,9 @@ export interface TextLayer {
   rotation: number;
   color?: string;
   font?: TextFont;
+  /** Missing means REGULAR. */
+  weight?: TextWeight;
+  italic?: boolean;
 }
 
 const finite = (value: unknown, fallback: number) =>
@@ -91,7 +87,21 @@ export function parseTextLayers(value: unknown): TextLayer[] {
       rotation: finite(raw.rotation, 0),
       ...(typeof raw.color === 'string' ? { color: raw.color } : {}),
       ...(TEXT_FONTS.includes(raw.font as TextFont) ? { font: raw.font as TextFont } : {}),
+      ...(TEXT_WEIGHTS.includes(raw.weight as TextWeight) ? { weight: raw.weight as TextWeight } : {}),
+      ...(raw.italic === true ? { italic: true } : {}),
     }];
+  });
+}
+
+/** Text printed on a garment: one side, x/y within that side's print area. */
+export type ApparelText = TextLayer & { side: DesignSide };
+
+/** Apparel text stored on a Product; text without a valid side can't be printed and is dropped. */
+export function parseApparelTexts(value: unknown): ApparelText[] {
+  if (!Array.isArray(value)) return [];
+  return parseTextLayers(value).flatMap((layer) => {
+    const raw = value.find((entry) => isObject(entry) && entry.id === layer.id) as Record<string, unknown>;
+    return DESIGN_SIDES.includes(raw.side as DesignSide) ? [{ ...layer, side: raw.side as DesignSide }] : [];
   });
 }
 
@@ -102,44 +112,7 @@ export function parseBuilderType(value: unknown): BuilderType | null {
   return BUILDER_TYPES.includes(value as BuilderType) ? (value as BuilderType) : null;
 }
 
-// Options are validated by the backend; drop anything the app cannot render.
-export function parseCategoryOptions(value: unknown): CategoryOption[] {
-  if (!Array.isArray(value)) return [];
-  return value.flatMap((raw): CategoryOption[] => {
-    if (!isObject(raw) || typeof raw.key !== 'string' || typeof raw.name !== 'string') return [];
-    const base = { key: raw.key, name: raw.name, required: raw.required === true };
-    if (raw.type === 'select' && Array.isArray(raw.values))
-      return [{ ...base, type: 'select', values: raw.values.filter((v): v is string => typeof v === 'string') }];
-    if (raw.type === 'color' && Array.isArray(raw.values))
-      return [{
-        ...base, type: 'color',
-        values: raw.values.filter((v): v is { name: string; value: string } =>
-          isObject(v) && typeof v.name === 'string' && typeof v.value === 'string'),
-      }];
-    if (raw.type === 'number')
-      return [{ ...base, type: 'number',
-        min: typeof raw.min === 'number' ? raw.min : undefined,
-        max: typeof raw.max === 'number' ? raw.max : undefined }];
-    if (raw.type === 'text')
-      return [{ ...base, type: 'text', maxLength: typeof raw.maxLength === 'number' ? raw.maxLength : undefined }];
-    return [];
-  });
-}
-
 export function parseBuilderConfig(value: unknown): BuilderConfig | null {
   if (!isObject(value)) return null;
   return typeof value.silhouette === 'string' ? { silhouette: value.silhouette } : {};
-}
-
-/** Human-readable value of a selected option, e.g. "Black" for a colour value. */
-export function optionLabel(option: CategoryOption | undefined, value: unknown): string {
-  if (value === undefined || value === null || value === '') return '';
-  if (option?.type === 'color') {
-    const raw = typeof value === 'object' && value && 'value' in value
-      ? String((value as { value: unknown }).value) : String(value);
-    const named = typeof value === 'object' && value && 'name' in value
-      ? String((value as { name: unknown }).name) : undefined;
-    return named ?? option.values.find((color) => color.value === raw)?.name ?? raw;
-  }
-  return String(value);
 }

@@ -1,6 +1,10 @@
 import { useRef, useState } from 'react';
 import { View } from 'react-native';
-import { captureViewPreview } from '@/services/designPreview';
+import { captureViewPreview, type PreviewFormat } from '@/services/designPreview';
+
+// The canvas is captured with its studio backdrop, so no transparency is needed: a
+// compressed JPEG keeps bouquet and gift previews small however many pieces they have.
+const CANVAS_PREVIEW: PreviewFormat = { format: 'jpg', pixels: 1080 };
 
 /**
  * Captures only the canvas (container, items, text) with editing handles hidden, using
@@ -15,7 +19,7 @@ export function useCanvasCapture() {
       // Let React commit the clean canvas before taking its snapshot.
       await new Promise<void>((resolve) => requestAnimationFrame(() =>
         requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
-      return await captureViewPreview(ref.current, imageUrls);
+      return await captureViewPreview(ref.current, imageUrls, CANVAS_PREVIEW);
     } finally {
       setExporting(false);
     }

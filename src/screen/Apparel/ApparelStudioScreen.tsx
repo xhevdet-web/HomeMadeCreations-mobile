@@ -4,7 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } fr
 import { router } from 'expo-router';
 import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Button, Field, Header, IconButton, Notice, Page, useUI } from '@/components/common/ui';
+import { Button, Chips, Field, Header, IconButton, Notice, Page, useUI } from '@/components/common/ui';
 import { StageBackground } from '@/components/common/StageBackground';
 import { CatalogImage } from '@/components/products/CatalogImage';
 import { CatalogState } from '@/components/products/CatalogState';
@@ -24,11 +24,13 @@ import { apparelTotal, printAreaFor } from '@/helper/apparel';
 import { money } from '@/helper/pricing';
 import { captureViewPreview } from '@/services/designPreview';
 import { saveApparelDesign } from '@/services/apparelDesign';
-import { optionLabel } from '@/api/builderModels';
+import { isSized } from '@/api/apparelModels';
+import { clampInside, TEXT_BOX } from '@/helper/canvasStudio';
+import { TextTool } from '@/screen/CreativeStudio/components/TextTool';
 import { type Theme } from '@/constants/theme';
 import { ApparelCanvas, type DesignInfo } from './components/ApparelCanvas';
 import { DesignPicker } from './components/DesignPicker';
-import { DesignToolbar, missingOption, SideSwitch } from './components/StudioControls';
+import { DesignToolbar, SideSwitch } from './components/StudioControls';
 import { useApparelSelection } from './useApparelSelection';
 
 type Rect = { x: number; y: number; width: number; height: number };
@@ -44,13 +46,15 @@ export default function ApparelStudioScreen() {
   const { width, height } = useWindowDimensions();
   const draft = useApparelStore();
   const categoryId = draft.categoryId ?? '';
-  const { category, categoryResult, garment, variant, color, price } = useApparelSelection(categoryId);
+  const { category, categoryResult, base, look, size: pieceSize, color, price } = useApparelSelection(categoryId);
   const designsResult = useApiResult<CatalogComponent[]>(useGetCategoryComponentsQuery(categoryId, { skip: !categoryId }));
   const [createProduct] = useCreateProductMutation();
   const [message, setMessage] = useFeedbackState('info');
   const [busy, setBusy] = useState<'save' | 'review' | null>(null);
   const [exporting, setExporting] = useState(false);
   const [dragging, setDragging] = useState<CatalogComponent | null>(null);
+  // The tray shows catalog designs, or the text tool (like the Gift studio).
+  const [tray, setTray] = useState<'Designs' | 'Text'>('Designs');
   const canvasRef = useRef<View>(null);
   const screenRef = useRef<View>(null);
   const canvasRect = useRef<Rect | null>(null);
@@ -68,9 +72,12 @@ export default function ApparelStudioScreen() {
   const designs = allDesigns.filter((design) => design !== ownDesign);
   // Leave room below the canvas for the designs strip and tools.
   const size = Math.min(Math.min(width, 760) - 32, height * 0.4, 420);
-  const area = printAreaFor(garment, draft.side);
+  const area = printAreaFor(look, draft.side);
   const sidePlacements = draft.placements.filter((item) => item.side === draft.side);
   const selected = draft.placements.find((item) => item.id === draft.selectedId);
+  const sideTexts = draft.texts.filter((layer) => layer.side === draft.side);
+  const selectedText = draft.texts.find((layer) => layer.id === draft.selectedId) ?? null;
+  const activeTray = selectedText ? 'Text' : tray;
   const byId = Object.fromEntries(allDesigns.map((design) => [design.id, design]));
   const info: Record<string, DesignInfo> = Object.fromEntries(
     allDesigns.map((design) => [design.id, { imageUrl: design.imageUrl, name: design.name }]));
@@ -78,19 +85,17 @@ export default function ApparelStudioScreen() {
   const usage: Record<string, number> = {};
   for (const item of draft.placements) usage[item.subCategoryId] = (usage[item.subCategoryId] ?? 0) + 1;
   const counts = {
-    FRONT: draft.placements.filter((item) => item.side === 'FRONT').length,
-    BACK: draft.placements.filter((item) => item.side === 'BACK').length,
+    FRONT: [...draft.placements, ...draft.texts].filter((item) => item.side === 'FRONT').length,
+    BACK: [...draft.placements, ...draft.texts].filter((item) => item.side === 'BACK').length,
   };
-  const options = category?.options ?? [];
-  const missing = missingOption(options, draft.selectedOptions);
-  const summary = [variant?.colorName, variant?.size,
-    ...options.map((option) => optionLabel(option, draft.selectedOptions[option.key]))]
-    .filter(Boolean).join(' · ');
+  // The base product must be chosen, and a sized one needs its size.
+  const missingPiece = !base ? 'Choose your base' : isSized(base) && !pieceSize ? 'Choose a size' : null;
+  const summary = [base?.color, pieceSize].filter(Boolean).join(' · ');
   // Catalog designs are priced each; own uploads cost the own-design price once.
   const total = apparelTotal(price, draft.placements.filter((item) => !item.imageUri),
     (id) => byId[id]?.price ?? 0) + (uploads && ownDesign ? ownDesign.price : 0);
-  const changePiece = () => category && router.push({ pathname: '/apparel-options',
-    params: { categoryId: category.id, garmentId: draft.garmentId ?? undefined, edit: '1' } });
+  const changePiece = () => category && router.push({ pathname: '/apparel-base',
+    params: { categoryId: category.id, edit: '1' } });
 
   function addDesign(design: CatalogComponent, at?: { x: number; y: number }) {
     // Printed designs are unlimited; physical ones (patches) are limited by stock.
@@ -105,15 +110,17 @@ export default function ApparelStudioScreen() {
   async function uploadDesign() {
     if (!ownDesign || uploads >= MAX_CUSTOM_UPLOADS) return;
     // Opening the photo library needs no permission prompt (system picker).
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.92 });
+    // quality 1 keeps the original file: compressing would turn a PNG into a JPEG.
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 1 });
     const asset = result.canceled ? undefined : result.assets[0];
     if (!asset) return;
-    if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
-      toast.error('That image is larger than 5 MB. Choose a smaller one.');
+    // Printed artwork must be PNG (it keeps a transparent background); the API checks it too.
+    if (!isPng(asset)) {
+      toast.error('Only PNG images can be uploaded. Save your design as a .png file and try again.');
       return;
     }
-    if (asset.mimeType && !/^image\/(jpeg|png|webp)$/.test(asset.mimeType)) {
-      toast.error('Use a JPEG, PNG or WebP image.');
+    if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
+      toast.error('That image is larger than 5 MB. Choose a smaller one.');
       return;
     }
     draft.add(ownDesign.id, area, undefined, asset.uri);
@@ -160,8 +167,8 @@ export default function ApparelStudioScreen() {
     const user = useAuthStore.getState().user;
     if (!user) { router.push('/login'); return; }
     if (!category || busy) return;
-    if (!variant || missing) {
-      toast.info(!variant ? 'Choose a colour and size first.' : `Choose a ${missing!.name.toLowerCase()} first.`);
+    if (missingPiece) {
+      toast.info(`${missingPiece} first.`);
       changePiece();
       return;
     }
@@ -196,7 +203,20 @@ export default function ApparelStudioScreen() {
       </Page>
     );
 
+  // Text stays inside the print area: its box spans 90% of the area's width at scale 1.
+  const textBox = { width: 0.9, height: 0.9 * (TEXT_BOX.height / TEXT_BOX.width) * (area.width / area.height) };
+  const fitText = (next: { x: number; y: number; scale: number; rotation: number }) =>
+    clampInside(next, textBox, { left: 0, top: 0, right: 1, bottom: 1 });
+
   const step = (patch: { scale?: number; rotation?: number }) => {
+    if (selectedText) {
+      draft.updateText(selectedText.id, fitText({
+        ...selectedText,
+        scale: selectedText.scale * (patch.scale ?? 1),
+        rotation: selectedText.rotation + (patch.rotation ?? 0),
+      }));
+      return;
+    }
     if (!selected) return;
     draft.update(selected.id, {
       scale: patch.scale !== undefined ? selected.scale * patch.scale : undefined,
@@ -204,7 +224,8 @@ export default function ApparelStudioScreen() {
     }, area);
   };
 
-  const designCount = draft.placements.length;
+  // Text alone (a name, a date) is a complete design too.
+  const designCount = draft.placements.length + draft.texts.length;
   return (
     <View ref={screenRef} collapsable={false} style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Page scroll={false} style={{ padding: 0, gap: 0 }}
@@ -213,13 +234,13 @@ export default function ApparelStudioScreen() {
             <View style={styles.footerInner}>
               <View style={{ flex: 1 }}>
                 <Text style={ui.caption} numberOfLines={1}>
-                  {designCount ? `${garment?.name ?? 'Piece'} + ${designCount} design${designCount === 1 ? '' : 's'}`
-                    : 'No designs yet — you can still order it plain'}
+                  {designCount ? `${base?.name ?? 'Piece'} + ${designCount} design${designCount === 1 ? '' : 's'}`
+                    : 'Add a logo, graphic, text or your own artwork'}
                 </Text>
                 <Text style={styles.total}>{money(total)}</Text>
               </View>
               <Button title={busy === 'review' ? 'Saving…' : 'Review order'} icon="arrow-forward"
-                onPress={() => void save(true)} loading={busy === 'review'} disabled={!!busy} />
+                onPress={() => void save(true)} loading={busy === 'review'} disabled={!!busy || !designCount} />
             </View>
           </SafeAreaView>
         }>
@@ -230,17 +251,16 @@ export default function ApparelStudioScreen() {
         </View>
         {/* The piece being sold: what the customer is designing and paying for. */}
         <Pressable accessibilityRole="button"
-          accessibilityLabel={`${garment?.name ?? 'Piece'}, ${summary || 'choose colour and size'}, ${money(price)}. Change`}
+          accessibilityLabel={`${base?.name ?? 'Piece'}, ${summary || missingPiece || ''}, ${money(price)}. Change`}
           onPress={changePiece} style={({ pressed }) => [styles.product, { opacity: pressed ? 0.8 : 1 }]}>
           <View style={styles.productPhoto}>
-            <CatalogImage imageUrl={garment?.imageUrl ?? garment?.frontImageUrl} name={garment?.name ?? 'Garment'}
-              size={40} />
+            <CatalogImage imageUrl={base?.imageUrl} name={base?.name ?? 'Piece'} size={40} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.productName} numberOfLines={1}>{garment?.name ?? 'Choose your piece'}</Text>
+            <Text style={styles.productName} numberOfLines={1}>{base?.name ?? 'Choose your piece'}</Text>
             <View style={styles.productMeta}>
-              {variant && <View style={[styles.swatch, { backgroundColor: variant.colorValue }]} />}
-              <Text style={ui.caption} numberOfLines={1}>{summary || 'Choose colour and size'}</Text>
+              {!!base?.colorHex && <View style={[styles.swatch, { backgroundColor: base.colorHex }]} />}
+              <Text style={ui.caption} numberOfLines={1}>{missingPiece ?? summary}</Text>
             </View>
           </View>
           <Text style={styles.productPrice}>{money(price)}</Text>
@@ -252,17 +272,19 @@ export default function ApparelStudioScreen() {
           <View ref={canvasRef} collapsable={false} testID="design-preview-canvas"
             style={{ width: size, height: size }}>
             <ApparelCanvas
-              garment={garment}
+              piece={look}
               side={draft.side}
               color={color}
               size={size}
               placements={sidePlacements}
+              texts={sideTexts}
               designs={info}
               selectedId={draft.selectedId}
               exportMode={exporting}
               onSelect={draft.select}
               onChange={(id, patch) => draft.update(id, patch, area)}
               onRemove={draft.remove}
+              onTextChange={(id, transform) => draft.updateText(id, fitText(transform))}
             />
           </View>
           {!exporting && (
@@ -272,7 +294,7 @@ export default function ApparelStudioScreen() {
               </View>
               <View style={styles.history} pointerEvents="box-none">
                 <IconButton name="trash-outline" label={`Clear the ${draft.side.toLowerCase()}`}
-                  onPress={draft.clearSide} disabled={!sidePlacements.length} />
+                  onPress={draft.clearSide} disabled={!sidePlacements.length && !sideTexts.length} />
                 <View style={{ flexDirection: 'row', gap: 8 }}>
                   <IconButton name="arrow-undo-outline" label="Undo" onPress={draft.undo}
                     disabled={draft.historyIndex === 0} />
@@ -286,20 +308,38 @@ export default function ApparelStudioScreen() {
 
         <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          {selected && (
+          {(selected || selectedText) && (
             <DesignToolbar
-              name={byId[selected.subCategoryId]?.name ?? 'Design'}
+              name={selectedText ? `“${selectedText.text}”` : byId[selected!.subCategoryId]?.name ?? 'Design'}
               onSmaller={() => step({ scale: 0.9 })}
               onLarger={() => step({ scale: 1.1 })}
               onRotateLeft={() => step({ rotation: -15 })}
               onRotateRight={() => step({ rotation: 15 })}
-              onCenter={() => draft.update(selected.id, { x: 0.5, y: 0.5 }, area)}
-              onRemove={() => draft.remove(selected.id)}
+              onCenter={() => (selectedText
+                ? draft.updateText(selectedText.id, fitText({ ...selectedText, x: 0.5, y: 0.5 }))
+                : draft.update(selected!.id, { x: 0.5, y: 0.5 }, area))}
+              onRemove={() => draft.selectedId && draft.remove(draft.selectedId)}
               onDone={() => draft.select(null)}
             />
           )}
-          {/* The design tray: upload your own first, then the catalog designs. */}
-          {designsResult.loading || designsResult.error ? (
+          <Chips options={['Designs', 'Text']} value={activeTray}
+            onChange={(value) => {
+              setTray(value as 'Designs' | 'Text');
+              if (selectedText && value !== 'Text') draft.select(null);
+            }} />
+          {activeTray === 'Text' ? (
+            // Text is printed on the side shown, inside its print area; it is never priced.
+            <TextTool
+              selected={selectedText}
+              count={draft.texts.length}
+              onAdd={(text, { scale, ...style }) => draft.addText(text, { ...style, ...fitText({
+                x: 0.5, y: 0.5 + (sideTexts.length % 3) * 0.18, scale, rotation: 0 }) })}
+              onChange={(patch, record) => selectedText && draft.updateText(selectedText.id,
+                patch.scale === undefined ? patch : { ...patch, ...fitText({ ...selectedText, ...patch }) }, record)}
+              onRemove={() => selectedText && draft.remove(selectedText.id)}
+              onDone={() => draft.select(null)}
+            />
+          ) : designsResult.loading || designsResult.error ? (
             <CatalogState loading={designsResult.loading} error={designsResult.error}
               empty="" retry={designsResult.retry} />
           ) : (
@@ -310,7 +350,7 @@ export default function ApparelStudioScreen() {
                 onPress: () => void uploadDesign(),
               } : undefined} />
           )}
-          {!selected && (
+          {!selected && !selectedText && activeTray === 'Designs' && (
             <Text style={ui.caption}>
               {sidePlacements.length
                 ? 'Tap a design to select it. Drag to move; pinch or use the corner handle to resize and rotate.'
@@ -372,3 +412,9 @@ const createStyles = (theme: Theme) => {
     },
   });
 };
+
+/** A picked image is PNG by its type, else by its file name. */
+function isPng(asset: ImagePicker.ImagePickerAsset) {
+  if (asset.mimeType) return asset.mimeType.toLowerCase() === 'image/png';
+  return /\.png$/i.test(asset.fileName ?? asset.uri.split('?')[0]);
+}

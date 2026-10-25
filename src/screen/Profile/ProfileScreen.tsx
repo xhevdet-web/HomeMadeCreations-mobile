@@ -10,6 +10,7 @@ import { ProfileForm } from './components/ProfileForm';
 import { ProfileHeader } from './components/ProfileHeader';
 import { SettingsRow, SettingsSection } from './components/Settings';
 import type { IconName } from '@/components/common/ui';
+import type { Href } from 'expo-router';
 
 // Placeholders for features without backend support yet. Replace `soon` with a real
 // onPress when the endpoint or screen exists.
@@ -17,11 +18,11 @@ const preferences: { icon: IconName; title: string; value?: string }[] = [
   { icon: 'notifications-outline', title: 'Notifications' },
   { icon: 'language-outline', title: 'Language', value: 'English' },
 ];
-const support: { icon: IconName; title: string }[] = [
-  { icon: 'help-circle-outline', title: 'Help & FAQ' },
-  { icon: 'chatbubble-ellipses-outline', title: 'Contact us' },
-  { icon: 'document-text-outline', title: 'Terms of service' },
-  { icon: 'shield-checkmark-outline', title: 'Privacy policy' },
+const support: { icon: IconName; title: string; href: Href }[] = [
+  { icon: 'help-circle-outline', title: 'Help & FAQ', href: '/help' },
+  { icon: 'chatbubble-ellipses-outline', title: 'Contact us', href: '/contact' },
+  { icon: 'document-text-outline', title: 'Terms of service', href: '/terms' },
+  { icon: 'shield-checkmark-outline', title: 'Privacy policy', href: '/privacy' },
 ];
 const comingSoon = (title: string) => toast.info(`${title} is coming soon.`);
 
@@ -101,9 +102,8 @@ export default function ProfileScreen() {
         <SettingsRow
           icon="lock-closed-outline"
           title="Change password"
-          soon
           last
-          onPress={() => comingSoon('Change password')}
+          onPress={() => router.push('/change-password')}
         />
       </SettingsSection>
 
@@ -146,9 +146,8 @@ export default function ProfileScreen() {
             key={item.title}
             icon={item.icon}
             title={item.title}
-            soon
             last={index === support.length - 1}
-            onPress={() => comingSoon(item.title)}
+            onPress={() => router.push(item.href)}
           />
         ))}
       </SettingsSection>

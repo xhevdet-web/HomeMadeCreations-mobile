@@ -53,7 +53,7 @@ export function OrderTracking({ order }: { order: ApiOrder }) {
   const paid = order.paymentStatus === 'PAID';
   const cashOnDelivery = order.paymentType === 'CASH_ON_DELIVERY';
   const size = (order.product as { selectedSize?: CategorySize | null }).selectedSize;
-  const readyMade = order.product.productType === 'READY_MADE';
+  const readyMade = order.product.origin === 'COMPANY';
   const apparel = !readyMade && isApparelProduct(order.product);
   const lines = readyMade || apparel ? [] : beadLines(order);
   const date = orderDate(order.createdAt);

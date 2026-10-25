@@ -20,7 +20,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useCommerceStore } from '@/store/commerceStore';
 import { useCatalogStore } from '@/store/catalogStore';
 import type { SavedProduct } from '@/api/commerceModels';
-import { readyMadeUnavailable } from '@/api/catalogModels';
+import { companyUnavailable, isCompanyProduct } from '@/api/catalogModels';
 import { User } from '@/types/models';
 import { designSignature, editSavedDesign } from '@/services/savedDesign';
 import { useDesignStore } from '@/store/designStore';
@@ -32,9 +32,9 @@ import { parseTextLayers } from '@/api/builderModels';
 import { componentCount } from '@/helper/builders';
 import { ApparelSummary } from '@/components/apparel/ApparelSummary';
 
-function CheckoutForm({ product, user }: { product: SavedProduct; user: User }) {
+function CheckoutForm({ product, user, size }: { product: SavedProduct; user: User; size?: string | null }) {
   const ui = useUI();
-  const readyMade = product.productType === 'READY_MADE';
+  const readyMade = isCompanyProduct(product);
   const apparel = !readyMade && isApparelProduct(product);
   const canvas = !readyMade && isCanvasProduct(product);
   const [currentProduct, setCurrentProduct] = useState(product);
@@ -45,7 +45,7 @@ function CheckoutForm({ product, user }: { product: SavedProduct; user: User }) 
     user.address?.country,
     user.address?.street,
   ].every((value) => value?.trim());
-  const unavailable = readyMade ? readyMadeUnavailable(currentProduct) : null;
+  const unavailable = readyMade ? companyUnavailable(currentProduct, size) : null;
   const [needsProfile, setNeedsProfile] = useState(false);
   const [notes, setNotes] = useState(() => useCommerceStore.getState().checkout?.notes ?? '');
   const [error, setError] = useFeedbackState();
@@ -82,7 +82,7 @@ function CheckoutForm({ product, user }: { product: SavedProduct; user: User }) 
     try {
       useCommerceStore.getState().setPending(key, true);
       sent = true;
-      const order = await createOrder({ productId: product.id, notes }).unwrap();
+      const order = await createOrder({ productId: product.id, notes, size: readyMade ? size : null }).unwrap();
       useCommerceStore.getState().rememberOrder(order);
       // Only clear the matching local draft after the backend confirms the Order.
       // An unrelated draft may also be open, so leave that one alone.
@@ -95,7 +95,7 @@ function CheckoutForm({ product, user }: { product: SavedProduct; user: User }) 
         // Ordered: the studio starts fresh for the next bouquet or gift.
         canvasDraft.load({
           builderType: canvasDraft.builderType, categoryId: canvasDraft.categoryId,
-          categoryName: canvasDraft.categoryName, size: canvasDraft.size,
+          categoryName: canvasDraft.categoryName, base: canvasDraft.base,
           name: `My ${canvasDraft.categoryName}`, placements: [], texts: [],
         });
         canvasDraft.markSaved(null);
@@ -153,7 +153,7 @@ function CheckoutForm({ product, user }: { product: SavedProduct; user: User }) 
     setError('');
     try {
       if (apparel) {
-        // Reopen the Apparel Studio with every placement, side and option restored.
+        // Reopen the Apparel Studio with every placement, side, base and size restored.
         if (useApparelStore.getState().saved?.product.id !== product.id) loadApparelDesign(product);
         router.dismissTo('/apparel-studio');
         return;
@@ -219,6 +219,7 @@ function CheckoutForm({ product, user }: { product: SavedProduct; user: User }) 
       {!readyMade && <FlowStep step={2} />}
       <ProductOverview
         product={currentProduct}
+        size={readyMade ? size : null}
         action={
           !readyMade && (
             <TextAction
@@ -308,10 +309,11 @@ export default function CheckoutScreen() {
   const userId = user?.id;
   const id = checkout?.userId === user?.id ? checkout?.product.id : undefined;
   const result = useApiResult<SavedProduct>(useGetOwnedProductByIdQuery(id ?? '', { skip: !id || !userId }));
-  const validProduct = result.data && (result.data.productType === 'READY_MADE'
+  const validProduct = result.data && (isCompanyProduct(result.data)
     ? result.data.isActive === true : result.data.createdById === userId);
   if (result.data && validProduct && user && !result.loading && !result.error) {
-    return <CheckoutForm key={result.data.id + user.id} product={result.data} user={user} />;
+    return <CheckoutForm key={result.data.id + user.id} product={result.data} user={user}
+      size={checkout?.size} />;
   }
   return (
     <Page style={{ maxWidth: 600 }}>

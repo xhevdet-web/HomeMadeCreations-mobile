@@ -11,7 +11,7 @@ import { useDesignStore } from '@/store/designStore';
 import { useGetOrdersQuery } from '@/api/endpoints/orderSlice';
 import { useGetAllCategoriesQuery } from '@/api/endpoints/categorySlice';
 import {
-  useGetCreationsFromOthersQuery, useGetReadyMadeProductsQuery, useGetUserProductsQuery,
+  useGetCreationsFromOthersQuery, useGetProductsQuery, useGetUserProductsQuery,
 } from '@/api/endpoints/productSlice';
 import { apiError } from '@/api/apiSlice';
 import { useApiResult } from '@/api/useApiResult';
@@ -42,7 +42,7 @@ export default function HomeScreen() {
   const { data: orderPage } = useGetOrdersQuery(1, { skip: !user });
   const { data: categories } = useGetAllCategoriesQuery();
   const { data: designs } = useGetUserProductsQuery(user?.id ?? '', { skip: !user });
-  const { data: readyMade } = useGetReadyMadeProductsQuery();
+  const { data: readyMade } = useGetProductsQuery({ origin: 'COMPANY' });
   // Community creations need a valid session; request them once it has been restored.
   const authenticated = useAuthStore((state) => state.status === 'authenticated');
   const creationsQuery = useGetCreationsFromOthersQuery(undefined, { skip: !authenticated });
@@ -59,7 +59,7 @@ export default function HomeScreen() {
       if (useAuthStore.getState().status === 'authenticated') void refetchCreations();
     });
   }, [unauthorized, refetchCreations]);
-  const myDesigns = (designs ?? []).filter((design) => design.productType !== 'READY_MADE');
+  const myDesigns = (designs ?? []).filter((design) => design.origin !== 'COMPANY');
   const favourites = favouriteBeads(myDesigns);
   const upcoming: UpcomingFeature[] = [
     { title: 'Best sellers', detail: 'The pieces everyone is ordering', icon: 'trophy-outline',

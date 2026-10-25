@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { router } from 'expo-router';
 import { EmptyState, Field, Header, Page, useUI } from '@/components/common/ui';
-import { StageBackground } from '@/components/common/StageBackground';
+import { PhotoStage } from './components/PhotoStage';
 import { TextAction } from '@/components/common/TextAction';
 import { ActionFooter } from '@/components/checkout/ActionFooter';
 import { FlowStep } from '@/components/checkout/FlowStep';
@@ -22,7 +22,7 @@ import { componentCount } from '@/helper/builders';
 import { money } from '@/helper/pricing';
 import { canvasSignature, componentLines, saveCanvasDesign } from '@/services/canvasDesign';
 import { type Theme } from '@/constants/theme';
-import { DesignCanvas } from './components/DesignCanvas';
+import { FreeDesignCanvas } from './components/FreeDesignCanvas';
 import { useCanvasCapture } from './components/useCanvasCapture';
 
 /** A clean look at the finished bouquet or gift before it is saved and ordered. */
@@ -35,7 +35,7 @@ export default function CanvasPreviewScreen() {
   const result = useApiResult<CatalogComponent[]>(
     useGetCategoryComponentsQuery(draft.categoryId ?? '', { skip: !draft.categoryId }));
   const [createProduct] = useCreateProductMutation();
-  const { ref, exporting, capture } = useCanvasCapture();
+  const { ref, capture } = useCanvasCapture();
   const [intent, setIntent] = useState<'save' | 'order' | null>(null);
   const [error, setError] = useFeedbackState();
   const submitting = useRef(false);
@@ -59,8 +59,9 @@ export default function CanvasPreviewScreen() {
   let signature = '';
   try { signature = canvasSignature(); } catch { /* Validated when continuing. */ }
   const saved = draft.saved?.userId === user?.id && draft.saved?.signature === signature ? draft.saved.product : null;
-  const total = saved?.price ?? lines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
-  const texts = builder === 'GIFT' ? draft.texts.filter((layer) => layer.text.trim()) : [];
+  const total = saved?.price
+    ?? (draft.base?.price ?? 0) + lines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
+  const texts = draft.texts.filter((layer) => layer.text.trim());
   const size = Math.min(width - 44, 360);
   const busy = intent !== null;
 
@@ -112,25 +113,35 @@ export default function CanvasPreviewScreen() {
       <FlowStep step={1} />
       <View style={{ alignItems: 'center', gap: 8 }}>
         <View style={[styles.stage, { width: size, height: size }]}>
-          {!exporting && <StageBackground />}
-          {/* Only the product is captured: no handles, zones, pickers or controls. */}
+          {/* Only the product is captured: backdrop, base, pieces and text; no controls. */}
           <View ref={ref} collapsable={false} testID="design-preview-canvas" style={{ width: size, height: size }}>
-            <DesignCanvas builder={builder} size={size} placements={draft.placements} texts={texts}
-              components={byId} editable={false} />
+            <PhotoStage tone={builder} />
+            <FreeDesignCanvas builder={builder} size={size} base={draft.base} placements={draft.placements}
+              texts={texts} components={byId} editable={false} />
           </View>
         </View>
         <TextAction title="Edit design" icon="create-outline" onPress={edit} disabled={busy} />
       </View>
 
       <View style={{ gap: 2 }}>
-        <Text style={styles.title}>{draft.categoryName}</Text>
+        <Text style={styles.title}>{draft.base?.name ?? draft.categoryName}</Text>
         <Text style={ui.caption}>
-          {[draft.size?.name, componentCount(draft.placements.length, builder)].filter(Boolean).join(' · ')}
+          {[draft.base ? draft.categoryName : null, componentCount(draft.placements.length, builder)]
+            .filter(Boolean).join(' · ')}
         </Text>
       </View>
 
       <View style={styles.card}>
         <Text style={ui.label}>{builder === 'BOUQUET' ? 'Components' : 'Items'}</Text>
+        {draft.base && (
+          <View style={styles.line}>
+            <View style={styles.thumb}>
+              <CatalogImage imageUrl={draft.base.imageUrl} name={draft.base.name} size={34} />
+            </View>
+            <Text style={[ui.body, { flex: 1 }]} numberOfLines={1}>{draft.base.name}</Text>
+            <Text style={styles.amount}>{money(draft.base.price)}</Text>
+          </View>
+        )}
         {lines.map((line) => (
           <View key={line.subCategoryId} style={styles.line}>
             <View style={styles.thumb}>

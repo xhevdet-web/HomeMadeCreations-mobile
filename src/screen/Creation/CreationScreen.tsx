@@ -20,9 +20,11 @@ import { CreationBeads, CreationHero, CreationPromise, type CreationLine } from 
 export default function CreationScreen() {
   const ui = useUI();
   const { width } = useWindowDimensions();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  // `collection` is set when opened from a category's carousel, so the same list is read.
+  const { id, collection } = useLocalSearchParams<{ id: string; collection?: string }>();
   const user = useAuthStore((state) => state.user);
-  const result = useApiResult<CommunityCreation[]>(useGetCreationsFromOthersQuery());
+  const result = useApiResult<CommunityCreation[]>(
+    useGetCreationsFromOthersQuery(collection ? { categoryId: collection } : undefined));
   const creation = result.data?.find((entry) => entry.completedOrderId === id);
   const categoryId = creation?.product.categoryId ?? '';
   const { data: components } = useGetCategoryComponentsQuery(categoryId, { skip: !categoryId });

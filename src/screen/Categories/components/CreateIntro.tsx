@@ -3,7 +3,7 @@ import { useUI } from '@/components/common/ui';
 import { useThemedStyles } from '@/hooks/useTheme';
 import { type Theme } from '@/constants/theme';
 
-const steps = ['Category', 'Size', 'Design'];
+const steps = ['Category', 'Explore', 'Create'];
 
 export function CreateIntro() {
   const ui = useUI();
@@ -12,7 +12,7 @@ export function CreateIntro() {
     <View style={{ gap: 14, marginBottom: 6 }}>
       <View style={{ gap: 4 }}>
         <Text style={styles.title}>What would you like to create?</Text>
-        <Text style={ui.body}>Pick a base for your piece. Next, choose a size and add your beads.</Text>
+        <Text style={ui.body}>Pick a category to explore its pieces, or create your own design.</Text>
       </View>
       <View style={styles.steps} accessibilityLabel="Step 1 of 3: choose a category">
         {steps.map((step, index) => (

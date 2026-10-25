@@ -45,7 +45,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   restore: () => {
     if (restoring) return restoring;
     const current = ++generation;
-    set({ status: 'checking' });
+    // Re-checking a signed-in session (back from the photo picker or the background) is
+    // silent: switching to 'checking' would unmount every screen and reopen Home.
+    const silent = get().status === 'authenticated';
+    if (!silent) set({ status: 'checking' });
     restoring = (async () => {
       try {
         const raw = await stored(authStorage.read);
@@ -57,8 +60,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         const user = await validate(tokens);
         if (current === generation)
           set({ user, status: 'authenticated', expiresAt: tokens.expiresAt, error: null });
-      } catch {
+      } catch (error) {
         if (current !== generation) return;
+        // Offline or a server hiccup doesn't end a signed-in session; only a rejected or
+        // expired one does (the next check, or any request, tries again).
+        const status = error instanceof Error && 'status' in error ? Number(error.status) : null;
+        if (silent && (status === 0 || (status !== null && status >= 500))) return;
         await stored(authStorage.clear).catch(() => undefined);
         if (current === generation)
           set({

@@ -6,22 +6,22 @@ import type { ProductInput, SavedProduct } from '@/api/commerceModels';
 import { productFormData } from '@/api/endpoints/productSlice';
 import { isCanvasBuilder, type CanvasBuilder } from '@/helper/canvasStudio';
 import { uniqueId } from '@/helper/design';
-import { useCanvasStore } from '@/store/canvasStore';
-import type { CategorySize } from '@/types/models';
+import { useCanvasStore, type CanvasBase } from '@/store/canvasStore';
 
 /** Bouquets and gifts: composed freely on one canvas. */
 export function isCanvasProduct(product: { category?: { builderType?: string | null } | null }) {
   return isCanvasBuilder(product.category?.builderType);
 }
 
-/** Opens the Bouquet or Gift Studio for a category (and chosen size). */
-export function openCanvasStudio(category: CatalogCategory, size?: CategorySize | null, replace = false) {
+/** Opens the Bouquet or Gift Studio on a base product (or an empty canvas without one). */
+export function openCanvasStudio(category: Pick<CatalogCategory, 'id' | 'name' | 'builderType'>,
+  base: CanvasBase | null, replace = false) {
   if (!isCanvasBuilder(category.builderType)) return;
   useCanvasStore.getState().start({
     builderType: category.builderType,
     categoryId: category.id,
     categoryName: category.name,
-    size: size ?? null,
+    base,
   });
   if (replace) router.replace('/studio');
   else router.push('/studio');
@@ -30,26 +30,26 @@ export function openCanvasStudio(category: CatalogCategory, size?: CategorySize 
 const round = (value: number) => Math.round(value * 10000) / 10000;
 
 /**
- * One ProductItem per placed component keeps the existing pricing (quantity × unitPrice)
- * and stores its exact spot; `position` is the stacking order (back → front).
+ * One ProductItem per placed piece: 5 roses are 5 items with their own position, size and
+ * rotation, still priced and stocked as "Rose × 5". `position` is the layer order
+ * (back → front). The backend prices everything from its own catalog.
  */
 export function canvasInput(): ProductInput {
   const draft = useCanvasStore.getState();
   if (!draft.categoryId) throw new Error('Choose a category to start designing.');
-  const texts = draft.builderType === 'GIFT'
-    ? draft.texts.filter((layer) => layer.text.trim()).map((layer) => ({
+  // Text is a studio tool, never a stocked component; array order is its layer order.
+  const texts = draft.texts.filter((layer) => layer.text.trim()).map((layer) => ({
       ...layer,
       text: layer.text.trim(),
       x: round(layer.x),
       y: round(layer.y),
       scale: round(layer.scale),
       rotation: Math.round(layer.rotation),
-    }))
-    : [];
+    }));
   return {
     categoryId: draft.categoryId,
     name: draft.name.trim() || `My ${draft.categoryName}`,
-    ...(draft.size ? { selectedSizeId: draft.size.id } : {}),
+    ...(draft.base ? { baseProductId: draft.base.id } : {}),
     items: draft.placements.map((placement, position) => ({
       subCategoryId: placement.subCategoryId,
       quantity: 1,
@@ -64,7 +64,7 @@ export function canvasInput(): ProductInput {
 }
 
 export function canvasSignature() {
-  return JSON.stringify({ previewVersion: 'canvas-v1', product: canvasInput() });
+  return JSON.stringify({ previewVersion: 'canvas-v2', product: canvasInput() });
 }
 
 /**
@@ -91,7 +91,7 @@ export async function saveCanvasDesign(
  * Opens a saved bouquet or gift in its studio with every position, layer and text
  * restored. Customers only order their own products, so edits save as a new Product.
  */
-export function loadCanvasDesign(product: Pick<SavedProduct, 'categoryId' | 'name' | 'items' | 'selectedSize'> & {
+export function loadCanvasDesign(product: Pick<SavedProduct, 'categoryId' | 'name' | 'items' | 'baseProduct'> & {
   category?: { name: string; builderType?: string | null } | null;
   textLayers?: unknown;
 }, name = product.name) {
@@ -114,10 +114,15 @@ export function loadCanvasDesign(product: Pick<SavedProduct, 'categoryId' | 'nam
     builderType: builderType as CanvasBuilder,
     categoryId: product.categoryId,
     categoryName: product.category?.name ?? '',
-    size: product.selectedSize ?? null,
+    base: product.baseProduct ? {
+      id: product.baseProduct.id,
+      name: product.baseProduct.name,
+      price: product.baseProduct.price ?? 0,
+      imageUrl: product.baseProduct.imageUrl,
+    } : null,
     name,
     placements,
-    texts: builderType === 'GIFT' ? parseTextLayers(product.textLayers) : [],
+    texts: parseTextLayers(product.textLayers),
   });
   useCanvasStore.getState().markSaved(null);
 }

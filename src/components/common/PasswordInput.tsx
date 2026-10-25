@@ -1,9 +1,9 @@
-import { useState } from 'react';
-import { Pressable, TextInputProps, View } from 'react-native';
+import { useState, type ComponentRef, type Ref } from 'react';
+import { Pressable, TextInput, TextInputProps, View } from 'react-native';
 import { Field, Icon } from './ui';
 import { useTheme } from '@/hooks/useTheme';
 
-export function PasswordInput(props: TextInputProps & { label: string }) {
+export function PasswordInput(props: TextInputProps & { label: string; ref?: Ref<ComponentRef<typeof TextInput>> }) {
   const [visible, setVisible] = useState(false);
   const theme = useTheme();
   return (

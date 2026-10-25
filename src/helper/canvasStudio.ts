@@ -1,6 +1,10 @@
-import type { CanvasPlacement, TextLayer } from '@/api/builderModels';
+import type { TextLayer } from '@/api/builderModels';
 
-/** Builders composed freely on one canvas. */
+/**
+ * Free-design studios. The company decides WHAT can be added (the category's components
+ * and base products); the customer decides WHERE and HOW: any position, size, rotation
+ * and layer order inside the canvas. Jewelry keeps its own strand studio.
+ */
 export type CanvasBuilder = 'BOUQUET' | 'GIFT';
 export const CANVAS_BUILDERS: readonly CanvasBuilder[] = ['BOUQUET', 'GIFT'];
 
@@ -8,110 +12,54 @@ export function isCanvasBuilder(value: unknown): value is CanvasBuilder {
   return CANVAS_BUILDERS.includes(value as CanvasBuilder);
 }
 
-export type Transform = Pick<CanvasPlacement, 'x' | 'y' | 'scale' | 'rotation'>;
+/** Position (centre, 0–1 of the canvas), size multiplier and rotation in degrees. */
+export type Transform = { x: number; y: number; scale: number; rotation: number };
 
 /**
- * Where a component may sit. `halfWidth(y)` is the allowed distance of the item centre
- * from the canvas centre line at height y, so zones can be shaped (a bouquet is wide at
- * the top and narrows toward the stems). All values are fractions of the canvas.
- */
-interface Zone {
-  top: number;
-  bottom: number;
-  halfWidth: (y: number) => number;
-  centerX?: number;
-}
-
-/**
- * A family of SubCategories that share a picker tab, a layer and a placement zone.
- * Matching is by keyword on SubCategory.type, so "FLOWER", "Flowers" or "flower-head"
- * all work; unknown types fall into the builder's main group.
+ * A family of components, used only to organise the picker into filters and to give a
+ * new piece a sensible starting size. It never decides where a piece goes. Matching is
+ * by keyword on the admin-set SubCategory.type, so "ROSE", "Flowers" or "flower-head"
+ * all work; unrecognised types are still offered under "All".
  */
 export interface ComponentGroup {
   key: string;
   label: string;
   match: RegExp;
-  /** Stacking layer, back (0) to front. */
-  layer: number;
-  zone: Zone;
-  /** Edge of the item box at scale 1, as a share of the canvas. */
+  /** Edge of a new piece at scale 1, as a share of the canvas. */
   base: number;
-  minScale: number;
-  maxScale: number;
-  /** Only one at a time (a wrap, a bag): adding another replaces it. */
-  single?: boolean;
-  /** Fixed in place (the gift container): not draggable. */
-  fixed?: boolean;
 }
 
-const rect = (left: number, right: number, top: number, bottom: number): Zone => ({
-  top, bottom, centerX: (left + right) / 2, halfWidth: () => (right - left) / 2,
-});
-
-/**
- * Flower heads: an elliptical dome on top that narrows linearly toward the binding
- * point, like a hand-tied bouquet seen from the front.
- */
-const dome = (cx: number, cy: number, rx: number, ry: number, bottom: number, waist: number): Zone => ({
-  top: cy - ry,
-  bottom,
-  centerX: cx,
-  halfWidth: (y) => y <= cy
-    ? Math.max(rx * Math.sqrt(Math.max(0, 1 - ((y - cy) / ry) ** 2)), 0.05)
-    : rx + (waist - rx) * Math.min((y - cy) / (bottom - cy), 1),
-});
-
-export const BOUQUET_CENTER = { x: 0.5, y: 0.38 };
-/** Where the stems meet and the wrap is tied. */
-export const BOUQUET_BINDING = { x: 0.5, y: 0.7 };
-
 const BOUQUET_GROUPS: ComponentGroup[] = [
-  { key: 'GREENERY', label: 'Greenery', match: /GREEN|LEAF|LEAV|FOLIAGE|FERN|EUCALYPT/, layer: 0,
-    zone: dome(0.5, 0.38, 0.4, 0.3, 0.62, 0.16), base: 0.3, minScale: 0.5, maxScale: 1.8 },
-  { key: 'FLOWERS', label: 'Flowers', match: /FLOWER|BLOOM|ROSE|STEM/, layer: 1,
-    zone: dome(0.5, 0.38, 0.34, 0.25, 0.62, 0.12), base: 0.26, minScale: 0.5, maxScale: 1.8 },
-  { key: 'FILLERS', label: 'Fillers', match: /FILL|BREATH|GYPSOPHILA/, layer: 2,
-    zone: dome(0.5, 0.38, 0.38, 0.28, 0.62, 0.14), base: 0.2, minScale: 0.5, maxScale: 1.8 },
-  { key: 'WRAPPING', label: 'Wrapping', match: /WRAP|PAPER|SLEEVE|CONE/, layer: 3,
-    zone: rect(0.42, 0.58, 0.64, 0.76), base: 0.62, minScale: 0.8, maxScale: 1.3, single: true },
+  { key: 'FLOWERS', label: 'Flowers', match: /FLOWER|BLOOM|ROSE|TULIP|LILY|PEONY|STEM/, base: 0.24 },
+  { key: 'GREENERY', label: 'Greenery', match: /GREEN|LEAF|LEAV|FOLIAGE|FERN|EUCALYPT/, base: 0.3 },
+  { key: 'FILLERS', label: 'Fillers', match: /FILL|BREATH|GYPSOPHILA/, base: 0.2 },
+  { key: 'DECORATIONS', label: 'Decorations', match: /DECOR|RIBBON|BOW|CARD|TAG|PEARL/, base: 0.2 },
+  { key: 'WRAPPING', label: 'Wrapping', match: /WRAP|PAPER|SLEEVE|CONE/, base: 0.6 },
 ];
 
+// Gift pieces start small so several fit on the bag's front; customers resize freely.
 const GIFT_GROUPS: ComponentGroup[] = [
-  { key: 'CONTAINER', label: 'Bag & box', match: /BAG|BOX|BASKET|CONTAINER|PACKAG|HAMPER/, layer: 0,
-    zone: rect(0.5, 0.5, 0.54, 0.54), base: 0.9, minScale: 1, maxScale: 1, single: true, fixed: true },
-  { key: 'FILLER', label: 'Filler', match: /FILL|SHRED|STRAW|NEST/, layer: 1,
-    zone: rect(0.3, 0.7, 0.72, 0.84), base: 0.42, minScale: 0.6, maxScale: 1.6 },
-  { key: 'ITEMS', label: 'Items', match: /ITEM|PRODUCT|MUG|CUP|FOOD|SWEET|CHOC|COOKIE|DRINK|COFFEE|TEA|CANDLE|TOY|BEAR/,
-    layer: 2, zone: rect(0.32, 0.68, 0.46, 0.78), base: 0.3, minScale: 0.5, maxScale: 1.8 },
-  { key: 'DECORATIONS', label: 'Decorations', match: /DECOR|RIBBON|BOW|CARD|HEART|TAG|FLOWER|STICKER|BALLOON/,
-    layer: 3, zone: rect(0.14, 0.86, 0.12, 0.9), base: 0.2, minScale: 0.5, maxScale: 2 },
+  { key: 'ITEMS', label: 'Items',
+    match: /ITEM|PRODUCT|MUG|CUP|FOOD|SWEET|CHOC|COOKIE|DRINK|COFFEE|TEA|CANDLE|TOY|BEAR/, base: 0.2 },
+  { key: 'DECORATIONS', label: 'Decorations',
+    match: /DECOR|RIBBON|BOW|CARD|HEART|TAG|FLOWER|ROSE|STICKER|BALLOON/, base: 0.14 },
+  { key: 'FILLER', label: 'Filler', match: /FILL|SHRED|STRAW|NEST/, base: 0.28 },
+  { key: 'CONTAINER', label: 'Bags & boxes', match: /BAG|BOX|BASKET|CONTAINER|PACKAG|HAMPER/, base: 0.6 },
 ];
-
-/** Text sits on the bag's front panel. */
-export const GIFT_TEXT_ZONE = rect(0.3, 0.7, 0.36, 0.86);
-/** Text box at scale 1, as shares of the canvas. */
-export const TEXT_BOX = { width: 0.56, height: 0.13 };
 
 const GROUPS: Record<CanvasBuilder, ComponentGroup[]> = { BOUQUET: BOUQUET_GROUPS, GIFT: GIFT_GROUPS };
 const MAIN_GROUP: Record<CanvasBuilder, string> = { BOUQUET: 'FLOWERS', GIFT: 'ITEMS' };
 
-// Picker tab order (layers are drawing order, not how customers browse).
-const TAB_ORDER: Record<CanvasBuilder, string[]> = {
-  BOUQUET: ['FLOWERS', 'GREENERY', 'FILLERS', 'WRAPPING'],
-  GIFT: ['ITEMS', 'DECORATIONS', 'FILLER', 'CONTAINER'],
-};
-
-/** Groups in picker tab order. */
+/** Groups in picker filter order. */
 export function groupsFor(builder: CanvasBuilder) {
-  return TAB_ORDER[builder].map((key) => GROUPS[builder].find((group) => group.key === key)!);
+  return GROUPS[builder];
 }
 
-/** The group of a SubCategory, from its admin-set type. */
+/** The group of a SubCategory, from its admin-set type; unknown types use the main group's size. */
 export function groupOf(builder: CanvasBuilder, type: string | null | undefined): ComponentGroup {
-  const groups = GROUPS[builder];
   const normalized = (type ?? '').toUpperCase();
-  return (normalized && groups.find((group) => group.match.test(normalized)))
-    || groups.find((group) => group.key === MAIN_GROUP[builder])!;
+  return (normalized && GROUPS[builder].find((group) => group.match.test(normalized)))
+    || GROUPS[builder].find((group) => group.key === MAIN_GROUP[builder])!;
 }
 
 /** Whether a type is recognised (unrecognised items are shown under "All" only). */
@@ -122,72 +70,90 @@ export function hasKnownGroup(builder: CanvasBuilder, type: string | null | unde
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
-/** Nearest valid transform inside a zone; drops outside snap back to its edge. */
-export function clampToZone(transform: Transform, zone: Zone, minScale: number, maxScale: number): Transform {
-  const y = clamp(transform.y, zone.top, zone.bottom);
-  const cx = zone.centerX ?? 0.5;
-  const half = zone.halfWidth(y);
+/** Sizes customers can choose, relative to a piece's starting size. */
+export const MIN_SCALE = 0.25;
+export const MAX_SCALE = 3;
+/** How close to the canvas edge a piece's centre may go: it never leaves the canvas. */
+const EDGE = 0.03;
+
+/**
+ * The only placement rule of a free studio: a piece stays on the canvas. Anywhere inside
+ * it, at any size within reason and any rotation, is the customer's choice.
+ */
+export function clampToCanvas(transform: Transform): Transform {
   return {
-    x: clamp(transform.x, cx - half, cx + half),
-    y,
-    scale: clamp(transform.scale, minScale, maxScale),
+    x: clamp(transform.x, EDGE, 1 - EDGE),
+    y: clamp(transform.y, EDGE, 1 - EDGE),
+    scale: clamp(transform.scale, MIN_SCALE, MAX_SCALE),
     rotation: clamp(transform.rotation, -360, 360),
   };
 }
 
-export function clampForGroup(transform: Transform, group: ComponentGroup) {
-  return clampToZone(transform, group.zone, group.minScale, group.maxScale);
-}
-
-export function clampText(transform: Transform) {
-  return clampToZone(transform, GIFT_TEXT_ZONE, 0.4, 2.5);
-}
-
-const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
-const GIFT_SLOTS = [
-  [0.5, 0.6], [0.38, 0.66], [0.62, 0.66], [0.5, 0.74], [0.4, 0.52], [0.6, 0.52], [0.36, 0.76], [0.64, 0.76],
-];
+/** A rectangle on the canvas, in fractions (0–1). */
+export interface Bounds { left: number; top: number; right: number; bottom: number }
 
 /**
- * Where the n-th item of a group lands when tapped (not dragged). Flowers fan out on a
- * sunflower spiral so a tapped bouquet already looks arranged; greenery frames the
- * edge; gift items fill the bag front to back.
+ * The front of the drawn gift bag. The drawing and the placement limit both use it, so
+ * the outline the customer sees is exactly where pieces may go.
  */
-export function defaultPosition(builder: CanvasBuilder, group: ComponentGroup, index: number): Transform {
-  let x = 0.5;
-  let y = 0.5;
-  if (builder === 'BOUQUET' && group.key !== 'WRAPPING') {
-    const angle = index * GOLDEN_ANGLE + (group.key === 'GREENERY' ? 0.6 : 0);
-    const ring = group.key === 'GREENERY' ? 0.92 : Math.min(Math.sqrt((index + 0.4) / 9), 1) * 0.86;
-    x = BOUQUET_CENTER.x + Math.cos(angle) * ring * 0.34;
-    y = BOUQUET_CENTER.y + Math.sin(angle) * ring * 0.24;
-  } else if (builder === 'BOUQUET') {
-    x = BOUQUET_BINDING.x;
-    y = BOUQUET_BINDING.y;
-  } else if (group.key === 'ITEMS') {
-    [x, y] = GIFT_SLOTS[index % GIFT_SLOTS.length];
-  } else if (group.key === 'FILLER') {
-    x = 0.5 + ((index % 3) - 1) * 0.14;
-    y = 0.8;
-  } else if (group.key === 'DECORATIONS') {
-    const corners = [[0.72, 0.36], [0.28, 0.4], [0.7, 0.8], [0.3, 0.82]];
-    [x, y] = corners[index % corners.length];
-  } else {
-    y = group.zone.top;
-  }
-  return clampForGroup({ x, y, scale: 1, rotation: 0 }, group);
+export const GIFT_BAG: Bounds = { left: 0.12, top: 0.27, right: 0.88, bottom: 0.96 };
+
+/**
+ * Where pieces must stay. Items go into the drawn gift bag, like in the real one; a base
+ * product photo (where the container's edges are unknown) and bouquets use the canvas.
+ */
+export function boundsFor(builder: CanvasBuilder, hasBasePhoto: boolean): Bounds | null {
+  return builder === 'GIFT' && !hasBasePhoto ? GIFT_BAG : null;
 }
 
-/** Back-to-front drawing order; the selected item is lifted to the front while editing. */
-export function stackingOrder<T extends { id: string; subCategoryId: string }>(
-  placements: T[], layerOf: (subCategoryId: string) => number, selectedId?: string | null) {
-  return placements
-    .map((placement, index) => ({ placement, index }))
-    .sort((a, b) => {
-      const lifted = Number(a.placement.id === selectedId) - Number(b.placement.id === selectedId);
-      return lifted || layerOf(a.placement.subCategoryId) - layerOf(b.placement.subCategoryId) || a.index - b.index;
-    })
-    .map((entry) => entry.placement);
+/**
+ * Keeps a whole piece inside `bounds`: its rotated footprint, not only its centre, and
+ * never larger than the bounds. `box` is the piece at scale 1, as shares of the canvas.
+ * Without bounds, the canvas rule applies.
+ */
+export function clampInside(transform: Transform, box: { width: number; height: number },
+  bounds: Bounds | null): Transform {
+  const free = clampToCanvas(transform);
+  if (!bounds) return free;
+  const radians = (free.rotation * Math.PI) / 180;
+  const cos = Math.abs(Math.cos(radians));
+  const sin = Math.abs(Math.sin(radians));
+  // Footprint of the rotated box at scale 1.
+  const spanX = box.width * cos + box.height * sin;
+  const spanY = box.width * sin + box.height * cos;
+  const fit = Math.min((bounds.right - bounds.left) / spanX, (bounds.bottom - bounds.top) / spanY);
+  const scale = clamp(free.scale, Math.min(MIN_SCALE, fit), Math.min(MAX_SCALE, fit));
+  const halfX = (spanX * scale) / 2;
+  const halfY = (spanY * scale) / 2;
+  return {
+    x: clamp(free.x, bounds.left + halfX, bounds.right - halfX),
+    y: clamp(free.y, bounds.top + halfY, bounds.bottom - halfY),
+    scale,
+    rotation: free.rotation,
+  };
 }
+
+/**
+ * Where a tapped (not dragged) piece appears: near the middle of the canvas, or of the gift
+ * bag, each one slightly offset so repeated taps don't stack exactly. The customer then
+ * moves it wherever they like.
+ */
+export function dropPosition(count: number, around?: Bounds | null): Transform {
+  const step = count % 9;
+  const centreX = around ? (around.left + around.right) / 2 : 0.5;
+  const centreY = around ? (around.top + around.bottom) / 2 : 0.42;
+  return clampToCanvas({
+    x: centreX + ((step % 3) - 1) * 0.12,
+    y: centreY + (Math.floor(step / 3) - 1) * 0.1,
+    scale: 1,
+    rotation: 0,
+  });
+}
+
+/** Text box at scale 1, as shares of the canvas. */
+export const TEXT_BOX = { width: 0.56, height: 0.13 };
+
+/** Box of a piece at scale 1 (square photos), as shares of the canvas. */
+export const pieceBox = (group: ComponentGroup) => ({ width: group.base, height: group.base });
 
 export const DEFAULT_TEXT: Omit<TextLayer, 'id' | 'text'> = { x: 0.5, y: 0.62, scale: 1, rotation: 0 };

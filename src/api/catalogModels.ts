@@ -1,14 +1,11 @@
 import type { SavedProduct } from './commerceModels';
 import type { CategorySize } from '@/types/models';
-import {
-  parseBuilderConfig, parseBuilderType, parseCategoryOptions,
-  type BuilderConfig, type BuilderType, type CategoryOption,
-} from './builderModels';
+import { parseBuilderConfig, parseBuilderType, type BuilderConfig, type BuilderType } from './builderModels';
+import { isSized, sizeStock } from './apparelModels';
 export interface CatalogCategory {
   sizes?: CategorySize[] | null;
   /** Which studio opens this category; null keeps the original jewelry studio. */
   builderType?: BuilderType | null;
-  options?: CategoryOption[];
   builderConfig?: BuilderConfig | null;
   /** Shared design library this category also offers designs from. */
   designCategoryId?: string | null;
@@ -46,7 +43,6 @@ export function parseCategory(value: unknown): CatalogCategory {
     description: typeof item.description === 'string' ? item.description : null,
     imageUrl: typeof item.imageUrl === 'string' ? item.imageUrl : null,
     builderType: parseBuilderType(item.builderType),
-    options: parseCategoryOptions(item.options),
     builderConfig: parseBuilderConfig(item.builderConfig),
     designCategoryId: typeof item.designCategoryId === 'string' ? item.designCategoryId : null,
   };
@@ -99,9 +95,15 @@ export function parseProduct(value: unknown): SavedProduct {
     throw new Error('The catalog returned an invalid product. Please retry.');
   return item;
 }
-export function readyMadeUnavailable(product: SavedProduct): string | null {
-  if (product.productType !== 'READY_MADE' || product.isActive !== true)
-    return 'This product is unavailable.';
+export const isCompanyProduct = (product: Pick<SavedProduct, 'origin'>) => product.origin === 'COMPANY';
+
+/** Why a company product cannot be ordered (in this size), or null when it can. */
+export function companyUnavailable(product: SavedProduct, size?: string | null): string | null {
+  if (!isCompanyProduct(product) || product.isActive !== true) return 'This product is unavailable.';
+  if (isSized(product)) {
+    if (!size) return 'Choose a size';
+    return sizeStock(product, size) > 0 ? null : `Size ${size} is sold out`;
+  }
   if (!Number.isSafeInteger(product.stock) || product.stock! < 0)
     return 'Stock is unavailable. The backend must return available stock before ordering.';
   return product.stock === 0 ? 'Out of stock' : null;

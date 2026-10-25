@@ -10,13 +10,21 @@ import { apparelImage, apparelMeta, isApparelProduct } from '@/services/apparelD
 export function ProductOverview({
   product,
   action,
+  size: chosenSize,
 }: {
   product: OrderedProduct | SavedProduct;
   action?: ReactNode;
+  /** Size chosen at checkout for a company product sold in sizes. */
+  size?: string | null;
 }) {
   const ui = useUI();
   const theme = useTheme();
-  const size = 'selectedSize' in product ? product.selectedSize : undefined;
+  const saved = product.selectedSize;
+  const size = chosenSize
+    ? `Size ${chosenSize}`
+    : saved
+      ? saved.measurement ? `${saved.name} · ${saved.measurement} ${saved.unit}` : `Size ${saved.name}`
+      : null;
   return (
     <View style={[ui.card, { padding: 16, gap: 12 }]}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
@@ -32,17 +40,13 @@ export function ProductOverview({
         <View style={{ flex: 1, gap: 6 }}>
           <Text style={[ui.sectionTitle, { fontSize: 22 }]}>{product.name}</Text>
           <Text style={ui.caption}>
-            {product.productType === 'READY_MADE'
-              ? 'Ready-made jewelry'
+            {product.origin === 'COMPANY'
+              ? [product.color, 'Ready to order'].filter(Boolean).join(' · ')
               : isApparelProduct(product)
                 ? apparelMeta(product).join(' · ')
                 : `${componentCount(product.itemCount, product.category?.builderType)} · Custom design`}
           </Text>
-          {size && (
-            <Text style={ui.caption}>
-              {size.name} · {size.measurement} {size.unit}
-            </Text>
-          )}
+          {size && <Text style={ui.caption}>{size}</Text>}
         </View>
       </View>
       {action && <View style={{ alignItems: 'flex-end' }}>{action}</View>}

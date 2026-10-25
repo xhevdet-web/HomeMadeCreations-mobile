@@ -1,5 +1,5 @@
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
-import { ComponentProps, ReactNode } from 'react';
+import { ComponentProps, ComponentRef, ReactNode, type Ref } from 'react';
 import {
   ActivityIndicator,
   ColorValue,
@@ -303,7 +303,7 @@ export function Field({
   error,
   icon,
   ...props
-}: TextInputProps & { label: string; error?: string; icon?: IconName }) {
+}: TextInputProps & { label: string; error?: string; icon?: IconName; ref?: Ref<ComponentRef<typeof TextInput>> }) {
   const theme = useTheme();
   const c = theme.colors;
   const ui = useUI();

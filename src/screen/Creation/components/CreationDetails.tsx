@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { componentCount } from '@/helper/builders';
 import { Icon } from '@/components/common/ui';
 import { CatalogImage } from '@/components/products/CatalogImage';
+import { DesignThumbnail } from '@/components/products/DesignThumbnail';
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
 import { money } from '@/helper/pricing';
 import { type Theme } from '@/constants/theme';
@@ -27,8 +28,7 @@ export function CreationHero({ creation, width }: { creation: CommunityCreation;
   return (
     <View style={{ gap: 16 }}>
       <View style={[styles.image, { height: width }]}>
-        <CatalogImage imageUrl={product.designPreviewUrl ?? product.imageUrl} name={product.name}
-          size={width * 0.86} />
+        <DesignThumbnail product={product} size={width * 0.86} />
         <View style={styles.badge}>
           <Icon name="checkmark-circle" size={12} color="#FFFFFF" />
           <Text style={styles.badgeText}>Made & delivered</Text>

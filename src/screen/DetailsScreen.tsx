@@ -13,11 +13,11 @@ import { money } from '@/helper/pricing';
 import { useDesignStore } from '@/store/designStore';
 import type { Product } from '@/types/models';
 
-import ReadyMadeScreen from './ReadyMadeScreen';
+import ProductDetailsScreen from './ProductDetailsScreen';
 
 export default function DetailsScreen() {
   const { purchase } = useLocalSearchParams<{ purchase?: string }>();
-  return purchase === 'ready-made' ? <ReadyMadeScreen /> : <CustomDetailsScreen />;
+  return purchase === 'ready-made' ? <ProductDetailsScreen /> : <CustomDetailsScreen />;
 }
 
 function CustomDetailsScreen() {

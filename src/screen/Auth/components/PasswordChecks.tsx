@@ -2,9 +2,10 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Icon } from '@/components/common/ui';
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
 import { type Theme } from '@/constants/theme';
+import { PASSWORD_MIN_LENGTH } from '@/helper/passwordPolicy';
 
 function strength(password: string) {
-  if (password.length < 12) return 0;
+  if (password.length < PASSWORD_MIN_LENGTH) return 0;
   let score = 1;
   if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
   if (/\d/.test(password)) score++;
@@ -30,7 +31,7 @@ export function PasswordStrength({ password }: { password: string }) {
         ))}
       </View>
       <Text style={[styles.text, { color }]}>
-        {score === 0 ? `Too short · ${12 - password.length} more characters` : labels[score]}
+        {score === 0 ? `Too short · ${PASSWORD_MIN_LENGTH - password.length} more characters` : labels[score]}
       </Text>
     </View>
   );
