@@ -4,6 +4,7 @@ import { persist } from 'zustand/middleware';
 import { CategorySize, Design, DesignItem } from '@/types/models';
 import { itemById, productById } from '@/services/catalog';
 import { normalizePositions, uniqueId } from '@/helper/design';
+import { canFit, lengthOf, selectedLengthMm, sizeLabel, usedLengthMm } from '@/helper/jewelry';
 import { storage } from './storage';
 
 interface DesignState {
@@ -19,6 +20,11 @@ interface DesignState {
   history: DesignItem[][];
   historyIndex: number;
   start: (productId: string, size?: string, selectedSize?: CategorySize | null) => void;
+  /**
+   * Changes the size or exact length of the current design, keeping every component. It
+   * refuses (returns false) when the components no longer fit: nothing is ever removed.
+   */
+  resize: (selectedSize: CategorySize) => boolean;
   load: (design: Design) => void;
   rename: (name: string) => void;
   select: (id: string | null) => void;
@@ -51,6 +57,17 @@ export const useDesignStore = create<DesignState>()(
           selectedId: items.some((item) => item.id === state.selectedId) ? state.selectedId : null,
         });
       };
+      // Room on the piece: bracelets by physical length (the replaced piece makes room),
+      // other sized pieces by their component count.
+      const hasRoom = (id: string, replacing?: string | null) => {
+        const size = get().selectedSize;
+        const selected = selectedLengthMm(size);
+        if (selected !== null) {
+          const length = lengthOf(id);
+          return length !== null && canFit(usedLengthMm(get().items, replacing), length, selected);
+        }
+        return !!replacing || get().items.length < (size?.maxItems ?? Infinity);
+      };
       const canAdd = (id: string, excluding?: string | null) => {
         const item = itemById[id];
         return (
@@ -76,7 +93,7 @@ export const useDesignStore = create<DesignState>()(
             description: '',
             productId,
             selectedSize,
-            size: selectedSize ? `${selectedSize.name} • ${selectedSize.measurement} ${selectedSize.unit}` :
+            size: selectedSize ? sizeLabel(selectedSize) :
               (productById[productId].categoryId ? '' : size ?? productById[productId].sizes[1]),
             name: i18n.t('drafts.myName', { name: productById[productId].name }),
             designId: null,
@@ -99,14 +116,22 @@ export const useDesignStore = create<DesignState>()(
             historyIndex: 0,
           }),
         rename: (name) => set({ name }),
+        resize: (selectedSize) => {
+          const length = selectedLengthMm(selectedSize);
+          const fits = length !== null
+            ? canFit(usedLengthMm(get().items), 0, length)
+            : get().items.length <= (selectedSize.maxItems ?? Infinity);
+          if (fits) set({ selectedSize, size: sizeLabel(selectedSize) });
+          return fits;
+        },
         select: (selectedId) => set({ selectedId }),
         markSaved: (designId) => set({ designId }),
         addItem: (itemId) => {
-          if (get().items.length < (get().selectedSize?.maxItems ?? Infinity) && canAdd(itemId))
+          if (hasRoom(itemId) && canAdd(itemId))
             commit([...get().items, { id: uniqueId(), itemId, position: get().items.length }]);
         },
         insertItem: (itemId, index) => {
-          if (get().items.length >= (get().selectedSize?.maxItems ?? Infinity) || !canAdd(itemId)) return;
+          if (!hasRoom(itemId) || !canAdd(itemId)) return;
           const next = [...get().items];
           next.splice(Math.max(0, Math.min(index, next.length)), 0, {
             id: uniqueId(), itemId, position: index,
@@ -114,7 +139,7 @@ export const useDesignStore = create<DesignState>()(
           commit(next);
         },
         replaceItemAt: (id, itemId) => {
-          if (canAdd(itemId, id))
+          if (hasRoom(itemId, id) && canAdd(itemId, id))
             commit(get().items.map((entry) => entry.id === id ? { ...entry, itemId } : entry));
         },
         placeItem: (id, index) => {
@@ -126,7 +151,7 @@ export const useDesignStore = create<DesignState>()(
           commit(others);
         },
         replaceItem: (itemId) => {
-          if (get().selectedId && canAdd(itemId, get().selectedId))
+          if (get().selectedId && hasRoom(itemId, get().selectedId) && canAdd(itemId, get().selectedId))
             commit(
               get().items.map((entry) =>
                 entry.id === get().selectedId ? { ...entry, itemId } : entry,

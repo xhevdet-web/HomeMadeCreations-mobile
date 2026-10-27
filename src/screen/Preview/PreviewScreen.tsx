@@ -13,6 +13,9 @@ import { useAuthStore } from '@/store/authStore';
 import { useCommerceStore } from '@/store/commerceStore';
 import { itemById, productById } from '@/services/catalog';
 import { priceLines, money } from '@/helper/pricing';
+import {
+  canFit, lengthOf, MIN_JEWELRY_PRICE_CENTS, selectedLengthMm, sizeLabel, usedLengthMm,
+} from '@/helper/jewelry';
 import { designSignature, saveCurrentDesign } from '@/services/savedDesign';
 import { useDesignPreviewCapture } from '@/hooks/useDesignPreviewCapture';
 import { useTheme } from '@/hooks/useTheme';
@@ -36,6 +39,8 @@ export default function PreviewScreen() {
   const [createProduct] = useCreateProductMutation();
   const product = productById[draft.productId];
   const busy = intent !== null;
+  const selectedMm = selectedLengthMm(draft.selectedSize);
+  const capacity = draft.selectedSize?.maxItems;
   let signature = '';
   try {
     signature = designSignature();
@@ -47,6 +52,8 @@ export default function PreviewScreen() {
   const lines = priceLines(draft.items);
   const total =
     saved?.price ?? lines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
+  // A piece may be ordered before it fills its length, but not below the minimum price.
+  const belowMinimum = !!product?.categoryId && total < MIN_JEWELRY_PRICE_CENTS;
   const edit = () => router.dismissTo('/designer');
 
   function removeOne(itemId: string) {
@@ -64,6 +71,10 @@ export default function PreviewScreen() {
       return;
     }
     if (submitting.current) return;
+    if (checkout && belowMinimum) {
+      setError(t(`${product.type}.measurement.minimumPrice`, { price: money(MIN_JEWELRY_PRICE_CENTS) }));
+      return;
+    }
     submitting.current = true;
     setIntent(checkout ? 'checkout' : 'save');
     setError('');
@@ -154,20 +165,19 @@ export default function PreviewScreen() {
             items={draft.items}
             type={product.type}
             size={280}
-            capacity={draft.selectedSize?.maxItems}
+            capacity={capacity}
+            lengthMm={selectedMm}
           />
         </View>
         <Text style={ui.caption}>
           {t('counts.bead', { count: draft.items.length })}
-          {draft.selectedSize
-            ? ' · ' +
-              draft.selectedSize.name +
-              ' · ' +
-              draft.selectedSize.measurement +
-              ' ' +
-              draft.selectedSize.unit
-            : ''}
+          {draft.selectedSize ? ' · ' + sizeLabel(draft.selectedSize) : ''}
         </Text>
+        {belowMinimum && (
+          <Text style={[ui.caption, { color: theme.colors.danger, textAlign: 'center' }]}>
+            {t(`${product.type}.measurement.minimumPrice`, { price: money(MIN_JEWELRY_PRICE_CENTS) })}
+          </Text>
+        )}
         <TextAction title={t('canvasPreview.editDesign')} icon="create-outline" onPress={edit} disabled={busy} />
       </View>
       <Field
@@ -188,7 +198,9 @@ export default function PreviewScreen() {
             line={line}
             disabled={busy}
             addDisabled={
-              draft.items.length >= (draft.selectedSize?.maxItems ?? Infinity) ||
+              (selectedMm !== null
+                ? !canFit(usedLengthMm(draft.items), lengthOf(line.itemId) ?? Infinity, selectedMm)
+                : draft.items.length >= (draft.selectedSize?.maxItems ?? Infinity)) ||
               line.quantity >= (itemById[line.itemId]?.stock ?? 0) ||
               !itemById[line.itemId]?.available
             }

@@ -99,6 +99,7 @@ function CheckoutForm({ product, user, size }: { product: SavedProduct; user: Us
           builderType: canvasDraft.builderType, categoryId: canvasDraft.categoryId,
           categoryName: canvasDraft.categoryName, base: canvasDraft.base,
           name: t('drafts.myName', { name: canvasDraft.categoryName }), placements: [], texts: [],
+          packaging: null,
         });
         canvasDraft.markSaved(null);
       }

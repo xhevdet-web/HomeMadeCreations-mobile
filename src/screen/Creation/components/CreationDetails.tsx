@@ -8,6 +8,7 @@ import { money } from '@/helper/pricing';
 import { type Theme } from '@/constants/theme';
 import { useTranslation } from 'react-i18next';
 import type { CommunityCreation } from '@/api/commerceModels';
+import { sizeLabel } from '@/helper/jewelry';
 
 export interface CreationLine {
   id: string;
@@ -45,7 +46,7 @@ export function CreationHero({ creation, width }: { creation: CommunityCreation;
           <Text style={styles.makerText}>{t('creation.designedBy')}<Text style={styles.makerName}>{creatorName}</Text></Text>
         </View>
         <Text style={styles.meta}>
-          {[componentCount(t, product.itemCount, product.category?.builderType), size && `${size.name} · ${size.measurement} ${size.unit}`]
+          {[componentCount(t, product.itemCount, product.category?.builderType), size && sizeLabel(size)]
             .filter(Boolean).join(' · ')}
         </Text>
         {!!product.description && <Text style={styles.description}>{product.description}</Text>}

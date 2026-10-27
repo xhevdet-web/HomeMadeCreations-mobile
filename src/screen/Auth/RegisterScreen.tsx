@@ -59,8 +59,6 @@ export default function RegisterScreen() {
         { icon: 'hand-left-outline', label: t('auth.register.highlightHandmade') },
         { icon: 'cash-outline', label: t('auth.register.highlightPayOnDelivery') },
       ]}
-      backLabel={t('auth.register.backToLogin')}
-      onBack={() => router.replace('/login')}
       switchPrompt={t('auth.register.haveAccount')}
       switchAction={t('auth.register.logIn')}
       onSwitch={() => router.replace({ pathname: '/login', params: { next } })}

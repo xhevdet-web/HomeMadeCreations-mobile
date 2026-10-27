@@ -1,9 +1,10 @@
-import { Image, ImageBackground, Pressable, Text, View } from 'react-native';
+import { ImageBackground, Pressable, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Brand, Button } from '@/components/common/ui';
+import { LogoMark } from '@/components/common/Logo';
 import { ThemeToggleButton } from '@/components/common/ThemeToggleButton';
 import { LanguageToggle } from '@/components/common/LanguageToggle';
 import { useOnboardingStore } from '@/store/onboardingStore';
@@ -31,10 +32,11 @@ export default function WelcomeScreen() {
           <View style={{ borderRadius: 26, overflow: 'hidden', borderWidth: 1,
             borderColor: theme.colors.overlayBorder,
             backgroundColor: theme.colors.overlayCard }}>
-            <Image source={theme.mode === 'dark' ? require('../../assets/LogoDarkMode.png') : require('../../assets/Logo.png')} resizeMode="contain"
-              accessibilityIgnoresInvertColors
-              style={{ position: 'absolute', width: 360, height: 360, right: -72, bottom: -60,
-                opacity: theme.mode === 'dark' ? 0.13 : 0.075 }} />
+            {/* The house mark as a soft watermark behind the welcome text. */}
+            <View pointerEvents="none" style={{ position: 'absolute', right: -60, bottom: -40,
+              opacity: theme.mode === 'dark' ? 0.13 : 0.075 }}>
+              <LogoMark size={300} tone={theme.mode === 'dark' ? 'dark' : 'light'} />
+            </View>
             <View style={{ gap: 16, padding: 24 }}>
               <Text style={{ fontFamily: theme.fonts.editorial, fontSize: 32, color: theme.colors.text, lineHeight: 38 }}>{t('welcome.title')}</Text>
               <Text style={{ fontSize: 14, color: theme.colors.muted, lineHeight: 21 }}>{t('welcome.subtitle')}</Text>

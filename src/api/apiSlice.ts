@@ -97,6 +97,6 @@ export const apiSlice = createApi({
   reducerPath: 'api',
   baseQuery,
   refetchOnMountOrArgChange: true,
-  tagTypes: ['Auth', 'Category', 'SubCategory', 'Product', 'Order', 'User'],
+  tagTypes: ['Auth', 'Category', 'SubCategory', 'Product', 'Order', 'User', 'GiftPackaging'],
   endpoints: () => ({}),
 });

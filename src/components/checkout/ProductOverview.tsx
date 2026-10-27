@@ -7,6 +7,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useTranslation } from 'react-i18next';
 import { OrderedProduct, SavedProduct } from '@/api/commerceModels';
 import { apparelImage, apparelMeta, isApparelProduct } from '@/services/apparelDesign';
+import { sizeLabel } from '@/helper/jewelry';
 
 export function ProductOverview({
   product,
@@ -25,7 +26,7 @@ export function ProductOverview({
   const size = chosenSize
     ? t('productOverview.size', { size: chosenSize })
     : saved
-      ? saved.measurement ? `${saved.name} · ${saved.measurement} ${saved.unit}` : t('productOverview.size', { size: saved.name })
+      ? saved.measurement || saved.minMeasurementMm ? sizeLabel(saved) : t('productOverview.size', { size: saved.name })
       : null;
   return (
     <View style={[ui.card, { padding: 16, gap: 12 }]}>

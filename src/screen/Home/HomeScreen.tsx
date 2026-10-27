@@ -85,9 +85,10 @@ export default function HomeScreen() {
     });
   }, [unauthorized, refetchCreations]);
 
-  // The navy header sits under the status bar: light icons while Home is in front.
+  // The header sits under the status bar: light icons on its navy (dark mode), dark icons on
+  // its cream (light mode).
   useFocusEffect(useCallback(() => {
-    setStatusBarStyle('light');
+    setStatusBarStyle(theme.mode === 'dark' ? 'light' : 'dark');
     return () => setStatusBarStyle(theme.mode === 'dark' ? 'light' : 'dark');
   }, [theme.mode]));
 
@@ -134,7 +135,7 @@ export default function HomeScreen() {
     <SafeAreaView edges={['left', 'right']} style={ui.page}>
       <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 36 }}>
-        <HomeHeader firstName={user?.firstName} lastName={user?.lastName} search={search} onSearch={setSearch}
+        <HomeHeader search={search} onSearch={setSearch}
           activeOrder={activeOrder} />
         <View style={[ui.pageContent, { gap: 28, paddingTop: 22 }]}>
           {searching ? (

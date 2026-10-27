@@ -1,10 +1,19 @@
 export type JewelryType = 'bracelet' | 'necklace';
+/**
+ * A studio size. Bracelets: a length range in millimetres, plus the exact length chosen
+ * (`selectedMeasurementMm`) once a design is made. Necklaces and older bracelet sizes: one
+ * measurement and a component count (`maxItems`).
+ */
 export interface CategorySize {
   id: string;
   name: string;
-  measurement: number;
-  unit: string;
-  maxItems: number;
+  minMeasurementMm?: number;
+  maxMeasurementMm?: number;
+  defaultMeasurementMm?: number;
+  selectedMeasurementMm?: number;
+  measurement?: number;
+  unit?: string;
+  maxItems?: number;
 }
 export type ItemType = 'bead' | 'charm' | 'letter' | 'spacer';
 export interface Product {
@@ -42,6 +51,8 @@ export interface CustomizationItem {
   image: string;
   available: boolean;
   stock: number;
+  /** Bracelet components: the length one piece occupies, in mm; null when not configured. */
+  lengthMm?: number | null;
   symbol?: string;
 }
 export interface DesignItem {

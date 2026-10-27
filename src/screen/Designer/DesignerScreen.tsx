@@ -19,13 +19,18 @@ import { useAuthStore } from '@/store/authStore';
 import { itemById, productById } from '@/services/catalog';
 import { type Theme } from '@/constants/theme';
 import { designPrice, money } from '@/helper/pricing';
-import { nearestBead, ringLayout } from '@/helper/design';
+import { nearestBead, nearestBoundary, ringLayout } from '@/helper/design';
 import { CustomizationItem } from '@/types/models';
 import { useDesignPreviewCapture } from '@/hooks/useDesignPreviewCapture';
 import { ReorderGestureLayer } from './components/ReorderGestureLayer';
 import { StageOverlay } from './components/StageOverlay';
 import { BeadSequence, SelectionToolbar } from './components/BeadSequence';
 import { DesignerFooter } from './components/DesignerFooter';
+import { MeasurementBar } from './components/MeasurementBar';
+import {
+  lengthLayout, canFit, cm, fitProblem, isComplete, isMeasuredSize, lengthOf, selectedLengthMm, sizeLabel,
+  usedLengthMm,
+} from '@/helper/jewelry';
 import { StageBackground } from '@/components/common/StageBackground';
 
 type Rect = { x: number; y: number; width: number; height: number };
@@ -39,9 +44,15 @@ export default function DesignerScreen() {
   const styles = useThemedStyles(createStyles);
 
   const design = useDesignStore();
-  const limit = design.selectedSize?.maxItems ?? Infinity;
-  const limitMessage = design.selectedSize ? t('jewelry.sizeLimit', { size: design.selectedSize.name, max: limit }) : '';
-  const sizeLabel = design.selectedSize ? `${design.selectedSize.name} • ${design.selectedSize.measurement} ${design.selectedSize.unit}` : design.size;
+  // Bracelets are sized by length: pieces fill the chosen length by their physical size.
+  // Necklaces (and older sizes) keep their component-count limit.
+  const selectedMm = selectedLengthMm(design.selectedSize);
+  const measured = selectedMm !== null;
+  const usedMm = usedLengthMm(design.items);
+  const limit = measured ? Infinity : design.selectedSize?.maxItems ?? Infinity;
+  const limitMessage = design.selectedSize && !measured
+    ? t('jewelry.sizeLimit', { size: design.selectedSize.name, max: limit }) : '';
+  const sizeText = design.selectedSize ? sizeLabel(design.selectedSize) : design.size;
   const [message, setMessage, setInlineMessage] = useFeedbackState('info');
   const [saving, setSaving] = useState(false);
   const [createProduct] = useCreateProductMutation();
@@ -81,11 +92,33 @@ export default function DesignerScreen() {
   const stageSize = Math.min(Math.min(width, 760) - STAGE_MARGIN * 2, height * 0.46, 460);
   const jewelrySize = stageSize;
   const product = productById[design.productId];
+  // A design reopened from before bracelets were sized by length chooses its length again.
+  const needsLength = !design.selectedSize && !!product.categorySizes?.some(isMeasuredSize);
+  const changeLength = () => router.push({ pathname: '/choose-size',
+    params: { categoryId: product.categoryId ?? '', keep: '1' } });
+  /** Why a piece can't go on right now, measuring around the piece it would replace. */
+  const fitOf = (item: CustomizationItem) => measured
+    ? fitProblem(t, item.id, usedLengthMm(design.items, design.selectedId), selectedMm) : null;
+  /** Explains a piece that doesn't fit, with the space left. */
+  function refuseFit(item: CustomizationItem, replacing?: string | null) {
+    const length = lengthOf(item.id);
+    if (length === null) { toast.info(t(`${product.type}.measurement.missingMeasurement`)); return; }
+    toast.info(t(`${product.type}.measurement.componentTooLargeDetail`, { size: length,
+      remaining: Math.max(selectedMm! - usedLengthMm(useDesignStore.getState().items, replacing), 0) }));
+  }
+  const fits = (item: CustomizationItem, replacing?: string | null) => !measured || (lengthOf(item.id) !== null &&
+    canFit(usedLengthMm(useDesignStore.getState().items, replacing), lengthOf(item.id)!, selectedMm!));
   const DetailPicker = product.categoryId ? CategoryBeadPicker : BeadPicker;
   const selectedIndex = design.items.findIndex((item) => item.id === design.selectedId);
   const full = design.items.length >= limit;
-  // Hit-testing must use the same auto-zoom the canvas draws with.
-  const layoutFor = (count: number) => ringLayout(count, product.type, design.selectedSize?.maxItems);
+  const complete = measured && isComplete(usedMm, selectedMm);
+  const capacity = design.selectedSize?.maxItems;
+  // Jewelry sized by length is drawn to scale: each piece at its real size along the cord.
+  const trueScale = measured;
+  // Hit-testing must use the same layout the canvas draws with.
+  const layoutFor = (count: number) => trueScale
+    ? lengthLayout(useDesignStore.getState().items, product.type, selectedMm!)
+    : ringLayout(count, product.type, capacity);
   function startReorder(x: number, y: number) {
     reorderId.current = null;
     setReorderingItem(null);
@@ -161,6 +194,7 @@ export default function DesignerScreen() {
     const piece = jewelryRect.current ?? rect;
     const point = { x: (x - piece.x) * 320 / piece.width, y: (y - piece.y) * 320 / piece.height };
     if (state.selectedId) {
+      if (!fits(item, state.selectedId)) { refuseFit(item, state.selectedId); return; }
       state.replaceItemAt(state.selectedId, item.id);
       setInlineMessage(t('jewelry.replacedSelected', { name: item.name }));
       return;
@@ -169,14 +203,18 @@ export default function DesignerScreen() {
     const nearest = nearestBead(point, state.items.length, product.type, current);
     const target = state.items[nearest.index];
     if (target && nearest.distance < Math.max(12, current.beadRadius * 1.1)) {
+      if (!fits(item, target.id)) { refuseFit(item, target.id); return; }
       state.replaceItemAt(target.id, item.id);
       setInlineMessage(t('jewelry.replacedOn', { name: item.name, piece: t(`jewelry.pieceTypes.${product.type}`) }));
       return;
     }
     if (state.items.length >= limit) { setInlineMessage(t('jewelry.dragToReplace', { limit: limitMessage })); return; }
-    // Insert where the new bead would sit once the strand has one more bead.
-    const slot = nearestBead(point, state.items.length + 1, product.type,
-      layoutFor(state.items.length + 1));
+    if (!fits(item)) { refuseFit(item); return; }
+    // Insert where the new bead would sit: at true scale the nearest gap between pieces,
+    // otherwise the nearest slot once the strand has one more bead.
+    const slot = trueScale
+      ? nearestBoundary(point, product.type, lengthLayout(state.items, product.type, selectedMm!))
+      : nearestBead(point, state.items.length + 1, product.type, layoutFor(state.items.length + 1));
     state.insertItem(item.id, slot.index);
     setInlineMessage(t('jewelry.addedTo', { name: item.name, piece: t(`jewelry.pieceTypes.${product.type}`) }));
   }
@@ -198,8 +236,8 @@ export default function DesignerScreen() {
   }
   const hint = design.selectedId
     ? t('jewelry.hintSelected')
-    : full
-      ? t('jewelry.hintFull')
+    : full || complete
+      ? complete ? t(`${product.type}.measurement.complete`) : t('jewelry.hintFull')
       : design.items.length
         ? t('jewelry.hintReposition')
         : t('jewelry.hintStart');
@@ -208,7 +246,7 @@ export default function DesignerScreen() {
       <Page scroll={false} style={{ padding: 0, gap: 0 }}>
         <View style={styles.headerWrap}><Header
           title={t('jewelry.title')}
-          subtitle={[product.name, sizeLabel].filter(Boolean).join(' • ')}
+          subtitle={[product.name, sizeText].filter(Boolean).join(' • ')}
           back
           right={
             <IconButton
@@ -218,7 +256,11 @@ export default function DesignerScreen() {
               disabled={!design.items.length || saving}
             />
           }
-        /></View>
+        />
+        {measured && (
+          <MeasurementBar piece={product.type} usedMm={usedMm} selectedMm={selectedMm} onChangeLength={changeLength} />
+        )}
+        </View>
         <View ref={canvasRef} collapsable={false}
           style={[styles.stage, { width: stageSize, height: stageSize }, draggingItem && styles.dragTarget]}>
           <StageBackground />
@@ -232,7 +274,8 @@ export default function DesignerScreen() {
                 items={design.items}
                 type={product.type}
                 size={jewelrySize}
-                capacity={design.selectedSize?.maxItems}
+                capacity={capacity}
+                lengthMm={selectedMm}
                 selectedId={design.selectedId}
                 onSelect={(id) => {
                   if (Date.now() >= suppressCanvasTapUntil.current)
@@ -260,10 +303,11 @@ export default function DesignerScreen() {
           <StageOverlay
             label={[t(`jewelry.pieceTypesUpper.${product.type}`), design.selectedSize?.name.toUpperCase()]
               .filter(Boolean).join(' · ')}
-            counter={design.selectedSize ? t('jewelry.counterSized', { count: design.items.length, max: limit })
-              : t('jewelry.counterFree', { count: design.items.length })}
-            full={full}
-            progress={design.selectedSize ? design.items.length / limit : undefined}
+            counter={measured ? t(`${product.type}.measurement.used`, { used: cm(usedMm), total: cm(selectedMm) })
+              : design.selectedSize ? t('jewelry.counterSized', { count: design.items.length, max: limit })
+                : t('jewelry.counterFree', { count: design.items.length })}
+            full={full || complete}
+            progress={measured ? usedMm / selectedMm : design.selectedSize ? design.items.length / limit : undefined}
             onUndo={design.undo}
             onRedo={design.redo}
             canUndo={design.historyIndex !== 0}
@@ -288,9 +332,20 @@ export default function DesignerScreen() {
           />
         ) : (
           <View style={styles.hint}>
-            <Icon name={full ? 'checkmark-circle-outline' : 'sparkles-outline'} size={16}
+            <Icon name={full || complete ? 'checkmark-circle-outline' : 'sparkles-outline'} size={16}
               color={theme.colors.accent} />
             <Text style={[ui.caption, { flex: 1 }]}>{hint}</Text>
+          </View>
+        )}
+        {needsLength && (
+          <View style={styles.hint}>
+            <Icon name="resize-outline" size={16} color={theme.colors.accent} />
+            <Text style={[ui.caption, { flex: 1 }]}>{t(`${product.type}.size.chooseLength`)}</Text>
+            <Pressable accessibilityRole="button" onPress={changeLength} hitSlop={8}>
+              <Text style={[ui.caption, { color: theme.colors.accent, fontWeight: '700' }]}>
+                {t(`${product.type}.size.chooseLengthAction`)}
+              </Text>
+            </Pressable>
           </View>
         )}
         {!!design.items.length && (
@@ -303,12 +358,14 @@ export default function DesignerScreen() {
           categoryId={product.categoryId ?? ''}
           replacing={!!design.selectedId}
           disabled={full && !design.selectedId}
+          fitOf={measured ? fitOf : undefined}
           onPick={(item) => {
             if (dragActive.current ||
               (suppressPickUntil.current?.id === item.id && Date.now() < suppressPickUntil.current.time)) return;
             setMessage('');
             const state = useDesignStore.getState();
-            if (state.selectedId) state.replaceItem(item.id);
+            if (!fits(item, state.selectedId)) refuseFit(item, state.selectedId);
+            else if (state.selectedId) state.replaceItem(item.id);
             else if (state.items.length >= limit) toast.info(t('jewelry.holdToReplace', { limit: limitMessage }));
             else state.addItem(item.id);
           }}
@@ -338,7 +395,7 @@ export default function DesignerScreen() {
 const createStyles = (theme: Theme) => {
   const c = theme.colors;
   return StyleSheet.create({
-    headerWrap: { paddingHorizontal: 22, paddingVertical: 8 },
+    headerWrap: { paddingHorizontal: 22, paddingVertical: 8, gap: 4 },
     editorContent: { paddingHorizontal: 22, paddingTop: 14, paddingBottom: 32, gap: 12 },
     stage: {
       position: 'relative',

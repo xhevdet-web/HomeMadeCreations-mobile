@@ -3,7 +3,6 @@ import { ComponentProps, ComponentRef, ReactNode, type Ref } from 'react';
 import {
   ActivityIndicator,
   ColorValue,
-  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -20,6 +19,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { type Theme } from '@/constants/theme';
+import { Logo } from './Logo';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
 export function Icon({
@@ -190,53 +190,15 @@ export function Header({
     </View>
   );
 }
-export function Brand({ compact = false, hero = false }: { compact?: boolean; hero?: boolean }) {
-  const theme = useTheme();
-  const width = compact ? 110 : hero ? 58 : 130;
-  const height = compact ? 44 : hero ? 80 : 160;
-  const imageSize = compact ? 90 : hero ? 360 : 320;
-  const isDark = theme.mode === 'dark';
-  // Center the visible artwork; both files have transparent padding around it.
-  const imageLeft = (width - imageSize) / 2;
-  const imageTop = (height - imageSize) / 2 - imageSize * (isDark ? 12 / 500 : 51 / 1254);
-  const panelWidth = imageSize * 0.66;
-  const panelHeight = imageSize * 0.53;
+/** The HomeCreator logo, centred; `tagline: false` where the screen already says its own line. */
+export function Brand({ compact = false, hero = false, tagline = !compact }: {
+  compact?: boolean;
+  hero?: boolean;
+  tagline?: boolean;
+}) {
   return (
-    <View
-      accessible
-      accessibilityLabel="HomeMade Creator"
-      accessibilityRole="image"
-      style={{
-        width,
-        height,
-        borderRadius: compact ? 14 : 24,
-        alignSelf: 'center',
-      }}
-    >
-      <View
-        style={{
-          position: 'absolute',
-          width: panelWidth,
-          height: panelHeight,
-          left: (width - panelWidth) / 2,
-          top: (height - panelHeight) / 2,
-          borderRadius: compact ? 12 : 22,
-        }}
-      />
-      <Image
-        key={theme.mode}
-        source={
-          isDark ? require('../../../assets/LogoDarkMode.png') : require('../../../assets/Logo.png')
-        }
-        resizeMode="contain"
-        style={{
-          width: imageSize,
-          height: imageSize,
-          position: 'absolute',
-          left: imageLeft,
-          top: imageTop,
-        }}
-      />
+    <View style={{ alignSelf: 'center', maxWidth: '100%' }}>
+      <Logo markSize={compact ? 34 : hero ? 64 : 52} textSize={compact ? 20 : hero ? 36 : 30} tagline={tagline} />
     </View>
   );
 }

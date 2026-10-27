@@ -4,6 +4,7 @@ import type { CanvasPlacement } from '@/api/builderModels';
 import { parseTextLayers } from '@/api/builderModels';
 import type { CatalogCategory } from '@/api/catalogModels';
 import type { ProductInput, SavedProduct } from '@/api/commerceModels';
+import { savedChoice, type PackagingChoice } from '@/api/packagingModels';
 import { productFormData } from '@/api/endpoints/productSlice';
 import { isCanvasBuilder, type CanvasBuilder } from '@/helper/canvasStudio';
 import { uniqueId } from '@/helper/design';
@@ -14,15 +15,19 @@ export function isCanvasProduct(product: { category?: { builderType?: string | n
   return isCanvasBuilder(product.category?.builderType);
 }
 
-/** Opens the Bouquet or Gift Studio on a base product (or an empty canvas without one). */
+/**
+ * Opens the Bouquet or Gift Studio on a base product (or an empty canvas without one) and,
+ * for gifts, the packaging chosen for it.
+ */
 export function openCanvasStudio(category: Pick<CatalogCategory, 'id' | 'name' | 'builderType'>,
-  base: CanvasBase | null, replace = false) {
+  base: CanvasBase | null, replace = false, packaging: PackagingChoice | null = null) {
   if (!isCanvasBuilder(category.builderType)) return;
   useCanvasStore.getState().start({
     builderType: category.builderType,
     categoryId: category.id,
     categoryName: category.name,
     base,
+    packaging,
   });
   if (replace) router.replace('/studio');
   else router.push('/studio');
@@ -51,6 +56,11 @@ export function canvasInput(): ProductInput {
     categoryId: draft.categoryId,
     name: draft.name.trim() || i18n.t('drafts.myName', { name: draft.categoryName }),
     ...(draft.base ? { baseProductId: draft.base.id } : {}),
+    // Only ids are sent: the backend prices packaging and colour from its own catalog.
+    ...(draft.builderType === 'GIFT' && draft.packaging ? {
+      giftPackagingId: draft.packaging.id,
+      ...(draft.packaging.color ? { giftPackagingColorId: draft.packaging.color.id } : {}),
+    } : {}),
     items: draft.placements.map((placement, position) => ({
       subCategoryId: placement.subCategoryId,
       quantity: 1,
@@ -92,7 +102,8 @@ export async function saveCanvasDesign(
  * Opens a saved bouquet or gift in its studio with every position, layer and text
  * restored. Customers only order their own products, so edits save as a new Product.
  */
-export function loadCanvasDesign(product: Pick<SavedProduct, 'categoryId' | 'name' | 'items' | 'baseProduct'> & {
+export function loadCanvasDesign(product: Pick<SavedProduct, 'categoryId' | 'name' | 'items' | 'baseProduct'
+  | 'giftPackaging' | 'giftPackagingColor'> & {
   category?: { name: string; builderType?: string | null } | null;
   textLayers?: unknown;
 }, name = product.name) {
@@ -124,6 +135,8 @@ export function loadCanvasDesign(product: Pick<SavedProduct, 'categoryId' | 'nam
     name,
     placements,
     texts: parseTextLayers(product.textLayers),
+    // Restored as saved, even if no longer offered: the studio says so instead of swapping it.
+    packaging: savedChoice(product.giftPackaging, product.giftPackagingColor),
   });
   useCanvasStore.getState().markSaved(null);
 }

@@ -30,8 +30,11 @@ export function BeadPicker({
   onDragMove,
   onDragEnd,
   sourceItems,
+  fitOf,
 }: {
   sourceItems?: CustomizationItem[];
+  /** Bracelets: why a component can't go on right now (no room, no physical size), else null. */
+  fitOf?: (item: CustomizationItem) => string | null;
   onPick: (item: CustomizationItem) => void;
   replacing: boolean;
   initialCategory?: string;
@@ -131,6 +134,7 @@ export function BeadPicker({
       <View style={styles.grid}>
         {visible.map((item) => (
           <DraggableBead key={item.id} item={item} replacing={replacing} disabled={disabled}
+            fit={fitOf?.(item) ?? null}
             narrow={width < 360} onPick={onPick} onDragStart={onDragStart}
             onDragMove={onDragMove} onDragEnd={onDragEnd} />
         ))}
@@ -144,10 +148,13 @@ export function BeadPicker({
   );
 }
 
-const DraggableBead = memo(function DraggableBead({ item, replacing, disabled, narrow, onPick, onDragStart, onDragMove, onDragEnd }: {
+const DraggableBead = memo(function DraggableBead({ item, replacing, disabled, fit, narrow, onPick, onDragStart,
+  onDragMove, onDragEnd }: {
   item: CustomizationItem;
   replacing: boolean;
   disabled: boolean;
+  /** Why it doesn't fit the bracelet, shown apart from stock problems. */
+  fit: string | null;
   narrow: boolean;
   onPick: (item: CustomizationItem) => void;
   onDragStart?: (item: CustomizationItem, x: number, y: number) => void;
@@ -160,7 +167,9 @@ const DraggableBead = memo(function DraggableBead({ item, replacing, disabled, n
   const { t } = useTranslation();
   const replaceSame = useDesignStore((state) => state.items.some((entry) => entry.id === state.selectedId && entry.itemId === item.id));
   const atStockLimit = quantity - (replaceSame ? 1 : 0) >= item.stock;
-  const unavailable = !item.available || atStockLimit;
+  const outOfStock = !item.available || atStockLimit;
+  // Stock and physical fit are different reasons, so each gets its own message.
+  const unavailable = outOfStock || !!fit;
   const gesture = useMemo(() => Gesture.Pan().activateAfterLongPress(220).runOnJS(true)
     .enabled(!unavailable)
     .onStart((event) => onDragStart?.(item, event.absoluteX, event.absoluteY))
@@ -171,9 +180,11 @@ const DraggableBead = memo(function DraggableBead({ item, replacing, disabled, n
     <GestureDetector gesture={gesture}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={
-          t(replacing ? 'jewelry.replaceWith' : 'jewelry.addItem', { name: item.name, price: money(item.price) })
-        }
+        accessibilityLabel={[
+          t(replacing ? 'jewelry.replaceWith' : 'jewelry.addItem', { name: item.name, price: money(item.price) }),
+          item.lengthMm ? t('jewelry.pieceSize', { size: item.lengthMm }) : null,
+          !outOfStock ? fit : null,
+        ].filter(Boolean).join(', ')}
         disabled={unavailable}
         onPress={() => onPick(item)}
         style={({ pressed }) => [
@@ -195,10 +206,15 @@ const DraggableBead = memo(function DraggableBead({ item, replacing, disabled, n
         </Text>
         {item.categoryId ? (
           <>
-            <Text numberOfLines={1} style={styles.stock}>{t('jewelry.color', { color: item.color })}</Text>
+            <Text numberOfLines={1} style={styles.stock}>
+              {[t('jewelry.color', { color: item.color }),
+                item.lengthMm ? t('jewelry.pieceSize', { size: item.lengthMm }) : null]
+                .filter(Boolean).join(' · ')}
+            </Text>
             <Text numberOfLines={1} style={styles.tilePrice}>{t('jewelry.perBead', { price: money(item.price) })}</Text>
-            <Text numberOfLines={1} style={[styles.stock, !item.stock && { color: theme.colors.danger }]}>
-              {!item.stock ? t('readyMade.outOfStock') : atStockLimit ? t('jewelry.allInUse', { count: item.stock }) : t('counts.available', { count: item.stock })}
+            <Text numberOfLines={2} style={[styles.stock, (!item.stock || (!outOfStock && fit)) && { color: theme.colors.danger }]}>
+              {!item.stock ? t('readyMade.outOfStock') : atStockLimit ? t('jewelry.allInUse', { count: item.stock })
+                : fit ?? t('counts.available', { count: item.stock })}
             </Text>
           </>
         ) : (

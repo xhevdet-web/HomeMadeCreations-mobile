@@ -7,11 +7,15 @@ import { CatalogImage } from '@/components/products/CatalogImage';
 import { boundsFor, groupOf, type CanvasBuilder } from '@/helper/canvasStudio';
 import type { CanvasBase } from '@/store/canvasStore';
 import { CanvasItem } from './CanvasItem';
-import { StudioScene } from './StudioScene';
+import { GiftBoxFront, StudioScene, type SceneWrap } from './StudioScene';
+import { KRAFT } from './packaging/PackagingArt';
 import { TextLayer } from './TextLayer';
 
-/** Layers, back to front: base product, pieces (in their own order), text, the piece being edited. */
-const Z = { base: 1, items: 10, text: 5000, lifted: 9000 };
+/**
+ * Layers, back to front: base product, pieces (in their own order), a gift box's see-through
+ * front wall, text, the piece being edited.
+ */
+const Z = { base: 1, items: 10, boxFront: 4000, text: 5000, lifted: 9000 };
 
 /**
  * The shared free-design canvas of the Bouquet and Gift studios. The base product photo is
@@ -21,7 +25,7 @@ const Z = { base: 1, items: 10, text: 5000, lifted: 9000 };
  * renders the same on every screen size.
  */
 export function FreeDesignCanvas({ builder, size, base, placements, components, texts, selectedId,
-  editable = true, onSelect, onChange, onRemove, onTextChange }: {
+  editable = true, wrap, onSelect, onChange, onRemove, onTextChange }: {
   builder: CanvasBuilder;
   size: number;
   base: CanvasBase | null;
@@ -31,13 +35,15 @@ export function FreeDesignCanvas({ builder, size, base, placements, components, 
   texts: TextLayerModel[];
   selectedId?: string | null;
   editable?: boolean;
+  /** GIFT: the chosen packaging's look on the drawn container. */
+  wrap?: SceneWrap | null;
   onSelect?: (id: string | null) => void;
   onChange?: (id: string, transform: Transform) => void;
   onRemove?: (id: string) => void;
   onTextChange?: (id: string, transform: Transform) => void;
 }) {
   // The drawn gift bag holds the pieces; a base photo or a bouquet uses the whole canvas.
-  const bounds = boundsFor(builder, !!base?.imageUrl);
+  const bounds = boundsFor(builder, !!base?.imageUrl, wrap?.shape);
   const { t } = useTranslation();
   const lifted = (id: string, zIndex: number) => (editable && id === selectedId ? Z.lifted : zIndex);
   return (
@@ -50,7 +56,7 @@ export function FreeDesignCanvas({ builder, size, base, placements, components, 
         <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.center, { zIndex: Z.base }]}>
           {base?.imageUrl
             ? <CatalogImage imageUrl={base.imageUrl} name={base.name} size={size} />
-            : <StudioScene builder={builder} size={size} labels={editable} />}
+            : <StudioScene builder={builder} size={size} labels={editable} wrap={wrap} />}
         </View>
       </Pressable>
       {placements.map((placement, index) => (
@@ -60,6 +66,12 @@ export function FreeDesignCanvas({ builder, size, base, placements, components, 
           zIndex={lifted(placement.id, Z.items + index)} onSelect={onSelect} onChange={onChange}
           onRemove={onRemove} />
       ))}
+      {/* Closed packaging: pieces sit inside the box, behind its see-through front wall. */}
+      {wrap && !base?.imageUrl && (
+        <View pointerEvents="none" style={[StyleSheet.absoluteFill, { zIndex: Z.boxFront }]}>
+          <GiftBoxFront hex={wrap.hex ?? KRAFT} shape={wrap.shape} size={size} />
+        </View>
+      )}
       {texts.map((layer, index) => (
         <TextLayer key={layer.id} layer={layer} size={size} bounds={bounds} selected={layer.id === selectedId}
           editable={editable} zIndex={lifted(layer.id, Z.text + index)}

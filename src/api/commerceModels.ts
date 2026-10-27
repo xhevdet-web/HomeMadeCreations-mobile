@@ -42,6 +42,14 @@ export interface SavedProduct {
   /** Personalised text of a GIFT design (raw; read with parseTextLayers). */
   textLayers?: unknown;
   basePrice?: number;
+  /** GIFT designs: the packaging and colour chosen, and their price snapshot in cents. */
+  giftPackagingId?: string | null;
+  giftPackagingColorId?: string | null;
+  packagingPrice?: number;
+  giftPackaging?: { id: string; name: string; type: string; shape?: string; price?: number;
+    imageUrl?: string | null } | null;
+  giftPackagingColor?: { id: string; name: string; hex: string; priceAdjustment?: number;
+    imageUrl?: string | null } | null;
   imageKey?: string | null;
   isActive?: boolean;
   id: string;
@@ -72,7 +80,7 @@ export type OrderedProduct = Pick<
   SavedProduct,
   | 'id' | 'name' | 'description' | 'imageUrl' | 'designPreviewUrl' | 'price' | 'itemCount' | 'items'
   | 'origin' | 'backDesignPreviewUrl' | 'category' | 'basePrice' | 'baseProduct' | 'selectedSize'
-  | 'color' | 'colorHex' | 'textLayers'
+  | 'color' | 'colorHex' | 'textLayers' | 'packagingPrice' | 'giftPackaging' | 'giftPackagingColor'
 >;
 // A finished piece by another customer, shown for inspiration. The backend excludes the
 // current user's products and ready-made products, and never exposes customer details.
@@ -125,8 +133,13 @@ export interface OrderPage {
 export interface ProductInput {
   /** A size of the base product, or of the category's studio size presets. */
   selectedSizeId?: string;
+  /** Bracelets: the exact length chosen within the size, in mm. */
+  selectedMeasurementMm?: number;
   /** The company product the design is made on; required for APPAREL. */
   baseProductId?: string;
+  /** GIFT: the chosen packaging and, for closed packaging, its colour. Priced by the backend. */
+  giftPackagingId?: string;
+  giftPackagingColorId?: string;
   /** Personalised text (gift, bouquet, apparel), positioned like the items; apparel text names its side. */
   textLayers?: (TextLayer & { side?: DesignSide })[];
   categoryId: string;

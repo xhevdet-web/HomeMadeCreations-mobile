@@ -9,9 +9,16 @@ import { cordPath, ringLayout, scalePoint, shapeCentre, slotBasePoint, slotPosit
 import { BeadShape } from './DesignItem';
 import { useTheme } from '@/hooks/useTheme';
 import { CatalogImage } from '@/components/products/CatalogImage';
+import { lengthLayout, TYPICAL_PIECE_MM } from '@/helper/jewelry';
 import { useCatalogStore } from '@/store/catalogStore';
 
 const ZOOM_MS = 220;
+// Without a chosen length, pieces with a physical size are drawn relative to the strand's
+// average piece, within limits that keep them from crowding their neighbours.
+const MIN_RELATIVE = 0.75;
+const MAX_RELATIVE = 1.3;
+// A true-scale piece may be drawn tiny (a 4 mm spacer), but is always this easy to tap.
+const MIN_TOUCH_PX = 44;
 // Image beads render in a fixed box and scale down, so the image never re-lays out.
 const BOX_RADIUS = 20;
 
@@ -21,13 +28,18 @@ export interface CanvasProps {
   size?: number;
   /** Maximum beads for the chosen size; drives the auto-zoom. */
   capacity?: number | null;
+  /**
+   * Jewelry sized by length: the chosen length in mm. The cord then stands for exactly
+   * that length and every piece is drawn at its real size along it.
+   */
+  lengthMm?: number | null;
   selectedId?: string | null;
   onSelect?: (id: string) => void;
   decorative?: boolean;
   exportMode?: boolean;
 }
 
-function PlacedBead({ entry, index, base, type, size, scale, beadRadius, selected,
+function PlacedBead({ entry, index, base, type, size, scale, beadRadius, relative, hitSlop, selected,
   onSelect, imageUrl, name, accent }: {
   entry: DesignItemModel;
   index: number;
@@ -37,6 +49,10 @@ function PlacedBead({ entry, index, base, type, size, scale, beadRadius, selecte
   size: number;
   scale: SharedValue<number>;
   beadRadius: SharedValue<number>;
+  /** Drawn size relative to the average piece (1 = average). */
+  relative: number;
+  /** Extra touch area around a small piece, in its own (unscaled) units. */
+  hitSlop: number;
   selected: boolean;
   onSelect?: (id: string) => void;
   imageUrl?: string | null;
@@ -54,7 +70,7 @@ function PlacedBead({ entry, index, base, type, size, scale, beadRadius, selecte
       transform: [
         { translateX: x - box / 2 },
         { translateY: y - box / 2 },
-        { scale: beadRadius.value / BOX_RADIUS },
+        { scale: (beadRadius.value / BOX_RADIUS) * relative },
       ],
     };
   });
@@ -66,6 +82,7 @@ function PlacedBead({ entry, index, base, type, size, scale, beadRadius, selecte
         accessibilityLabel={t('jewelry.canvasPosition', { position: index + 1, name })}
         onPress={onSelect ? () => onSelect(entry.id) : undefined}
         disabled={!onSelect}
+        hitSlop={hitSlop}
         style={{ width: box, height: box }}>
         {selected && <View pointerEvents="none" style={{
           position: 'absolute', inset: -5, borderRadius: box, borderWidth: 3,
@@ -82,6 +99,7 @@ export function JewelryCanvas({
   type = 'bracelet',
   size = 320,
   capacity,
+  lengthMm,
   selectedId,
   onSelect,
   decorative = false,
@@ -91,7 +109,21 @@ export function JewelryCanvas({
   const theme = useTheme();
   const catalogItems = useCatalogStore((state) => state.items);
   const centre = shapeCentre(type);
-  const layout = ringLayout(items.length, type, capacity);
+  const trueScale = !!lengthMm;
+  const layout = trueScale ? lengthLayout(items, type, lengthMm!) : ringLayout(items.length, type, capacity);
+  const lengths = items.map((entry) => (catalogItems[entry.itemId] ?? itemById[entry.itemId])?.lengthMm ?? null);
+  const measured = lengths.filter((length): length is number => !!length);
+  const average = measured.length ? measured.reduce((sum, length) => sum + length, 0) / measured.length : 0;
+  // True scale: each piece at its own size against a typical bead. Otherwise a gentle hint
+  // of size around the strand's average piece.
+  const relativeAt = (index: number) => trueScale
+    ? (lengths[index] ?? TYPICAL_PIECE_MM) / TYPICAL_PIECE_MM
+    : lengths[index] && average ? Math.min(MAX_RELATIVE, Math.max(MIN_RELATIVE, lengths[index]! / average)) : 1;
+  const unit = size / 320;
+  const hitSlopAt = (index: number) => {
+    const shown = (layout.beadRadius / BOX_RADIUS) * relativeAt(index);
+    return Math.max(0, (MIN_TOUCH_PX / shown - BOX_RADIUS * 2 * unit) / 2);
+  };
   const scale = useSharedValue(layout.scale);
   const beadRadius = useSharedValue(layout.beadRadius);
   useEffect(() => {
@@ -185,6 +217,8 @@ export function JewelryCanvas({
             size={size}
             scale={scale}
             beadRadius={beadRadius}
+            relative={relativeAt(index)}
+            hitSlop={hitSlopAt(index)}
             selected={!exportMode && entry.id === selectedId}
             onSelect={onSelect}
             imageUrl={item.imageUrl}

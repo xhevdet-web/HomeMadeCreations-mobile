@@ -101,11 +101,19 @@ export interface Bounds { left: number; top: number; right: number; bottom: numb
 export const GIFT_BAG: Bounds = { left: 0.12, top: 0.27, right: 0.88, bottom: 0.96 };
 
 /**
- * Where pieces must stay. Items go into the drawn gift bag, like in the real one; a base
- * product photo (where the container's edges are unknown) and bouquets use the canvas.
+ * The front of a rectangular gift box: wider and lower than the square one (which uses the
+ * bag's area), so long pieces like jewelry and chocolate bars lie naturally inside.
  */
-export function boundsFor(builder: CanvasBuilder, hasBasePhoto: boolean): Bounds | null {
-  return builder === 'GIFT' && !hasBasePhoto ? GIFT_BAG : null;
+export const GIFT_BOX_RECTANGULAR: Bounds = { left: 0.06, top: 0.38, right: 0.94, bottom: 0.9 };
+
+/**
+ * Where pieces must stay. Items go into the drawn gift bag or box, like in the real one; a
+ * base product photo (where the container's edges are unknown) and bouquets use the canvas.
+ */
+export function boundsFor(builder: CanvasBuilder, hasBasePhoto: boolean,
+  shape?: 'SQUARE' | 'RECTANGULAR' | null): Bounds | null {
+  if (builder !== 'GIFT' || hasBasePhoto) return null;
+  return shape === 'RECTANGULAR' ? GIFT_BOX_RECTANGULAR : GIFT_BAG;
 }
 
 /**

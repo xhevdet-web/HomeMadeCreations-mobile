@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -10,6 +10,7 @@ import { ComponentPicker, remainingStock, type PickerDrag } from '@/components/s
 import type { Transform } from '@/components/studio/PlacedItem';
 import { useGetCategoryComponentsQuery } from '@/api/endpoints/subCategorySlice';
 import { useCreateProductMutation } from '@/api/endpoints/productSlice';
+import { choicePrice, sceneWrap } from '@/api/packagingModels';
 import { apiError } from '@/api/apiSlice';
 import { useApiResult } from '@/api/useApiResult';
 import type { CatalogComponent } from '@/api/catalogModels';
@@ -34,6 +35,8 @@ import { FreeDesignCanvas } from './components/FreeDesignCanvas';
 import { PhotoStage } from './components/PhotoStage';
 import { TextTool } from './components/TextTool';
 import { useCanvasCapture } from './components/useCanvasCapture';
+import { PackagingSummaryBar } from './components/packaging/PackagingSummaryBar';
+import { GiftPriceSummary } from './components/packaging/GiftPriceSummary';
 
 type Rect = { x: number; y: number; width: number; height: number };
 const ALL = 'ALL';
@@ -57,12 +60,28 @@ export default function CanvasStudioScreen() {
   const categoryId = draft.categoryId ?? '';
   const result = useApiResult<CatalogComponent[]>(useGetCategoryComponentsQuery(categoryId, { skip: !categoryId }));
   const [createProduct] = useCreateProductMutation();
+  const gift = builder === 'GIFT';
+  // Chosen before the studio opened; the studio draws and prices it without loading it again.
+  const packaging = gift ? draft.packaging : null;
+  const wrap = sceneWrap(packaging);
   const [message, setMessage] = useFeedbackState('info');
   const [saving, setSaving] = useState(false);
   const [tab, setTab] = useState<string | null>(null);
   const [dragging, setDragging] = useState<CatalogComponent | null>(null);
   const { ref: canvasRef, exporting, capture } = useCanvasCapture();
   const screenRef = useRef<View>(null);
+
+  // A different box shape changes where pieces may sit: fit every placed piece into the
+  // new box once, in one undo step, instead of leaving pieces hanging outside it.
+  const catalog = result.data;
+  const hasBasePhoto = !!draft.base?.imageUrl;
+  useEffect(() => {
+    if (builder !== 'GIFT' || !catalog) return;
+    const area = boundsFor(builder, hasBasePhoto, wrap?.shape);
+    const types = Object.fromEntries(catalog.map((entry) => [entry.id, entry.type]));
+    useCanvasStore.getState().refit((placement) =>
+      clampInside(placement, pieceBox(groupOf(builder, types[placement.subCategoryId])), area));
+  }, [builder, catalog, hasBasePhoto, wrap?.shape]);
   const canvasRect = useRef<Rect | null>(null);
   const dragX = useSharedValue(0);
   const dragY = useSharedValue(0);
@@ -113,11 +132,14 @@ export default function CanvasStudioScreen() {
   for (const item of draft.placements) usage[item.subCategoryId] = (usage[item.subCategoryId] ?? 0) + 1;
   const count = draft.placements.length;
   // Live estimate; the backend recalculates every price from its own catalog on save.
-  const total = (draft.base?.price ?? 0)
+  const contents = (draft.base?.price ?? 0)
     + draft.placements.reduce((sum, item) => sum + (byId[item.subCategoryId]?.price ?? 0), 0);
+  const total = contents + choicePrice(packaging);
+  /** Back to the packaging screen; whatever is placed stays as it is. */
+  const changePackaging = () => router.push({ pathname: '/design-base', params: { categoryId, change: '1' } });
   const stageSize = Math.min(Math.min(width, 760) - 32, height * 0.46, 480);
-  // Pieces and text go into the drawn gift bag; a base photo or bouquet uses the canvas.
-  const bounds = boundsFor(builder, !!draft.base?.imageUrl);
+  // Pieces and text go into the drawn gift bag or box; a base photo or bouquet uses the canvas.
+  const bounds = boundsFor(builder, hasBasePhoto, wrap?.shape);
   const fitPiece = (next: Placement, component?: CatalogComponent) =>
     clampInside(next, pieceBox(groupFor(component)), bounds);
   const fitText = (next: Placement) => clampInside(next, TEXT_BOX, bounds);
@@ -222,6 +244,7 @@ export default function CanvasStudioScreen() {
           <Header title={copy.title} subtitle={draft.base?.name ?? draft.categoryName}
             back right={<IconButton name="bookmark-outline" label={t('studio.saveDesign')} onPress={() => void save()}
               disabled={!count || saving} />} />
+          {gift && <PackagingSummaryBar packaging={packaging} onChange={changePackaging} />}
         </View>
         <View style={[styles.stage, { width: stageSize, height: stageSize }, dragging && styles.dropTarget]}>
           {/* Captured as the preview: backdrop, base product, pieces and text. Never handles or controls. */}
@@ -235,6 +258,7 @@ export default function CanvasStudioScreen() {
               placements={draft.placements}
               texts={draft.texts}
               components={byId}
+              wrap={wrap}
               selectedId={draft.selectedId}
               editable={!exporting}
               onSelect={draft.select}
@@ -321,6 +345,10 @@ export default function CanvasStudioScreen() {
               ) : undefined}
             />
           )}
+          {gift && packaging && count > 0 && (
+            <GiftPriceSummary contents={contents} count={componentCount(t, count, builder)}
+              packaging={packaging} />
+          )}
         </ScrollView>
       </Page>
       {dragging && (
@@ -342,7 +370,7 @@ export default function CanvasStudioScreen() {
 const createStyles = (theme: Theme) => {
   const c = theme.colors;
   return StyleSheet.create({
-    headerWrap: { paddingHorizontal: 22, paddingVertical: 8 },
+    headerWrap: { paddingHorizontal: 22, paddingVertical: 8, gap: 8 },
     stage: {
       alignSelf: 'center', borderRadius: 28, overflow: 'hidden', backgroundColor: c.thumbnail,
       borderWidth: 1, borderColor: c.border,

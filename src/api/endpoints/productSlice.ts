@@ -28,7 +28,10 @@ export async function productFormData(input: ProductInput, previewUri: string | 
   data.append('categoryId', input.categoryId);
   data.append('name', input.name);
   if (input.selectedSizeId) data.append('selectedSizeId', input.selectedSizeId);
+  if (input.selectedMeasurementMm) data.append('selectedMeasurementMm', String(input.selectedMeasurementMm));
   if (input.baseProductId) data.append('baseProductId', input.baseProductId);
+  if (input.giftPackagingId) data.append('giftPackagingId', input.giftPackagingId);
+  if (input.giftPackagingColorId) data.append('giftPackagingColorId', input.giftPackagingColorId);
   if (input.textLayers?.length) data.append('textLayers', JSON.stringify(input.textLayers));
   if (input.description) data.append('description', input.description);
   data.append('items', JSON.stringify(input.items));

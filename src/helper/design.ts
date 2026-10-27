@@ -132,22 +132,79 @@ export function ringLayout(count: number, type: JewelryType, capacity?: number |
 export type RingLayout = ReturnType<typeof ringLayout>;
 
 /** Full-size position of slot `index` for a layout (before zoom). */
-export function slotBasePoint(index: number, type: JewelryType, layout: RingLayout) {
+export function slotBasePoint(index: number, type: JewelryType, layout: RingLayout | MeasuredRingLayout) {
+  const centers = centersOf(layout);
+  if (centers) return curvePoint(type, centers[index] ?? layout.offset);
   return curvePoint(type, layout.offset + index / layout.slots);
 }
 
 /** Position of bead `index` (or empty slot `index`) for a layout, in design space. */
-export function slotPosition(index: number, type: JewelryType, layout: RingLayout) {
+export function slotPosition(index: number, type: JewelryType, layout: RingLayout | MeasuredRingLayout) {
   return scalePoint(type, slotBasePoint(index, type, layout), layout.scale);
 }
 
 /** Index of the bead nearest to a design-space point. */
-export function nearestBead(point: Point, count: number, type: JewelryType, layout: RingLayout) {
+export function nearestBead(point: Point, count: number, type: JewelryType,
+  layout: RingLayout | MeasuredRingLayout) {
   let best = { index: -1, distance: Infinity };
   for (let index = 0; index < count; index++) {
     const position = slotPosition(index, type, layout);
     const distance = Math.hypot(point.x - position.x, point.y - position.y);
     if (distance < best.distance) best = { index, distance };
   }
+  return best;
+}
+
+/** Share of the canvas a true-scale bracelet is drawn at; beads (up to ~12 mm) stay inside. */
+const MEASURED_RING_SCALE = 0.86;
+
+/**
+ * True-scale layout for a bracelet sized by length. The drawn cord stands for the chosen
+ * length, and every piece takes its real share of it: a 12 mm bead covers 1.5× the cord of
+ * an 8 mm one, and what is still empty shows as a gap at the top, by the clasp. Pieces
+ * hang centred at the bottom, like beads on a cord. `lengths` are the pieces' sizes in mm,
+ * in strand order; `unitPerMm` converts mm to design units at the drawn size.
+ */
+export function measuredRingLayout(lengths: number[], type: JewelryType, selectedMm: number, typicalMm: number) {
+  const scale = MEASURED_RING_SCALE;
+  const unitPerMm = (table(type).total * scale) / selectedMm;
+  const used = lengths.reduce((sum, length) => sum + length, 0);
+  const start = 0.5 - used / (2 * selectedMm);
+  const boundaries = [start];
+  const centers: number[] = [];
+  for (const length of lengths) {
+    const from = boundaries[boundaries.length - 1];
+    centers.push(from + length / (2 * selectedMm));
+    boundaries.push(from + length / selectedMm);
+  }
+  return {
+    scale,
+    // A typical piece's radius; each piece is drawn at its own length relative to it.
+    beadRadius: (typicalMm / 2) * unitPerMm,
+    slots: Math.max(lengths.length, 1),
+    offset: start,
+    unitPerMm,
+    typicalMm,
+    centers,
+    boundaries,
+  };
+}
+export type MeasuredRingLayout = ReturnType<typeof measuredRingLayout>;
+type AnyLayout = RingLayout | MeasuredRingLayout;
+
+/** Fractions along the cord of a true-scale layout, or undefined for evenly spaced ones. */
+const centersOf = (layout: AnyLayout) => ('centers' in layout ? layout.centers : undefined);
+
+/**
+ * Where a new piece dropped at `point` goes: the nearest gap between pieces (or either end)
+ * of a true-scale layout.
+ */
+export function nearestBoundary(point: Point, type: JewelryType, layout: MeasuredRingLayout) {
+  let best = { index: 0, distance: Infinity };
+  layout.boundaries.forEach((fraction, index) => {
+    const position = scalePoint(type, curvePoint(type, fraction), layout.scale);
+    const distance = Math.hypot(point.x - position.x, point.y - position.y);
+    if (distance < best.distance) best = { index, distance };
+  });
   return best;
 }

@@ -49,8 +49,6 @@ export default function LoginScreen() {
       title={t('auth.login.title')}
       subtitle={t('auth.login.subtitle')}
       tagline={t('auth.login.tagline')}
-      backLabel={t('auth.login.toRegistration')}
-      onBack={() => router.replace('/register')}
       switchPrompt={t('auth.login.noAccount')}
       switchAction={t('auth.login.signUp')}
       onSwitch={() => router.replace({ pathname: '/register', params: { next } })}

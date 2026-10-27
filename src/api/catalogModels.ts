@@ -4,6 +4,7 @@ import type { SavedProduct } from './commerceModels';
 import type { CategorySize } from '@/types/models';
 import { parseBuilderConfig, parseBuilderType, type BuilderConfig, type BuilderType } from './builderModels';
 import { isSized, sizeStock } from './apparelModels';
+import { isMeasuredSize } from '@/helper/jewelry';
 export interface CatalogCategory {
   sizes?: CategorySize[] | null;
   /** Which studio opens this category; null keeps the original jewelry studio. */
@@ -27,6 +28,8 @@ export interface CatalogComponent extends CatalogCategory {
   stock: number;
   /** false for unlimited printed designs. */
   trackStock?: boolean;
+  /** Bracelet components: the length one piece occupies, in mm; null until configured. */
+  effectiveLengthMm?: number | null;
   category?: { id: string; name: string };
 }
 export function parseCategory(value: unknown): CatalogCategory {
@@ -49,13 +52,23 @@ export function parseCategory(value: unknown): CatalogCategory {
     designCategoryId: typeof item.designCategoryId === 'string' ? item.designCategoryId : null,
   };
 }
+/**
+ * A size in either format: a bracelet length range in mm (with the exact length chosen,
+ * on a saved design), or the legacy measurement / unit / component count.
+ */
 export function parseCategorySize(value: unknown): CategorySize {
   const size = value as CategorySize | null;
   if (!size || typeof size.id !== 'string' || !size.id.trim() ||
-      typeof size.name !== 'string' || !size.name.trim() ||
-      !Number.isFinite(size.measurement) || size.measurement <= 0 ||
+      typeof size.name !== 'string' || !size.name.trim())
+    throw new Error(i18n.t('designErrors.invalidCatalog'));
+  if (isMeasuredSize(size))
+    return { id: size.id, name: size.name, minMeasurementMm: size.minMeasurementMm,
+      maxMeasurementMm: size.maxMeasurementMm, defaultMeasurementMm: size.defaultMeasurementMm,
+      ...(Number.isInteger(size.selectedMeasurementMm) && size.selectedMeasurementMm! > 0
+        ? { selectedMeasurementMm: size.selectedMeasurementMm } : {}) };
+  if (!Number.isFinite(size.measurement) || size.measurement! <= 0 ||
       typeof size.unit !== 'string' || !size.unit.trim() ||
-      !Number.isSafeInteger(size.maxItems) || size.maxItems <= 0)
+      !Number.isSafeInteger(size.maxItems) || size.maxItems! <= 0)
     throw new Error(i18n.t('designErrors.invalidCatalog'));
   return { id: size.id, name: size.name, measurement: size.measurement,
     unit: size.unit, maxItems: size.maxItems };
@@ -81,6 +94,8 @@ export function parseComponent(value: unknown): CatalogComponent {
     ...item,
     color: typeof item.color === 'string' ? item.color : null,
     type: typeof item.type === 'string' ? item.type : null,
+    effectiveLengthMm: Number.isInteger(item.effectiveLengthMm) && item.effectiveLengthMm! > 0
+      ? item.effectiveLengthMm : null,
   };
 }
 export function activeList<T extends CatalogCategory>(value: unknown, parse: (entry: unknown) => T): T[] {

@@ -14,6 +14,7 @@ import { OrderTimeline, stageDescription } from './OrderTimeline';
 import { dateLocale } from '@/i18n';
 import { ApparelSummary } from '@/components/apparel/ApparelSummary';
 import { apparelMeta, isApparelProduct } from '@/services/apparelDesign';
+import { sizeLabel } from '@/helper/jewelry';
 
 function orderDate(value: string, language: string) {
   const date = new Date(value);
@@ -79,7 +80,7 @@ export function OrderTracking({ order }: { order: ApiOrder }) {
                 : apparel
                   ? apparelMeta(t, order.product).join(' · ')
                   : [componentCount(t, order.product.itemCount, order.product.category?.builderType),
-                    size && `${size.name} · ${size.measurement} ${size.unit}`]
+                    size && sizeLabel(size)]
                     .filter(Boolean).join(' · ')}
             </Text>
             <View style={[styles.pill, completed && styles.pillDone]}>

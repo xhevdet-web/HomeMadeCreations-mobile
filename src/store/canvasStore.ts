@@ -3,6 +3,7 @@ import i18n from '@/i18n';
 import { persist } from 'zustand/middleware';
 import type { CanvasPlacement, TextLayer } from '@/api/builderModels';
 import type { SavedProduct } from '@/api/commerceModels';
+import type { PackagingChoice } from '@/api/packagingModels';
 import type { CanvasBuilder, Transform } from '@/helper/canvasStudio';
 import { uniqueId } from '@/helper/design';
 import { storage } from './storage';
@@ -28,6 +29,8 @@ export interface CanvasDraft {
   name: string;
   placements: CanvasPlacement[];
   texts: TextLayer[];
+  /** GIFT: the packaging (and colour) the gift arrives in, chosen before the studio opens. */
+  packaging: PackagingChoice | null;
 }
 
 interface Snapshot { placements: CanvasPlacement[]; texts: TextLayer[] }
@@ -42,8 +45,14 @@ interface CanvasState extends CanvasDraft {
   historyIndex: number;
   saved: SavedCanvas | null;
   markSaved: (saved: SavedCanvas | null) => void;
-  /** Opens a category on a base; the same category and base keep the current composition. */
-  start: (draft: Pick<CanvasDraft, 'builderType' | 'categoryId' | 'categoryName' | 'base'>) => void;
+  /**
+   * Opens a category on a base and, for gifts, its packaging. The same category and base keep
+   * the current composition, so changing the packaging never empties the gift.
+   */
+  start: (draft: Pick<CanvasDraft, 'builderType' | 'categoryId' | 'categoryName' | 'base'>
+    & { packaging?: PackagingChoice | null }) => void;
+  /** Applies one change to every piece in a single undo step, e.g. fitting them to a new box. */
+  refit: (fit: (placement: CanvasPlacement) => Transform) => void;
   load: (draft: CanvasDraft) => void;
   rename: (name: string) => void;
   select: (id: string | null) => void;
@@ -63,6 +72,7 @@ interface CanvasState extends CanvasDraft {
 
 const empty: CanvasDraft = {
   builderType: null, categoryId: null, categoryName: '', base: null, name: '', placements: [], texts: [],
+  packaging: null,
 };
 
 export const useCanvasStore = create<CanvasState>()(
@@ -87,13 +97,21 @@ export const useCanvasStore = create<CanvasState>()(
         ...fresh,
         saved: null,
         markSaved: (saved) => set({ saved }),
-        start: (draft) => {
+        start: ({ packaging = null, ...draft }) => {
           const current = get();
           if (current.categoryId === draft.categoryId && current.base?.id === draft.base?.id) {
-            set({ builderType: draft.builderType, categoryName: draft.categoryName, base: draft.base });
+            set({ builderType: draft.builderType, categoryName: draft.categoryName, base: draft.base, packaging });
             return;
           }
-          set({ ...empty, ...draft, name: i18n.t('drafts.myName', { name: draft.categoryName }), ...fresh, saved: null });
+          set({ ...empty, ...draft, packaging, name: i18n.t('drafts.myName', { name: draft.categoryName }), ...fresh,
+            saved: null });
+        },
+        refit: (fit) => {
+          const placements = get().placements.map((item) => ({ ...item, ...fit(item) }));
+          if (placements.some((item, index) => {
+            const before = get().placements[index];
+            return item.x !== before.x || item.y !== before.y || item.scale !== before.scale;
+          })) commit({ placements });
         },
         load: (draft) => set({
           ...draft,
@@ -160,11 +178,15 @@ export const useCanvasStore = create<CanvasState>()(
       // v2: drafts are made on a base product (v1 drafts used a category size).
       name: 'homemade-canvas-draft-v2',
       storage,
-      partialize: ({ builderType, categoryId, categoryName, base, name, placements, texts, saved }) =>
-        ({ builderType, categoryId, categoryName, base, name, placements, texts, saved }),
+      partialize: ({ builderType, categoryId, categoryName, base, name, placements, texts, packaging, saved }) =>
+        ({ builderType, categoryId, categoryName, base, name, placements, texts, packaging, saved }),
       onRehydrateStorage: () => (state) => {
         if (state)
-          useCanvasStore.setState({ history: [{ placements: state.placements, texts: state.texts }], historyIndex: 0 });
+          useCanvasStore.setState({
+            history: [{ placements: state.placements, texts: state.texts }], historyIndex: 0,
+            // Drafts saved before packaging was chosen up front have none.
+            packaging: state.packaging ?? null,
+          });
       },
     },
   ),

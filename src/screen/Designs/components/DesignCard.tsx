@@ -8,6 +8,7 @@ import { type Theme } from '@/constants/theme';
 import { useTranslation } from 'react-i18next';
 import type { SavedProduct } from '@/api/commerceModels';
 import { apparelImage, apparelMeta, isApparelProduct } from '@/services/apparelDesign';
+import { sizeLabel } from '@/helper/jewelry';
 
 const VISIBLE_MATERIALS = 3;
 
@@ -52,7 +53,7 @@ export function DesignCard({
     ? apparelMeta(t, product)
     : [
       readyMade ? t('designs.readyMade') : componentCount(t, product.itemCount, product.category?.builderType),
-      size ? `${size.name} · ${size.measurement} ${size.unit}` : product.category?.name,
+      size ? sizeLabel(size) : product.category?.name,
     ]).filter(Boolean).join(' · ');
 
   return (

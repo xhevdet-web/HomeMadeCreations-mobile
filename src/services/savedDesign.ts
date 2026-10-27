@@ -11,6 +11,8 @@ import { useDesignStore } from '@/store/designStore';
 import { useCommerceStore } from '@/store/commerceStore';
 import { productById } from './catalog';
 import { uniqueId } from '@/helper/design';
+import { canFit, cm, isMeasuredSize, selectedLengthMm, sizeLabel, usedLengthMm } from '@/helper/jewelry';
+import type { CategorySize } from '@/types/models';
 export function productInput(): ProductInput {
   const draft = useDesignStore.getState();
   const categoryId = productById[draft.productId]?.categoryId;
@@ -18,7 +20,15 @@ export function productInput(): ProductInput {
   if (!draft.items.length) throw new Error(i18n.t('designErrors.addComponent'));
   if (productById[draft.productId]?.categorySizes?.length && !draft.selectedSize)
     throw new Error(i18n.t('designErrors.chooseSize'));
-  if (draft.selectedSize && draft.items.length > draft.selectedSize.maxItems)
+  // The API checks the same limits from its own data; this only explains them sooner.
+  const length = selectedLengthMm(draft.selectedSize);
+  const piece = productById[draft.productId]?.type ?? 'bracelet';
+  if (draft.selectedSize && isMeasuredSize(draft.selectedSize) && length === null)
+    throw new Error(i18n.t(`${piece}.size.chooseLength`));
+  if (length !== null && !canFit(usedLengthMm(draft.items), 0, length))
+    throw new Error(i18n.t(`${piece}.size.tooShortForDesign`,
+      { used: cm(usedLengthMm(draft.items)), length: cm(length) }));
+  if (draft.selectedSize?.maxItems && draft.items.length > draft.selectedSize.maxItems)
     throw new Error(i18n.t('designErrors.tooManyComponents', { size: draft.selectedSize.name, max: draft.selectedSize.maxItems }));
   // Consecutive runs preserve the design order, including repeated components.
   const items: ProductInput['items'] = [];
@@ -30,6 +40,7 @@ export function productInput(): ProductInput {
   return {
     categoryId,
     ...(draft.selectedSize ? { selectedSizeId: draft.selectedSize.id } : {}),
+    ...(length !== null ? { selectedMeasurementMm: length } : {}),
     name: draft.name.trim() || i18n.t('drafts.myDesign'),
     description: draft.description.trim() || undefined,
     items,
@@ -81,7 +92,9 @@ export async function copyCreation(product: DesignSource, userId: string) {
 }
 
 async function loadIntoStudio(saved: DesignSource, userId: string, designId: string) {
-  const selectedSize = saved.selectedSize == null ? null : parseCategorySize(saved.selectedSize);
+  let savedSize: CategorySize | null = null;
+  try { savedSize = saved.selectedSize == null ? null : parseCategorySize(saved.selectedSize); }
+  catch { /* An unreadable size is chosen again, never guessed. */ }
   const categoryRequest = apiStore.dispatch(categorySlice.endpoints.getCategoryById.initiate(saved.categoryId, { forceRefetch: true }));
   const componentRequest = apiStore.dispatch(subCategorySlice.endpoints.getCategoryComponents.initiate(saved.categoryId, { forceRefetch: true }));
   let category, components;
@@ -91,6 +104,10 @@ async function loadIntoStudio(saved: DesignSource, userId: string, designId: str
   finally { categoryRequest.unsubscribe(); componentRequest.unsubscribe(); }
   const registry = useCatalogStore.getState();
   const productId = registry.registerCategory(category);
+  // Bracelets now sized by length: a design saved with an old component-count size keeps
+  // its components, but its exact length is chosen again before it is saved.
+  const selectedSize = savedSize && category.sizes?.some(isMeasuredSize) && !selectedLengthMm(savedSize)
+    ? null : savedSize;
   registry.registerComponents(
     saved.items.map((item) => ({
       id: item.subCategoryId,
@@ -101,6 +118,7 @@ async function loadIntoStudio(saved: DesignSource, userId: string, designId: str
       imageKey: item.subCategory.imageKey,
       color: item.subCategory.color ?? null,
       type: item.subCategory.type ?? null,
+      effectiveLengthMm: item.subCategory.effectiveLengthMm ?? null,
       price: item.unitPrice,
       stock: 0,
       isActive: false,
@@ -126,7 +144,7 @@ async function loadIntoStudio(saved: DesignSource, userId: string, designId: str
       name: saved.name,
       description: saved.description ?? '',
       selectedSize,
-      size: selectedSize ? `${selectedSize.name} • ${selectedSize.measurement} ${selectedSize.unit}` : '',
+      size: sizeLabel(selectedSize),
       items,
       updatedAt: new Date().toISOString(),
     });

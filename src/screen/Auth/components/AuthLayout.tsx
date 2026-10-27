@@ -1,14 +1,13 @@
 import { ReactNode, useEffect } from 'react';
-import { ImageBackground, Pressable, StyleSheet, Text, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Brand, Icon, IconButton, IconName, Page, useUI } from '@/components/common/ui';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Brand, Icon, IconName, Page, useUI } from '@/components/common/ui';
 import { ThemeToggleButton } from '@/components/common/ThemeToggleButton';
 import { LanguageToggle } from '@/components/common/LanguageToggle';
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
 import { type Theme } from '@/constants/theme';
 import { useOnboardingStore } from '@/store/onboardingStore';
 
-export function AuthLayout({ title, subtitle, tagline, highlights, backLabel, onBack, switchPrompt,
+export function AuthLayout({ title, subtitle, tagline, highlights, switchPrompt,
   switchAction, onSwitch, children }: {
   title: string;
   subtitle: string;
@@ -16,8 +15,6 @@ export function AuthLayout({ title, subtitle, tagline, highlights, backLabel, on
   tagline: string;
   /** Small benefit chips under the title. */
   highlights?: { icon: IconName; label: string }[];
-  backLabel: string;
-  onBack: () => void;
   switchPrompt: string;
   switchAction: string;
   onSwitch: () => void;
@@ -32,23 +29,21 @@ export function AuthLayout({ title, subtitle, tagline, highlights, backLabel, on
   }, []);
   return (
     <Page style={{ padding: 0, gap: 0, maxWidth: 560 }}>
-      <ImageBackground source={require('../../../../assets/beads-editorial.png')}
-        resizeMode="cover" style={styles.hero} imageStyle={{ opacity: 0.95 }}>
-        <LinearGradient colors={theme.gradients.welcome} locations={[0, 0.55, 1]}
-          style={StyleSheet.absoluteFill} />
+      {/* A plain, soft header: the logo carries the screen, no photo behind it. */}
+      <View style={styles.hero}>
+        {/* No back button: the link under the form switches between login and register. */}
         <View style={styles.heroBar}>
-          <IconButton name="arrow-back" label={backLabel} onPress={onBack} />
           <View style={styles.heroActions}>
             <LanguageToggle />
             <ThemeToggleButton />
           </View>
         </View>
-        {/* The logo artwork overflows its box; it must never cover the corner buttons. */}
+        {/* Login and register say their own line under the logo. */}
         <View style={styles.heroBrand} pointerEvents="none">
-          <Brand />
+          <Brand tagline={false} />
           <Text style={styles.tagline}>{tagline}</Text>
         </View>
-      </ImageBackground>
+      </View>
 
       <View style={styles.sheet}>
         <View style={{ gap: 6 }}>
@@ -106,10 +101,10 @@ export function FormSection({ title, icon, hint, children }: {
 const createStyles = (theme: Theme) => {
   const c = theme.colors;
   return StyleSheet.create({
-    hero: { height: 260, justifyContent: 'space-between', overflow: 'hidden' },
+    hero: { height: 230, justifyContent: 'space-between', overflow: 'hidden', backgroundColor: c.soft },
     heroActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     heroBar: {
-      flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+      flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center',
       paddingHorizontal: 22, paddingTop: 12, zIndex: 2,
     },
     heroBrand: { alignItems: 'center', gap: 8, paddingBottom: 48 },

@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { EmptyState, Field, Header, Page, useUI } from '@/components/common/ui';
+import { Chips, EmptyState, Field, Header, Page, useUI } from '@/components/common/ui';
 import { PhotoStage } from './components/PhotoStage';
 import { TextAction } from '@/components/common/TextAction';
 import { ActionFooter } from '@/components/checkout/ActionFooter';
@@ -10,6 +10,7 @@ import { FlowStep } from '@/components/checkout/FlowStep';
 import { CatalogImage } from '@/components/products/CatalogImage';
 import { useGetCategoryComponentsQuery } from '@/api/endpoints/subCategorySlice';
 import { useCreateProductMutation } from '@/api/endpoints/productSlice';
+import { choicePrice, sceneWrap } from '@/api/packagingModels';
 import { apiError } from '@/api/apiSlice';
 import { useApiResult } from '@/api/useApiResult';
 import type { CatalogComponent } from '@/api/catalogModels';
@@ -25,6 +26,7 @@ import { canvasSignature, componentLines, saveCanvasDesign } from '@/services/ca
 import { type Theme } from '@/constants/theme';
 import { FreeDesignCanvas } from './components/FreeDesignCanvas';
 import { useCanvasCapture } from './components/useCanvasCapture';
+import { PackagedPreview } from './components/packaging/PackagedPreview';
 
 /** A clean look at the finished bouquet or gift before it is saved and ordered. */
 export default function CanvasPreviewScreen() {
@@ -37,6 +39,9 @@ export default function CanvasPreviewScreen() {
   const result = useApiResult<CatalogComponent[]>(
     useGetCategoryComponentsQuery(draft.categoryId ?? '', { skip: !draft.categoryId }));
   const [createProduct] = useCreateProductMutation();
+  const gift = draft.builderType === 'GIFT';
+  // Closed gifts can be seen packaged; the design (and the saved preview) stays the inside.
+  const [packagedView, setPackagedView] = useState(false);
   const { ref, capture } = useCanvasCapture();
   const [intent, setIntent] = useState<'save' | 'order' | null>(null);
   const [error, setError] = useFeedbackState();
@@ -61,8 +66,14 @@ export default function CanvasPreviewScreen() {
   let signature = '';
   try { signature = canvasSignature(); } catch { /* Validated when continuing. */ }
   const saved = draft.saved?.userId === user?.id && draft.saved?.signature === signature ? draft.saved.product : null;
+  // Chosen before the studio opened; the backend checks and prices it again on save.
+  const packaging = gift ? draft.packaging : null;
+  const color = packaging?.color ?? null;
+  const closed = packaging?.type === 'OPAQUE';
   const total = saved?.price
-    ?? (draft.base?.price ?? 0) + lines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
+    ?? (draft.base?.price ?? 0) + lines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0)
+      + choicePrice(packaging);
+  const viewLabels = [t('giftStudio.packaging.inside'), t('giftStudio.packaging.packaged')];
   const texts = draft.texts.filter((layer) => layer.text.trim());
   const size = Math.min(width - 44, 360);
   const busy = intent !== null;
@@ -119,9 +130,20 @@ export default function CanvasPreviewScreen() {
           <View ref={ref} collapsable={false} testID="design-preview-canvas" style={{ width: size, height: size }}>
             <PhotoStage tone={builder} />
             <FreeDesignCanvas builder={builder} size={size} base={draft.base} placements={draft.placements}
-              texts={texts} components={byId} editable={false} />
+              texts={texts} components={byId} editable={false} wrap={sceneWrap(packaging)} />
           </View>
+          {closed && packagedView && packaging && <PackagedPreview packaging={packaging} size={size} />}
         </View>
+        {closed && (
+          <Chips options={viewLabels} value={viewLabels[packagedView ? 1 : 0]}
+            onChange={(value) => setPackagedView(value === viewLabels[1])} />
+        )}
+        {packaging && (
+          <Text style={ui.caption}>
+            {color ? t('giftStudio.packaging.arrivesInColor', { name: packaging.name, color: color.name })
+              : t('giftStudio.packaging.arrivesIn', { name: packaging.name })}
+          </Text>
+        )}
         <TextAction title={t('canvasPreview.editDesign')} icon="create-outline" onPress={edit} disabled={busy} />
       </View>
 
@@ -153,6 +175,26 @@ export default function CanvasPreviewScreen() {
             <Text style={styles.amount}>{money(line.quantity * line.unitPrice)}</Text>
           </View>
         ))}
+        {packaging && (
+          <View style={styles.line}>
+            <View style={styles.thumb}>
+              <CatalogImage imageUrl={color?.imageUrl ?? packaging.imageUrl} name={packaging.name} size={34} />
+            </View>
+            <Text style={[ui.body, { flex: 1 }]} numberOfLines={1}>
+              {t('giftStudio.packaging.packagingPrice')} · {packaging.name}
+            </Text>
+            <Text style={styles.amount}>{money(packaging.price)}</Text>
+          </View>
+        )}
+        {color && (
+          <View style={styles.line}>
+            <View style={[styles.thumb, { backgroundColor: color.hex, borderWidth: 1, borderColor: styles.divider.backgroundColor }]} />
+            <Text style={[ui.body, { flex: 1 }]} numberOfLines={1}>
+              {t('giftStudio.packaging.colorPrice')} · {color.name}
+            </Text>
+            <Text style={styles.amount}>{money(color.priceAdjustment)}</Text>
+          </View>
+        )}
         <View style={styles.divider} />
         <View style={styles.line}>
           <Text style={[ui.label, { flex: 1 }]}>{t('common.total')}</Text>
