@@ -1,5 +1,8 @@
+// The app's single i18next instance; imported first so every screen can translate.
+import '@/i18n';
 import { useTheme } from '@/hooks/useTheme';
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, AppState, Appearance, Platform, View } from 'react-native';
@@ -14,6 +17,7 @@ import { useHydration } from '@/hooks/useHydration';
 import { ToastHost } from '@/components/common/ToastHost';
 export default function RootLayout() {
   const theme = useTheme();
+  const { t } = useTranslation();
 
   const hydrated = useHydration();
   const status = useAuthStore((state) => state.status);
@@ -75,6 +79,7 @@ export default function RootLayout() {
               <Stack.Screen name="confirmation" />
               <Stack.Screen name="account" />
               <Stack.Screen name="change-password" />
+              <Stack.Screen name="language" />
               <Stack.Screen name="creation" />
               <Stack.Screen name="apparel-base" />
               <Stack.Screen name="apparel-studio" />
@@ -98,7 +103,7 @@ export default function RootLayout() {
           >
             <ActivityIndicator
               color={theme.colors.accent}
-              accessibilityLabel="Opening your studio"
+              accessibilityLabel={t('common.openingStudio')}
             />
           </View>
         )}

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import i18n from '@/i18n';
 import { persist } from 'zustand/middleware';
 import { CategorySize, Design, DesignItem } from '@/types/models';
 import { itemById, productById } from '@/services/catalog';
@@ -62,7 +63,7 @@ export const useDesignStore = create<DesignState>()(
         description: '',
         describe: (description) => set({ description }),
         productId: 'bracelet-classic',
-        name: 'My little masterpiece',
+        name: i18n.t('drafts.masterpiece'),
         size: 'M · 17 cm',
         selectedSize: null,
         designId: null,
@@ -77,7 +78,7 @@ export const useDesignStore = create<DesignState>()(
             selectedSize,
             size: selectedSize ? `${selectedSize.name} • ${selectedSize.measurement} ${selectedSize.unit}` :
               (productById[productId].categoryId ? '' : size ?? productById[productId].sizes[1]),
-            name: `My ${productById[productId].name}`,
+            name: i18n.t('drafts.myName', { name: productById[productId].name }),
             designId: null,
             items: [],
             selectedId: null,
@@ -161,7 +162,7 @@ export const useDesignStore = create<DesignState>()(
           description: get().description,
           id: get().designId ?? uniqueId(),
           userId,
-          name: get().name.trim() || 'My little masterpiece',
+          name: get().name.trim() || i18n.t('drafts.masterpiece'),
           productId: get().productId,
           size: get().size,
           selectedSize: get().selectedSize,

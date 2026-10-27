@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { EmptyState, Header, Icon, IconButton, Notice, Page, useUI } from '@/components/common/ui';
 import { CatalogImage } from '@/components/products/CatalogImage';
@@ -20,7 +21,7 @@ import { useFeedbackState } from '@/hooks/useFeedbackState';
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
 import {
   boundsFor, clampInside, DEFAULT_TEXT, dropPosition, groupOf, groupsFor, hasKnownGroup, pieceBox, TEXT_BOX,
-  type CanvasBuilder, type Transform as Placement,
+  type Transform as Placement,
 } from '@/helper/canvasStudio';
 import { componentCount } from '@/helper/builders';
 import { saveCanvasDesign } from '@/services/canvasDesign';
@@ -38,20 +39,7 @@ type Rect = { x: number; y: number; width: number; height: number };
 const ALL = 'ALL';
 const TEXT = 'TEXT';
 
-// Each studio speaks the language of what is being made.
-const COPY: Record<CanvasBuilder, { noun: string; title: string; list: string; picker: string; start: string;
-  edit: string }> = {
-  BOUQUET: {
-    noun: 'bouquet', title: 'Bouquet studio', list: 'In your bouquet', picker: 'Choose your flowers',
-    start: 'Tap a flower below, or drag it onto your bouquet.',
-    edit: 'Tap a flower to move, resize, rotate or bring it to the front.',
-  },
-  GIFT: {
-    noun: 'gift', title: 'Gift studio', list: 'In your gift', picker: 'Fill your gift',
-    start: 'Tap an item below, or drag it into your gift. Add a message from Text.',
-    edit: 'Tap an item or your text to move, resize, rotate or layer it.',
-  },
-};
+// Each studio speaks the language of what is being made: canvasStudio.BOUQUET / .GIFT.
 
 /**
  * Bouquet and Gift Studio: a free design canvas on the chosen base product. We provide
@@ -61,6 +49,7 @@ const COPY: Record<CanvasBuilder, { noun: string; title: string; list: string; p
 export default function CanvasStudioScreen() {
   const theme = useTheme();
   const ui = useUI();
+  const { t } = useTranslation();
   const styles = useThemedStyles(createStyles);
   const { width, height } = useWindowDimensions();
   const draft = useCanvasStore();
@@ -86,14 +75,21 @@ export default function CanvasStudioScreen() {
   if (!builder || !categoryId)
     return (
       <Page>
-        <Header title="Your creative studio" back />
-        <EmptyState icon="color-palette-outline" title="Choose what to create"
-          description="Pick a bouquet or a gift category to start designing." action="Browse categories"
+        <Header title={t('canvasStudio.emptyTitleHeader')} back />
+        <EmptyState icon="color-palette-outline" title={t('canvasStudio.chooseTitle')}
+          description={t('canvasStudio.chooseBody')} action={t('canvasStudio.browseCategories')}
           onPress={() => router.replace('/categories')} />
       </Page>
     );
 
-  const copy = COPY[builder];
+  const copy = {
+    title: t(`canvasStudio.${builder}.title`),
+    list: t(`canvasStudio.${builder}.list`),
+    picker: t(`canvasStudio.${builder}.picker`),
+    start: t(`canvasStudio.${builder}.start`),
+    edit: t(`canvasStudio.${builder}.edit`),
+    noun: t(builder === 'BOUQUET' ? 'canvasStudio.bouquet' : 'canvasStudio.gift'),
+  };
   // Apparel's own-design upload never belongs here; inactive components can't be added.
   const components = (result.data ?? []).filter((component) =>
     component.isActive !== false && component.type?.toUpperCase() !== CUSTOM_UPLOAD);
@@ -101,10 +97,11 @@ export default function CanvasStudioScreen() {
   const groupFor = (component?: CatalogComponent) => groupOf(builder, component?.type);
   // Filters come from the data: only groups that actually have components, then Text.
   const tabs = [
-    { key: ALL, label: 'All' },
+    { key: ALL, label: t('studio.tabAll') },
     ...groupsFor(builder).filter((group) => components.some((component) =>
-      hasKnownGroup(builder, component.type) && groupFor(component).key === group.key)),
-    { key: TEXT, label: 'Text' },
+      hasKnownGroup(builder, component.type) && groupFor(component).key === group.key))
+      .map((group) => ({ key: group.key, label: t(`studio.groups.${group.key}`) })),
+    { key: TEXT, label: t('studio.tabText') },
   ];
   const selectedText = draft.texts.find((layer) => layer.id === draft.selectedId) ?? null;
   const selected = draft.placements.find((item) => item.id === draft.selectedId) ?? null;
@@ -129,8 +126,8 @@ export default function CanvasStudioScreen() {
   function inStock(component: CatalogComponent, quiet = false) {
     if (remainingStock(component, usage[component.id] ?? 0) > 0) return true;
     if (!quiet) toast.info(component.trackStock !== false && component.stock <= 0
-      ? `${component.name} is sold out.`
-      : `All available ${component.name} are already on your ${copy.noun}.`);
+      ? t('canvasStudio.soldOut', { name: component.name })
+      : t('canvasStudio.allUsed', { name: component.name }));
     return false;
   }
 
@@ -201,9 +198,9 @@ export default function CanvasStudioScreen() {
     try {
       await saveCanvasDesign(user.id, () => capture(draft.placements.map((item) => byId[item.subCategoryId]?.imageUrl)),
         (formData) => createProduct(formData).unwrap());
-      toast.success('Saved to My Designs.');
+      toast.success(t('studio.savedToDesigns'));
     } catch (failure) {
-      setMessage(apiError(failure).message + ' Your design is still here.', 'error');
+      setMessage(t('studio.stillHere', { message: apiError(failure).message }), 'error');
     } finally {
       setSaving(false);
     }
@@ -212,7 +209,7 @@ export default function CanvasStudioScreen() {
   // Layer order is list order (back to front): pieces among pieces, text among text.
   const layers: { id: string }[] = selected ? draft.placements : draft.texts;
   const layerIndex = layers.findIndex((entry) => entry.id === draft.selectedId);
-  const selectedName = selected ? byId[selected.subCategoryId]?.name ?? 'Piece'
+  const selectedName = selected ? byId[selected.subCategoryId]?.name ?? t('studio.piece')
     : selectedText ? `“${selectedText.text}”` : '';
   const lines = [...new Set(draft.placements.map((item) => item.subCategoryId))]
     .filter((id) => byId[id])
@@ -223,7 +220,7 @@ export default function CanvasStudioScreen() {
       <Page scroll={false} style={{ padding: 0, gap: 0 }}>
         <View style={styles.headerWrap}>
           <Header title={copy.title} subtitle={draft.base?.name ?? draft.categoryName}
-            back right={<IconButton name="bookmark-outline" label="Save design" onPress={() => void save()}
+            back right={<IconButton name="bookmark-outline" label={t('studio.saveDesign')} onPress={() => void save()}
               disabled={!count || saving} />} />
         </View>
         <View style={[styles.stage, { width: stageSize, height: stageSize }, dragging && styles.dropTarget]}>
@@ -249,13 +246,13 @@ export default function CanvasStudioScreen() {
           {!exporting && (
             <StageOverlay
               label={(draft.base?.name ?? copy.noun).toUpperCase()}
-              counter={componentCount(count, builder)}
+              counter={componentCount(t, count, builder)}
               full={false}
               onUndo={draft.undo}
               onRedo={draft.redo}
               canUndo={draft.historyIndex !== 0}
               canRedo={draft.historyIndex < draft.history.length - 1}
-              onClear={() => { draft.clear(); setMessage('Canvas cleared. Tap Undo to bring it back.'); }}
+              onClear={() => { draft.clear(); setMessage(t('canvasStudio.cleared')); }}
               canClear={count > 0 || draft.texts.length > 0}
             />
           )}
@@ -309,7 +306,7 @@ export default function CanvasStudioScreen() {
               chosen={new Set()}
               onAdd={(component) => add(component)}
               drag={drag}
-              empty={components.length ? 'Nothing in this group yet.' : 'No components are available in this category yet.'}
+              empty={components.length ? t('canvasStudio.emptyGroup') : t('canvasStudio.noComponents')}
               extra={activeTab === TEXT ? (
                 <TextTool
                   selected={selectedText}
@@ -334,7 +331,7 @@ export default function CanvasStudioScreen() {
       <DesignerFooter
         total={total}
         beads={count}
-        label={count ? componentCount(count, builder) : undefined}
+        label={count ? componentCount(t, count, builder) : undefined}
         disabled={!count}
         onPreview={() => router.push('/studio-preview')}
       />

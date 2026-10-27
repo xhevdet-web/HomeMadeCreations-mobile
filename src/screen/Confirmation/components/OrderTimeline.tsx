@@ -2,32 +2,31 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Icon } from '@/components/common/ui';
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
 import { type Theme } from '@/constants/theme';
-import { orderStages, orderStatusLabels } from '@/api/commerceModels';
+import type { TFunction } from 'i18next';
+import { useTranslation } from 'react-i18next';
+import { isOrderStage, orderStages } from '@/api/commerceModels';
 
-export const stageDescriptions: Record<string, string> = {
-  ORDERED: 'We received your order and will start on it soon.',
-  CREATING: 'Our maker is crafting your piece by hand.',
-  CREATED: 'Your piece is finished and getting a final check.',
-  READY_FOR_COURIER: 'Packed with care and waiting for the courier.',
-  PICKED_UP_BY_COURIER: 'Your piece is on its way to you.',
-  COMPLETED: 'Delivered. We hope you love it!',
-};
+/** What is happening at this status, or undefined for an unknown backend value. */
+export const stageDescription = (t: TFunction, status: string) =>
+  isOrderStage(status) ? t(`orderStage.${status}`) : undefined;
 
 export function OrderTimeline({ current }: { current: number }) {
   const theme = useTheme();
   const c = theme.colors;
   const styles = useThemedStyles(createStyles);
+  const { t } = useTranslation();
   return (
     <View style={styles.card}>
-      <Text style={styles.title}>Your order’s journey</Text>
+      <Text style={styles.title}>{t('orderDetails.journey')}</Text>
       <View>
         {orderStages.map((stage, index) => {
           const done = index < current;
           const active = index === current;
           const last = index === orderStages.length - 1;
+          const label = t(`orderStatus.${stage}`);
           return (
             <View key={stage} style={styles.row}
-              accessibilityLabel={`${orderStatusLabels[stage]}, ${done ? 'done' : active ? 'current step' : 'upcoming'}`}>
+              accessibilityLabel={t(done ? 'orderDetails.stepDone' : active ? 'orderDetails.stepCurrent' : 'orderDetails.stepUpcoming', { status: label })}>
               <View style={styles.rail}>
                 <View style={[styles.dot, done && styles.dotDone, active && styles.dotActive]}>
                   {done ? (
@@ -41,15 +40,15 @@ export function OrderTimeline({ current }: { current: number }) {
               <View style={[styles.body, !last && { paddingBottom: 18 }]}>
                 <View style={styles.labelRow}>
                   <Text style={[styles.label, (done || active) && styles.labelStrong]}>
-                    {orderStatusLabels[stage]}
+                    {label}
                   </Text>
                   {active && (
                     <View style={styles.now}>
-                      <Text style={styles.nowText}>NOW</Text>
+                      <Text style={styles.nowText}>{t('orderDetails.now')}</Text>
                     </View>
                   )}
                 </View>
-                {active && <Text style={styles.detail}>{stageDescriptions[stage]}</Text>}
+                {active && <Text style={styles.detail}>{t(`orderStage.${stage}`)}</Text>}
               </View>
             </View>
           );

@@ -3,6 +3,7 @@ import { Icon } from '@/components/common/ui';
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
 import { type Theme } from '@/constants/theme';
 import { PASSWORD_MIN_LENGTH } from '@/helper/passwordPolicy';
+import { useTranslation } from 'react-i18next';
 
 function strength(password: string) {
   if (password.length < PASSWORD_MIN_LENGTH) return 0;
@@ -13,25 +14,27 @@ function strength(password: string) {
   return score;
 }
 
-const labels = ['Too short', 'Fair', 'Good', 'Strong', 'Very strong'];
+const LABELS = ['tooShort', 'fair', 'good', 'strong', 'veryStrong'] as const;
 
 export function PasswordStrength({ password }: { password: string }) {
   const theme = useTheme();
   const c = theme.colors;
   const styles = useThemedStyles(createStyles);
+  const { t } = useTranslation();
   if (!password) return null;
   const score = strength(password);
+  const label = t(`auth.password.${LABELS[score]}`);
   const color = score === 0 ? c.danger : score === 1 ? c.gold : c.success;
   return (
     <View style={{ gap: 6 }} accessibilityLiveRegion="polite"
-      accessibilityLabel={`Password strength: ${labels[score]}`}>
+      accessibilityLabel={t('auth.password.strength', { label })}>
       <View style={styles.bars}>
         {[1, 2, 3, 4].map((step) => (
           <View key={step} style={[styles.bar, step <= Math.max(score, 1) && { backgroundColor: color }]} />
         ))}
       </View>
       <Text style={[styles.text, { color }]}>
-        {score === 0 ? `Too short · ${PASSWORD_MIN_LENGTH - password.length} more characters` : labels[score]}
+        {score === 0 ? t('auth.password.tooShortBy', { count: PASSWORD_MIN_LENGTH - password.length }) : label}
       </Text>
     </View>
   );
@@ -40,6 +43,7 @@ export function PasswordStrength({ password }: { password: string }) {
 export function PasswordMatch({ password, confirm }: { password: string; confirm: string }) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
+  const { t } = useTranslation();
   if (!confirm) return null;
   const matches = password === confirm;
   const color = matches ? theme.colors.success : theme.colors.muted;
@@ -47,7 +51,7 @@ export function PasswordMatch({ password, confirm }: { password: string; confirm
     <View style={styles.match} accessibilityLiveRegion="polite">
       <Icon name={matches ? 'checkmark-circle' : 'ellipse-outline'} size={14} color={color} />
       <Text style={[styles.text, { color }]}>
-        {matches ? 'Passwords match' : 'Passwords don’t match yet'}
+        {matches ? t('auth.password.match') : t('auth.password.noMatchYet')}
       </Text>
     </View>
   );

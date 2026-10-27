@@ -3,11 +3,13 @@ import { AccessibilityInfo, Animated, Platform, Pressable, Text, View } from 're
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/useTheme';
 import { useToastStore } from '@/store/toastStore';
+import { useTranslation } from 'react-i18next';
 import { Icon } from './ui';
 
 export function ToastHost() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const [opacity] = useState(() => new Animated.Value(0));
   const current = useToastStore(state => state.current);
   const dismiss = useToastStore(state => state.dismiss);
@@ -44,7 +46,7 @@ export function ToastHost() {
         current.kind === 'success' ? 'checkmark-circle-outline' : 'information-circle-outline'} color={color} />
       <Text style={{ color: theme.colors.text, flex: 1, fontSize: 13, lineHeight: 20 }}>{current.message}</Text>
       </View>
-      <Pressable accessibilityRole="button" accessibilityLabel="Dismiss notification"
+      <Pressable accessibilityRole="button" accessibilityLabel={t('common.dismissNotification')}
         hitSlop={8} onPress={close} style={{ padding: 8 }}>
         <Icon name="close" size={20} />
       </Pressable>

@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Icon } from '@/components/common/ui';
 import { SavedProduct } from '@/api/commerceModels';
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
@@ -15,22 +16,23 @@ export function ReadyMadeCard({ product, onPreview }: { product: SavedProduct; o
   const theme = useTheme();
   const c = theme.colors;
   const styles = useThemedStyles(createStyles);
+  const { t } = useTranslation();
   // Sized products show their sizes on the details screen; here only "sold out" matters.
   const sized = isSized(product);
-  const unavailable = inStock(product) ? null : 'Out of stock';
+  const unavailable = inStock(product) ? null : t('readyMade.outOfStock');
   const lowStock = !sized && typeof product.stock === 'number' && product.stock > 0 && product.stock < 3;
   const order = () =>
     router.push({ pathname: '/details', params: { id: product.id, purchase: 'ready-made' } });
   return (
     <View style={styles.card}>
-      <Pressable accessibilityRole="button" accessibilityLabel={`Preview ${product.name} image`}
+      <Pressable accessibilityRole="button" accessibilityLabel={t('readyMade.previewImage', { name: product.name })}
         onPress={onPreview} style={({ pressed }) => [styles.imageArea, { opacity: pressed ? 0.85 : 1 }]}>
         <CatalogImage imageUrl={product.designPreviewUrl ?? product.imageUrl}
           name={product.name} size={CARD_WIDTH - 24} />
         {(lowStock || !!unavailable) && (
           <View style={[styles.badge, { backgroundColor: c.danger }]}>
             <Text style={styles.badgeText}>
-              {unavailable ?? `Only ${product.stock} left`}
+              {unavailable ?? t('counts.onlyLeft', { count: product.stock ?? 0 })}
             </Text>
           </View>
         )}
@@ -41,11 +43,11 @@ export function ReadyMadeCard({ product, onPreview }: { product: SavedProduct; o
       <View style={styles.body}>
         <Text style={styles.name} numberOfLines={1}>{product.name}</Text>
         <Text style={styles.stock} numberOfLines={1}>
-          {unavailable ?? (sized ? product.color ?? 'Choose your size' : `${product.stock} available`)}
+          {unavailable ?? (sized ? product.color ?? t('readyMade.chooseSize') : t('counts.available', { count: product.stock ?? 0 }))}
         </Text>
         <View style={styles.footer}>
           <Text style={styles.price}>{money(product.price)}</Text>
-          <Pressable accessibilityRole="button" accessibilityLabel={`Order ${product.name}`}
+          <Pressable accessibilityRole="button" accessibilityLabel={t('readyMade.order', { name: product.name })}
             onPress={order} hitSlop={6}
             style={({ pressed }) => [styles.order, { opacity: pressed ? 0.75 : 1 }]}>
             <Icon name="bag-add-outline" size={16} color={c.onPrimary} />

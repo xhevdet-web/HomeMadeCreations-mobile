@@ -9,12 +9,14 @@ import type { DeliveryInput } from '@/api/commerceModels';
 import { useUpdateProfileMutation } from '@/api/endpoints/userSlice';
 import { apiError } from '@/api/apiSlice';
 import { User } from '@/types/models';
+import { useTranslation } from 'react-i18next';
 
 export function ProfileForm({ user, returnToCheckout = false }: {
   user: User;
   returnToCheckout?: boolean;
 }) {
   const ui = useUI();
+  const { t } = useTranslation();
   const [firstName, setFirstName] = useState(user.firstName);
   const [lastName, setLastName] = useState(user.lastName);
   const [phone, setPhone] = useState(user.phone ?? '');
@@ -28,16 +30,16 @@ export function ProfileForm({ user, returnToCheckout = false }: {
     if (busy) return;
     const changes: DeliveryInput = {};
     const fields = [
-      ['firstName', 'First name', firstName, user.firstName],
-      ['lastName', 'Last name', lastName, user.lastName],
-      ['phone', 'Phone', phone, user.phone ?? ''],
-      ['country', 'Country', country, user.address.country],
-      ['address', 'Address', address, user.address.street],
+      ['firstName', t('account.firstName'), firstName, user.firstName],
+      ['lastName', t('account.lastName'), lastName, user.lastName],
+      ['phone', t('account.phone'), phone, user.phone ?? ''],
+      ['country', t('account.country'), country, user.address.country],
+      ['address', t('account.address'), address, user.address.street],
     ] as const;
     for (const [key, label, value, original] of fields) {
       if (value.trim() === original.trim()) continue;
       if (!value.trim()) {
-        setMessage(`${label} cannot be empty. Complete this field before saving.`, 'error');
+        setMessage(t('validation.fieldEmpty', { field: label }), 'error');
         return;
       }
       changes[key] = value.trim();
@@ -49,11 +51,11 @@ export function ProfileForm({ user, returnToCheckout = false }: {
         router.dismissTo('/checkout');
         return;
       }
-      setMessage('No changes to save.');
+      setMessage(t('account.noChanges'));
       return;
     }
     setBusy(true);
-    toast.info('Saving your delivery details. Please wait for confirmation.');
+    toast.info(t('account.saving'));
     setMessage('');
     try {
       const updated = await updateProfile(changes).unwrap();
@@ -64,17 +66,15 @@ export function ProfileForm({ user, returnToCheckout = false }: {
       setCountry(updated.address.country);
       setAddress(updated.address.street);
       setPostalCode(updated.address.postalCode);
-      setMessage('Your details have been saved.');
+      setMessage(t('account.saved'));
       toast.success(
-        returnToCheckout
-          ? 'Delivery details saved.'
-          : 'Profile saved. You can now continue shopping or designing.',
+        returnToCheckout ? t('account.savedDelivery') : t('account.savedProfile'),
       );
       if (returnToCheckout) router.dismissTo('/checkout');
     } catch (error) {
       const message = apiError(error).message;
       setMessage(message);
-      toast.error(message + ' Check your details and try saving again.');
+      toast.error(t('account.saveFailed', { message }));
     } finally {
       setBusy(false);
     }
@@ -82,27 +82,27 @@ export function ProfileForm({ user, returnToCheckout = false }: {
   return (
     <>
       <View style={[ui.card, { gap: 18 }]}>
-        <Text style={ui.eyebrow}>PERSONAL INFORMATION</Text>
-        <Field label="First name" value={firstName} onChangeText={setFirstName} maxLength={100} />
-        <Field label="Last name" value={lastName} onChangeText={setLastName} maxLength={100} />
+        <Text style={ui.eyebrow}>{t('account.personalInformation')}</Text>
+        <Field label={t('account.firstName')} value={firstName} onChangeText={setFirstName} maxLength={100} />
+        <Field label={t('account.lastName')} value={lastName} onChangeText={setLastName} maxLength={100} />
         <Field
-          label="Phone"
+          label={t('account.phone')}
           value={phone}
           onChangeText={setPhone}
           keyboardType="phone-pad"
           maxLength={32}
         />
         <View style={{ gap: 4 }}>
-          <Text style={ui.label}>Email</Text>
+          <Text style={ui.label}>{t('account.email')}</Text>
           <Text style={ui.body}>{user.email}</Text>
         </View>
       </View>
       <View style={[ui.card, { gap: 18 }]}>
-        <Text style={ui.eyebrow}>DELIVERY ADDRESS</Text>
-        <Field label="Country" value={country} onChangeText={setCountry} maxLength={100} />
-        <Field label="Address" value={address} onChangeText={setAddress} multiline maxLength={300} />
+        <Text style={ui.eyebrow}>{t('account.deliveryAddress')}</Text>
+        <Field label={t('account.country')} value={country} onChangeText={setCountry} maxLength={100} />
+        <Field label={t('account.address')} value={address} onChangeText={setAddress} multiline maxLength={300} />
         <Field
-          label="Postal code (optional)"
+          label={t('account.postalCode')}
           value={postalCode}
           onChangeText={setPostalCode}
           maxLength={20}
@@ -114,7 +114,7 @@ export function ProfileForm({ user, returnToCheckout = false }: {
         </Text>
       )}
       <Button
-        title={returnToCheckout ? 'Save and return' : 'Save my details'}
+        title={returnToCheckout ? t('account.saveAndReturn') : t('account.save')}
         loading={busy}
         onPress={() => void save()}
       />

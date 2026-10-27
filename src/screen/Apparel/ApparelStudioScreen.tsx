@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Chips, Field, Header, IconButton, Notice, Page, useUI } from '@/components/common/ui';
@@ -40,6 +41,7 @@ const frames = (count: number) => new Promise<void>((resolve) => {
 });
 
 export default function ApparelStudioScreen() {
+  const { t } = useTranslation();
   const theme = useTheme();
   const ui = useUI();
   const styles = useThemedStyles(createStyles);
@@ -89,7 +91,7 @@ export default function ApparelStudioScreen() {
     BACK: [...draft.placements, ...draft.texts].filter((item) => item.side === 'BACK').length,
   };
   // The base product must be chosen, and a sized one needs its size.
-  const missingPiece = !base ? 'Choose your base' : isSized(base) && !pieceSize ? 'Choose a size' : null;
+  const missingPiece = !base ? t('apparel.chooseBase') : isSized(base) && !pieceSize ? t('apparel.chooseSize') : null;
   const summary = [base?.color, pieceSize].filter(Boolean).join(' · ');
   // Catalog designs are priced each; own uploads cost the own-design price once.
   const total = apparelTotal(price, draft.placements.filter((item) => !item.imageUri),
@@ -100,7 +102,7 @@ export default function ApparelStudioScreen() {
   function addDesign(design: CatalogComponent, at?: { x: number; y: number }) {
     // Printed designs are unlimited; physical ones (patches) are limited by stock.
     if (design.trackStock !== false && (usage[design.id] ?? 0) >= design.stock) {
-      toast.info(`All available ${design.name} designs are already on your piece.`);
+      toast.info(t('apparel.allUsed', { name: design.name }));
       return;
     }
     draft.add(design.id, area, at);
@@ -116,15 +118,15 @@ export default function ApparelStudioScreen() {
     if (!asset) return;
     // Printed artwork must be PNG (it keeps a transparent background); the API checks it too.
     if (!isPng(asset)) {
-      toast.error('Only PNG images can be uploaded. Save your design as a .png file and try again.');
+      toast.error(t('apparel.pngOnly'));
       return;
     }
     if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
-      toast.error('That image is larger than 5 MB. Choose a smaller one.');
+      toast.error(t('apparel.tooLarge'));
       return;
     }
     draft.add(ownDesign.id, area, undefined, asset.uri);
-    toast.info('Your design is on the piece. Drag, resize or rotate it inside the print area.');
+    toast.info(t('apparel.uploaded'));
   }
 
   // Long-press drag from the picker onto the garment.
@@ -168,7 +170,7 @@ export default function ApparelStudioScreen() {
     if (!user) { router.push('/login'); return; }
     if (!category || busy) return;
     if (missingPiece) {
-      toast.info(`${missingPiece} first.`);
+      toast.info(t('apparel.firstStep', { step: missingPiece }));
       changePiece();
       return;
     }
@@ -181,10 +183,10 @@ export default function ApparelStudioScreen() {
         useCommerceStore.getState().setCheckout(user.id, product);
         router.push('/checkout');
       } else {
-        toast.success('Saved to My Designs.');
+        toast.success(t('studio.savedToDesigns'));
       }
     } catch (failure) {
-      setMessage(apiError(failure).message + ' Your design is still here.', 'error');
+      setMessage(t('studio.stillHere', { message: apiError(failure).message }), 'error');
     } finally {
       setBusy(null);
     }
@@ -193,12 +195,12 @@ export default function ApparelStudioScreen() {
   if (!category)
     return (
       <Page>
-        <Header title="Studio" back />
+        <Header title={t('apparel.studio')} back />
         {categoryId ? (
           <CatalogState loading={categoryResult.loading} error={categoryResult.error}
-            empty="This category is unavailable." retry={categoryResult.retry} />
+            empty={t('apparel.categoryUnavailable')} retry={categoryResult.retry} />
         ) : (
-          <Text style={ui.body}>Choose a category to start designing.</Text>
+          <Text style={ui.body}>{t('apparel.chooseCategory')}</Text>
         )}
       </Page>
     );
@@ -234,37 +236,38 @@ export default function ApparelStudioScreen() {
             <View style={styles.footerInner}>
               <View style={{ flex: 1 }}>
                 <Text style={ui.caption} numberOfLines={1}>
-                  {designCount ? `${base?.name ?? 'Piece'} + ${designCount} design${designCount === 1 ? '' : 's'}`
-                    : 'Add a logo, graphic, text or your own artwork'}
+                  {designCount ? t('apparel.footerSummary', { name: base?.name ?? t('apparel.piece'),
+                    designs: t('counts.design', { count: designCount }) })
+                    : t('apparel.footerEmpty')}
                 </Text>
                 <Text style={styles.total}>{money(total)}</Text>
               </View>
-              <Button title={busy === 'review' ? 'Saving…' : 'Review order'} icon="arrow-forward"
+              <Button title={busy === 'review' ? t('apparel.saving') : t('apparel.reviewOrder')} icon="arrow-forward"
                 onPress={() => void save(true)} loading={busy === 'review'} disabled={!!busy || !designCount} />
             </View>
           </SafeAreaView>
         }>
         <View style={styles.headerWrap}>
-          <Header title="Design studio" back
-            right={<IconButton name="bookmark-outline" label="Save design" onPress={() => void save(false)}
+          <Header title={t('apparel.designStudio')} back
+            right={<IconButton name="bookmark-outline" label={t('studio.saveDesign')} onPress={() => void save(false)}
               disabled={!designCount || !!busy} />} />
         </View>
         {/* The piece being sold: what the customer is designing and paying for. */}
         <Pressable accessibilityRole="button"
-          accessibilityLabel={`${base?.name ?? 'Piece'}, ${summary || missingPiece || ''}, ${money(price)}. Change`}
+          accessibilityLabel={t('apparel.pieceLabel', { name: base?.name ?? t('apparel.piece'), detail: summary || missingPiece || '', price: money(price) })}
           onPress={changePiece} style={({ pressed }) => [styles.product, { opacity: pressed ? 0.8 : 1 }]}>
           <View style={styles.productPhoto}>
-            <CatalogImage imageUrl={base?.imageUrl} name={base?.name ?? 'Piece'} size={40} />
+            <CatalogImage imageUrl={base?.imageUrl} name={base?.name ?? t('apparel.piece')} size={40} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.productName} numberOfLines={1}>{base?.name ?? 'Choose your piece'}</Text>
+            <Text style={styles.productName} numberOfLines={1}>{base?.name ?? t('apparel.choosePiece')}</Text>
             <View style={styles.productMeta}>
               {!!base?.colorHex && <View style={[styles.swatch, { backgroundColor: base.colorHex }]} />}
               <Text style={ui.caption} numberOfLines={1}>{missingPiece ?? summary}</Text>
             </View>
           </View>
           <Text style={styles.productPrice}>{money(price)}</Text>
-          <Text style={ui.textLink}>Change</Text>
+          <Text style={ui.textLink}>{t('apparel.change')}</Text>
         </Pressable>
 
         <View style={[styles.stage, { width: size + 16, height: size + 16 }, dragging && styles.dropTarget]}>
@@ -293,12 +296,12 @@ export default function ApparelStudioScreen() {
                 <SideSwitch side={draft.side} counts={counts} onChange={draft.setSide} />
               </View>
               <View style={styles.history} pointerEvents="box-none">
-                <IconButton name="trash-outline" label={`Clear the ${draft.side.toLowerCase()}`}
+                <IconButton name="trash-outline" label={t(draft.side === 'FRONT' ? 'apparel.clearFront' : 'apparel.clearBack')}
                   onPress={draft.clearSide} disabled={!sidePlacements.length && !sideTexts.length} />
                 <View style={{ flexDirection: 'row', gap: 8 }}>
-                  <IconButton name="arrow-undo-outline" label="Undo" onPress={draft.undo}
+                  <IconButton name="arrow-undo-outline" label={t('studio.undo')} onPress={draft.undo}
                     disabled={draft.historyIndex === 0} />
-                  <IconButton name="arrow-redo-outline" label="Redo" onPress={draft.redo}
+                  <IconButton name="arrow-redo-outline" label={t('studio.redo')} onPress={draft.redo}
                     disabled={draft.historyIndex >= draft.history.length - 1} />
                 </View>
               </View>
@@ -310,7 +313,7 @@ export default function ApparelStudioScreen() {
           keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           {(selected || selectedText) && (
             <DesignToolbar
-              name={selectedText ? `“${selectedText.text}”` : byId[selected!.subCategoryId]?.name ?? 'Design'}
+              name={selectedText ? `“${selectedText.text}”` : byId[selected!.subCategoryId]?.name ?? t('apparel.design')}
               onSmaller={() => step({ scale: 0.9 })}
               onLarger={() => step({ scale: 1.1 })}
               onRotateLeft={() => step({ rotation: -15 })}
@@ -322,9 +325,11 @@ export default function ApparelStudioScreen() {
               onDone={() => draft.select(null)}
             />
           )}
-          <Chips options={['Designs', 'Text']} value={activeTray}
-            onChange={(value) => {
-              setTray(value as 'Designs' | 'Text');
+          <Chips options={[t('apparel.trayDesigns'), t('apparel.trayText')]}
+            value={activeTray === 'Text' ? t('apparel.trayText') : t('apparel.trayDesigns')}
+            onChange={(label) => {
+              const value = label === t('apparel.trayText') ? 'Text' : 'Designs';
+              setTray(value);
               if (selectedText && value !== 'Text') draft.select(null);
             }} />
           {activeTray === 'Text' ? (
@@ -353,12 +358,12 @@ export default function ApparelStudioScreen() {
           {!selected && !selectedText && activeTray === 'Designs' && (
             <Text style={ui.caption}>
               {sidePlacements.length
-                ? 'Tap a design to select it. Drag to move; pinch or use the corner handle to resize and rotate.'
-                : `Tap a design to add it to the ${draft.side === 'FRONT' ? 'front' : 'back'}. It stays inside the print area.`}
+                ? t('apparel.hintSelect')
+                : t(draft.side === 'FRONT' ? 'apparel.hintAddFront' : 'apparel.hintAddBack')}
             </Text>
           )}
           {message ? <Notice text={message} /> : null}
-          <Field label="Name your piece" value={draft.name} onChangeText={draft.rename} maxLength={150} />
+          <Field label={t('apparel.nameLabel')} value={draft.name} onChangeText={draft.rename} maxLength={150} />
         </ScrollView>
       </Page>
       {dragging && (

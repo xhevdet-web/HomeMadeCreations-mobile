@@ -3,6 +3,7 @@ import { Icon, useUI } from '@/components/common/ui';
 import { TextAction } from '@/components/common/TextAction';
 import { useTheme } from '@/hooks/useTheme';
 import { User } from '@/types/models';
+import { useTranslation } from 'react-i18next';
 
 export function DeliveryCard({
   user,
@@ -15,14 +16,15 @@ export function DeliveryCard({
 }) {
   const ui = useUI();
   const theme = useTheme();
+  const { t } = useTranslation();
   return (
     <View style={ui.card}>
       <View style={ui.between}>
         <View style={ui.row}>
           <Icon name="location-outline" color={theme.colors.accent} />
-          <Text style={ui.label}>Deliver to</Text>
+          <Text style={ui.label}>{t('checkout.deliverTo')}</Text>
         </View>
-        <TextAction title="Edit delivery" onPress={onEdit} disabled={disabled} />
+        <TextAction title={t('checkout.editDelivery')} onPress={onEdit} disabled={disabled} />
       </View>
       <View style={{ gap: 5 }}>
         <Text style={ui.label}>
@@ -36,9 +38,9 @@ export function DeliveryCard({
             user.address?.country,
           ]
             .filter(Boolean)
-            .join(', ') || 'Add your delivery address'}
+            .join(', ') || t('checkout.addAddress')}
         </Text>
-        <Text style={ui.caption}>{user.phone || 'Add a phone number'}</Text>
+        <Text style={ui.caption}>{user.phone || t('checkout.addPhone')}</Text>
       </View>
     </View>
   );
@@ -47,12 +49,13 @@ export function DeliveryCard({
 export function CashOnDeliveryCard() {
   const ui = useUI();
   const theme = useTheme();
+  const { t } = useTranslation();
   return (
     <View style={[ui.card, { flexDirection: 'row', gap: 14, alignItems: 'center' }]}>
       <Icon name="wallet-outline" color={theme.colors.accent} size={24} />
       <View style={{ flex: 1, gap: 5 }}>
-        <Text style={ui.label}>Cash on Delivery</Text>
-        <Text style={ui.caption}>Nothing to pay now. Pay when your piece arrives.</Text>
+        <Text style={ui.label}>{t('payment.cashOnDelivery')}</Text>
+        <Text style={ui.caption}>{t('checkout.cashOnDeliveryHint')}</Text>
       </View>
       <Icon name="checkmark-circle" color={theme.colors.accent} size={20} />
     </View>

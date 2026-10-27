@@ -1,8 +1,9 @@
+import type { AppLanguage } from '@/i18n';
 import type { FaqSection } from './types';
 
 // Answers describe what the app does today. Payments: only Cash on Delivery can be
 // chosen at checkout, so nothing here promises card payments.
-export const FAQ_SECTIONS: FaqSection[] = [
+const FAQ_EN: FaqSection[] = [
   {
     title: 'Getting started',
     items: [
@@ -189,3 +190,195 @@ export const FAQ_SECTIONS: FaqSection[] = [
     ],
   },
 ];
+
+// Albanian FAQ: same sections, question ids and order as the English one.
+const FAQ_SQ: FaqSection[] = [
+  {
+    title: 'Si të fillosh',
+    items: [
+      {
+        id: 'how-it-works',
+        question: 'Si funksionon HomeMade Creator?',
+        answer: [
+          'Mund të blesh një punim të gatshëm ose ta dizajnosh vetë në disa hapa:',
+          {
+            ordered: true,
+            list: [
+              'Shfleto kategoritë.',
+              'Shiko produktet në një kategori.',
+              'Prek "Krijo dizajnin tënd".',
+              'Zgjidh një produkt bazë (për shembull një duks ose një qese dhuratash) kur kategoria e kërkon.',
+              'Personalizoje në Studion Krijuese.',
+              'Shiko pamjen e krijimit tënd.',
+              'Bëj porosinë.',
+            ],
+          },
+        ],
+      },
+      {
+        id: 'creative-studio',
+        question: 'Çfarë është Studio Krijuese?',
+        answer: [
+          'Studio Krijuese është vendi ku dizajnon punimin tënd me materialet në dispozicion për atë produkt. Varësisht nga produkti, mund të:',
+          {
+            list: [
+              'shtosh elemente si rruaza, lule ose dizajne',
+              'i tërheqësh në vendin e duhur',
+              'u ndryshosh madhësinë dhe t’i rrotullosh',
+              'i sjellësh përpara ose t’i dërgosh prapa',
+              'i dyfishosh ose t’i heqësh',
+              'shtosh tekst personal',
+              'shohësh pamjen e dizajnit të përfunduar',
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    title: 'Dizajnimi',
+    items: [
+      {
+        id: 'jewelry',
+        question: 'A mund ta krijoj vetë byzylykun ose gjerdanin tim?',
+        answer: [
+          'Po. Byzylykët dhe gjerdanët hapin Studion e Stolive, ku e ndërton punimin me rruazat dhe elementet në dispozicion.',
+        ],
+      },
+      {
+        id: 'bouquet',
+        question: 'A mund ta krijoj vetë buqetën time me lule?',
+        answer: [
+          'Po. Zgjidh një bazë për buqetën, pastaj rregulloje sipas dëshirës me:',
+          { list: ['lule', 'gjelbërim', 'mbushës', 'dekorime dhe mbështjellje'] },
+          'Ti vendos si duket rregullimi.',
+        ],
+      },
+      {
+        id: 'gift',
+        question: 'A mund ta krijoj vetë dhuratën time?',
+        answer: [
+          'Po. Zgjidh një bazë dhurate si qese, kuti ose shportë kur ka në dispozicion, pastaj mbushe dhe dekoroje me produktet dhe dekorimet në dispozicion. Mund të shtosh edhe tekst personal.',
+        ],
+      },
+      {
+        id: 'apparel',
+        question: 'A mund të personalizoj veshje?',
+        answer: [
+          'Kur ka veshje për personalizim, zgjidh veshjen dhe madhësinë, pastaj personalizoje me dizajnet, logot ose opsionet e tjera që ofrohen për të.',
+        ],
+      },
+    ],
+  },
+  {
+    title: 'Produktet dhe dizajnet',
+    items: [
+      {
+        id: 'product-vs-design',
+        question: 'Cili është dallimi mes një produkti dhe dizajnit tim?',
+        answer: [
+          'Produktet janë punime të gatshme, të punuara dhe të ofruara nga HomeMade Creator.',
+          'Dizajnet e tua janë punime personale që i krijon vetë në Studion Krijuese. I gjen te Dizajnet e mia.',
+        ],
+      },
+      {
+        id: 'edit-design',
+        question: 'A mund ta ndryshoj dizajnin tim?',
+        answer: [
+          'Po, mund ta hapësh një dizajn të ruajtur nga Dizajnet e mia dhe të vazhdosh punën.',
+          'Pasi të bëhet porosia për një dizajn, ai dizajn i porositur mund vetëm të shikohet.',
+        ],
+      },
+      {
+        id: 'unavailable',
+        question: 'Pse një element nuk është në dispozicion?',
+        answer: [
+          'Një element mund të mos jetë në dispozicion sepse:',
+          {
+            list: [
+              'ka mbaruar nga stoku',
+              'aktualisht nuk ofrohet',
+              'nuk është në dispozicion për produktin që zgjodhe',
+            ],
+          },
+        ],
+      },
+      {
+        id: 'stock',
+        question: 'Pse nuk mund të shtoj më shumë nga një artikull?',
+        answer: [
+          'Disa materiale dhe produkte janë në sasi të kufizuar. Studio të lejon të përdorësh vetëm atë që është në stok, që porosia të punohet saktësisht siç e dizajnove.',
+        ],
+      },
+    ],
+  },
+  {
+    title: 'Çmimet',
+    items: [
+      {
+        id: 'price',
+        question: 'Si llogaritet çmimi i produktit tim personal?',
+        answer: [
+          'Çmimi bazohet në produktin bazë që zgjodhe dhe në elementet që përdor në dizajn. Totali përditësohet ndërsa dizajnon, kështu e sheh gjithmonë çmimin para se të porosisësh.',
+        ],
+      },
+    ],
+  },
+  {
+    title: 'Porositë dhe pagesat',
+    items: [
+      {
+        id: 'place-order',
+        question: 'Si bëj një porosi?',
+        answer: [
+          {
+            ordered: true,
+            list: [
+              'Krijo një dizajn ose zgjidh një produkt.',
+              'Shiko pamjen e tij.',
+              'Vazhdo te porosia.',
+              'Shkruaj ose konfirmo të dhënat e dërgesës.',
+              'Zgjidh mënyrën e pagesës.',
+              'Bëj porosinë.',
+            ],
+          },
+        ],
+      },
+      {
+        id: 'change-after-order',
+        question: 'A mund ta ndryshoj dizajnin pasi ta kem porositur?',
+        answer: [
+          'Jo. Pasi bëhet porosia, dizajni i porositur kyçet që punimi që merr të jetë saktësisht ai që porosite.',
+        ],
+      },
+      {
+        id: 'statuses',
+        question: 'Çfarë kuptimi kanë statuset e porosisë?',
+        answer: [
+          {
+            list: [
+              'Porositur: e kemi marrë porosinë tënde.',
+              'Në përgatitje: punimi yt personal po punohet.',
+              'E punuar: punimi yt është gati.',
+              'Gati për korrier: porosia jote është gati për dërgesë.',
+              'Te korrieri: korrieri e ka marrë porosinë tënde.',
+              'Përfunduar: porosia jote ka përfunduar.',
+            ],
+          },
+          'Mund ta ndjekësh çdo hap te Porositë e mia.',
+        ],
+      },
+      {
+        id: 'payment-methods',
+        question: 'Cilat mënyra pagese janë në dispozicion?',
+        answer: [
+          'Aktualisht paguan me para në dorëzim: paguan kur të arrijë porosia.',
+          'Nëse shtohen mënyra të tjera pagese, do t’i shohësh gjatë porosisë.',
+        ],
+      },
+    ],
+  },
+];
+
+/** The FAQ in each app language. */
+export const FAQ_SECTIONS: Record<AppLanguage, FaqSection[]> = { en: FAQ_EN, sq: FAQ_SQ };

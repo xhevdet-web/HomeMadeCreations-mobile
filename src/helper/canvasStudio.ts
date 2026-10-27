@@ -21,34 +21,36 @@ export type Transform = { x: number; y: number; scale: number; rotation: number 
  * by keyword on the admin-set SubCategory.type, so "ROSE", "Flowers" or "flower-head"
  * all work; unrecognised types are still offered under "All".
  */
+export type GroupKey = 'FLOWERS' | 'GREENERY' | 'FILLERS' | 'DECORATIONS' | 'WRAPPING' | 'ITEMS' | 'FILLER' | 'CONTAINER';
+
+/** A picker group; its name is translated as studio.groups.<key>. */
 export interface ComponentGroup {
-  key: string;
-  label: string;
+  key: GroupKey;
   match: RegExp;
   /** Edge of a new piece at scale 1, as a share of the canvas. */
   base: number;
 }
 
 const BOUQUET_GROUPS: ComponentGroup[] = [
-  { key: 'FLOWERS', label: 'Flowers', match: /FLOWER|BLOOM|ROSE|TULIP|LILY|PEONY|STEM/, base: 0.24 },
-  { key: 'GREENERY', label: 'Greenery', match: /GREEN|LEAF|LEAV|FOLIAGE|FERN|EUCALYPT/, base: 0.3 },
-  { key: 'FILLERS', label: 'Fillers', match: /FILL|BREATH|GYPSOPHILA/, base: 0.2 },
-  { key: 'DECORATIONS', label: 'Decorations', match: /DECOR|RIBBON|BOW|CARD|TAG|PEARL/, base: 0.2 },
-  { key: 'WRAPPING', label: 'Wrapping', match: /WRAP|PAPER|SLEEVE|CONE/, base: 0.6 },
+  { key: 'FLOWERS', match: /FLOWER|BLOOM|ROSE|TULIP|LILY|PEONY|STEM/, base: 0.24 },
+  { key: 'GREENERY', match: /GREEN|LEAF|LEAV|FOLIAGE|FERN|EUCALYPT/, base: 0.3 },
+  { key: 'FILLERS', match: /FILL|BREATH|GYPSOPHILA/, base: 0.2 },
+  { key: 'DECORATIONS', match: /DECOR|RIBBON|BOW|CARD|TAG|PEARL/, base: 0.2 },
+  { key: 'WRAPPING', match: /WRAP|PAPER|SLEEVE|CONE/, base: 0.6 },
 ];
 
 // Gift pieces start small so several fit on the bag's front; customers resize freely.
 const GIFT_GROUPS: ComponentGroup[] = [
-  { key: 'ITEMS', label: 'Items',
+  { key: 'ITEMS',
     match: /ITEM|PRODUCT|MUG|CUP|FOOD|SWEET|CHOC|COOKIE|DRINK|COFFEE|TEA|CANDLE|TOY|BEAR/, base: 0.2 },
-  { key: 'DECORATIONS', label: 'Decorations',
+  { key: 'DECORATIONS',
     match: /DECOR|RIBBON|BOW|CARD|HEART|TAG|FLOWER|ROSE|STICKER|BALLOON/, base: 0.14 },
-  { key: 'FILLER', label: 'Filler', match: /FILL|SHRED|STRAW|NEST/, base: 0.28 },
-  { key: 'CONTAINER', label: 'Bags & boxes', match: /BAG|BOX|BASKET|CONTAINER|PACKAG|HAMPER/, base: 0.6 },
+  { key: 'FILLER', match: /FILL|SHRED|STRAW|NEST/, base: 0.28 },
+  { key: 'CONTAINER', match: /BAG|BOX|BASKET|CONTAINER|PACKAG|HAMPER/, base: 0.6 },
 ];
 
 const GROUPS: Record<CanvasBuilder, ComponentGroup[]> = { BOUQUET: BOUQUET_GROUPS, GIFT: GIFT_GROUPS };
-const MAIN_GROUP: Record<CanvasBuilder, string> = { BOUQUET: 'FLOWERS', GIFT: 'ITEMS' };
+const MAIN_GROUP: Record<CanvasBuilder, GroupKey> = { BOUQUET: 'FLOWERS', GIFT: 'ITEMS' };
 
 /** Groups in picker filter order. */
 export function groupsFor(builder: CanvasBuilder) {

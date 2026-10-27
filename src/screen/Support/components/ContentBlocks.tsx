@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Icon } from '@/components/common/ui';
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
 import { type Theme } from '@/constants/theme';
@@ -7,6 +8,7 @@ import type { ContentBlock } from '../content/types';
 /** Paragraphs, lists and "to be confirmed" notes of FAQ answers and legal sections. */
 export function ContentBlocks({ blocks }: { blocks: ContentBlock[] }) {
   const theme = useTheme();
+  const { t } = useTranslation();
   const styles = useThemedStyles(createStyles);
   return (
     <View style={{ gap: 10 }}>
@@ -15,10 +17,10 @@ export function ContentBlocks({ blocks }: { blocks: ContentBlock[] }) {
           return <Text key={index} style={styles.text}>{block}</Text>;
         if ('pending' in block)
           return (
-            <View key={index} style={styles.pending} accessibilityLabel={`To be confirmed: ${block.pending}`}>
+            <View key={index} style={styles.pending} accessibilityLabel={t('support.legal.toBeConfirmedLabel', { text: block.pending })}>
               <Icon name="time-outline" size={16} color={theme.colors.accent} />
               <View style={{ flex: 1, gap: 2 }}>
-                <Text style={styles.pendingLabel}>TO BE CONFIRMED</Text>
+                <Text style={styles.pendingLabel}>{t('support.legal.toBeConfirmed')}</Text>
                 <Text style={styles.pendingText}>{block.pending}</Text>
               </View>
             </View>

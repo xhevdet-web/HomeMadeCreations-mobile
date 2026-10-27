@@ -1,6 +1,8 @@
 import { useRef, useState, type ComponentRef } from 'react';
 import { Keyboard, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
+import type { TFunction } from 'i18next';
+import { useTranslation } from 'react-i18next';
 import { Button, Field, Header, Icon, Page, useUI } from '@/components/common/ui';
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
 import { type Theme } from '@/constants/theme';
@@ -18,18 +20,18 @@ const empty: ContactForm = { subject: '', message: '' };
 const RECENT_ORDERS = 5;
 
 /** A customer-friendly reason the message could not be sent; never raw server text for 5xx. */
-function sendError(failure: unknown) {
+function sendError(t: TFunction, failure: unknown) {
   const error = apiError(failure);
-  if (error.status === 429)
-    return 'You’ve sent several messages recently. Please wait a few minutes and try again.';
+  if (error.status === 429) return t('support.contact.rateLimited');
   if (error.status === 400) return error.message;
   if (error.status === 0) return error.message;
-  return 'Unable to send your message right now. Please try again later.';
+  return t('support.contact.sendFailed');
 }
 
 export default function ContactScreen() {
   const ui = useUI();
   const theme = useTheme();
+  const { t } = useTranslation();
   const styles = useThemedStyles(createStyles);
   const user = useAuthStore((state) => state.user);
   const [form, setForm] = useState<ContactForm>(empty);
@@ -43,9 +45,10 @@ export default function ContactScreen() {
   const sending = useRef(false);
 
   const name = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim()
-    || user?.userName || user?.email.split('@')[0] || 'Customer';
+    || user?.userName || user?.email.split('@')[0] || t('support.contact.customer');
   const orders = (orderPage?.data ?? []).slice(0, RECENT_ORDERS);
-  const showOrders = !!orders.length && (topic === 'Order question' || !!orderNumber);
+  const showOrders = !!orders.length && (topic === 'order' || !!orderNumber);
+  const topicLabel = (id: SupportTopic) => t(`support.contact.topics.${id}`);
   const length = form.message.trim().length;
 
   const update = (key: keyof ContactForm) => (value: string) => {
@@ -59,11 +62,11 @@ export default function ContactScreen() {
     setTopic(next);
     setForm((current) => ({
       ...current,
-      subject: !current.subject.trim() || SUPPORT_TOPICS.includes(current.subject as SupportTopic)
-        ? next ?? ''
+      subject: !current.subject.trim() || SUPPORT_TOPICS.some((id) => topicLabel(id) === current.subject)
+        ? next ? topicLabel(next) : ''
         : current.subject,
     }));
-    if (next !== 'Order question') setOrderNumber(null);
+    if (next !== 'order') setOrderNumber(null);
   }
 
   async function submit() {
@@ -85,10 +88,10 @@ export default function ContactScreen() {
       setTopic(null);
       setOrderNumber(null);
       setSentTo(user.email);
-      toast.success('Message sent.');
+      toast.success(t('support.contact.sentToast'));
     } catch (failure) {
       // The draft stays so the customer can retry.
-      setError(sendError(failure));
+      setError(sendError(t, failure));
     } finally {
       sending.current = false;
     }
@@ -96,37 +99,37 @@ export default function ContactScreen() {
 
   async function openMailApp() {
     try {
-      await Linking.openURL(supportMailUrl(topic));
+      await Linking.openURL(supportMailUrl(topic ? topicLabel(topic) : null));
     } catch {
-      toast.error(`We couldn’t open an email app. You can write to us at ${SUPPORT_EMAIL}.`);
+      toast.error(t('support.contact.noMailApp', { email: SUPPORT_EMAIL }));
     }
   }
 
   if (sentTo)
     return (
       <Page style={{ gap: 22 }}>
-        <Header title="Contact us" back />
+        <Header title={t('support.contact.title')} back />
         <View style={[ui.card, { alignItems: 'center', paddingVertical: 32 }]} accessibilityLiveRegion="polite">
           <View style={styles.successIcon}>
             <Icon name="paper-plane-outline" size={28} color={theme.colors.success} />
           </View>
-          <Text style={ui.sectionTitle} accessibilityRole="header">Message sent</Text>
+          <Text style={ui.sectionTitle} accessibilityRole="header">{t('support.contact.sentTitle')}</Text>
           <Text style={[ui.body, { textAlign: 'center' }]}>
-            Thanks for getting in touch. We’ll reply to <Text style={{ color: theme.colors.text, fontWeight: '600' }}>{sentTo}</Text> as soon as we can.
+            {t('support.contact.sentBody')}<Text style={{ color: theme.colors.text, fontWeight: '600' }}>{sentTo}</Text>{t('support.contact.sentBodyEnd')}
           </Text>
         </View>
-        <Button title="Done" icon="checkmark" onPress={() => (router.canGoBack() ? router.back() : router.replace('/profile'))} />
-        <Button title="Send another message" secondary onPress={() => setSentTo(null)} />
+        <Button title={t('common.done')} icon="checkmark" onPress={() => (router.canGoBack() ? router.back() : router.replace('/profile'))} />
+        <Button title={t('support.contact.sendAnother')} secondary onPress={() => setSentTo(null)} />
       </Page>
     );
 
   return (
     <Page style={{ gap: 22 }}>
-      <Header title="Contact us" back />
+      <Header title={t('support.contact.title')} back />
       <View style={{ gap: 8 }}>
-        <Text style={ui.title}>Need some help?</Text>
+        <Text style={ui.title}>{t('support.contact.heading')}</Text>
         <Text style={ui.body}>
-          Send us a message about your account, a design or an order. We’ll reply by email.
+          {t('support.contact.intro')}
         </Text>
       </View>
 
@@ -136,18 +139,18 @@ export default function ContactScreen() {
             <Icon name="person-circle-outline" size={22} color={theme.colors.accent} />
           </View>
           <View style={{ flex: 1, gap: 2 }}>
-            <Text style={styles.label}>SENDING AS</Text>
+            <Text style={styles.label}>{t('support.contact.sendingAs')}</Text>
             <Text style={styles.strong} numberOfLines={1}>{name}</Text>
-            <Text style={ui.caption} numberOfLines={1} accessibilityLabel={`Your email ${user?.email ?? ''}`}>
+            <Text style={ui.caption} numberOfLines={1} accessibilityLabel={t('support.contact.yourEmail', { email: user?.email ?? '' })}>
               {user?.email}
             </Text>
           </View>
         </View>
-        <Text style={ui.caption}>We’ll reply to this email address.</Text>
+        <Text style={ui.caption}>{t('support.contact.replyTo')}</Text>
       </View>
 
       <View style={{ gap: 10 }}>
-        <Text style={styles.label}>WHAT IS IT ABOUT? (OPTIONAL)</Text>
+        <Text style={styles.label}>{t('support.contact.topicLabel')}</Text>
         <View style={styles.chips}>
           {SUPPORT_TOPICS.map((option) => {
             const active = option === topic;
@@ -155,7 +158,7 @@ export default function ContactScreen() {
               <Pressable key={option} accessibilityRole="button" accessibilityState={{ selected: active }}
                 onPress={() => pickTopic(option)} style={[ui.chip, active && ui.chipActive]}>
                 <Text style={[ui.chipText, active && { color: theme.colors.onPrimary, fontWeight: '700' }]}>
-                  {option}
+                  {topicLabel(option)}
                 </Text>
               </Pressable>
             );
@@ -165,13 +168,13 @@ export default function ContactScreen() {
 
       {showOrders && (
         <View style={{ gap: 10 }}>
-          <Text style={styles.label}>WHICH ORDER? (OPTIONAL)</Text>
+          <Text style={styles.label}>{t('support.contact.orderLabel')}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
             {orders.map((order) => {
               const active = order.orderNumber === orderNumber;
               return (
                 <Pressable key={order.id} accessibilityRole="button" accessibilityState={{ selected: active }}
-                  accessibilityLabel={`Order ${order.orderNumber}, ${order.product.name}`}
+                  accessibilityLabel={t('support.contact.orderChip', { number: order.orderNumber, name: order.product.name })}
                   onPress={() => setOrderNumber(active ? null : order.orderNumber)}
                   style={[styles.order, active && styles.orderActive]}>
                   <Text style={[styles.orderNumber, active && { color: theme.colors.accent }]}>#{order.orderNumber}</Text>
@@ -184,18 +187,18 @@ export default function ContactScreen() {
       )}
 
       <View style={{ gap: 14 }}>
-        <Field label="Subject" value={form.subject} onChangeText={update('subject')}
-          placeholder="e.g. Question about my delivery" maxLength={CONTACT_LIMITS.subject}
+        <Field label={t('support.contact.subject')} value={form.subject} onChangeText={update('subject')}
+          placeholder={t('support.contact.subjectPlaceholder')} maxLength={CONTACT_LIMITS.subject}
           returnKeyType="next" submitBehavior="submit" onSubmitEditing={() => messageRef.current?.focus()}
           editable={!isLoading} />
         <View style={{ gap: 6 }}>
-          <Field ref={messageRef} label="Message" value={form.message} onChangeText={update('message')}
-            placeholder="Tell us how we can help…" multiline maxLength={CONTACT_LIMITS.message}
+          <Field ref={messageRef} label={t('support.contact.message')} value={form.message} onChangeText={update('message')}
+            placeholder={t('support.contact.messagePlaceholder')} multiline maxLength={CONTACT_LIMITS.message}
             style={{ minHeight: 150 }} editable={!isLoading} />
           <Text style={[ui.caption, { textAlign: 'right' }]}
-            accessibilityLabel={`${length} of ${CONTACT_LIMITS.message} characters`}>
+            accessibilityLabel={t('support.contact.charactersLabel', { count: length, max: CONTACT_LIMITS.message })}>
             {length < CONTACT_LIMITS.messageMin && length > 0
-              ? `${CONTACT_LIMITS.messageMin - length} more characters needed · `
+              ? t('support.contact.moreNeeded', { count: CONTACT_LIMITS.messageMin - length })
               : ''}
             {length}/{CONTACT_LIMITS.message}
           </Text>
@@ -203,14 +206,14 @@ export default function ContactScreen() {
       </View>
 
       {error ? <Text accessibilityRole="alert" style={ui.error}>{error}</Text> : null}
-      <Button title="Send message" icon="paper-plane-outline" loading={isLoading}
+      <Button title={t('support.contact.send')} icon="paper-plane-outline" loading={isLoading}
         disabled={isLoading || !user} onPress={() => void submit()} />
 
-      <Pressable accessibilityRole="button" accessibilityLabel={`Open your email app to write to ${SUPPORT_EMAIL}`}
+      <Pressable accessibilityRole="button" accessibilityLabel={t('support.contact.fallbackLabel', { email: SUPPORT_EMAIL })}
         onPress={() => void openMailApp()} hitSlop={6} style={styles.fallback}>
         <Icon name="mail-outline" size={16} color={theme.colors.muted} />
         <Text style={ui.caption}>
-          Prefer your own email app? <Text style={ui.textLink}>Write to {SUPPORT_EMAIL}</Text>
+          {t('support.contact.fallback')}<Text style={ui.textLink}>{t('support.contact.fallbackLink', { email: SUPPORT_EMAIL })}</Text>
         </Text>
       </Pressable>
     </Page>

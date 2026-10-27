@@ -4,18 +4,20 @@ import { CatalogImage } from '@/components/products/CatalogImage';
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
 import { type Theme } from '@/constants/theme';
 import { CatalogCategory } from '@/api/catalogModels';
+import type { TFunction } from 'i18next';
+import { useTranslation } from 'react-i18next';
 
-function sizeRange(category: CatalogCategory) {
+function sizeRange(t: TFunction, category: CatalogCategory) {
   // Garments have their own colours and sizes, chosen on the next screen.
-  if (category.builderType === 'APPAREL') return 'Design your own';
+  if (category.builderType === 'APPAREL') return t('categories.designYourOwn');
   const sizes = category.sizes ?? [];
-  if (!sizes.length) return 'Free design';
+  if (!sizes.length) return t('categories.freeDesign');
   const values = sizes.map((size) => size.measurement);
   const min = Math.min(...values);
   const max = Math.max(...values);
   const unit = sizes[0].unit;
   const range = min === max ? `${min} ${unit}` : `${min}–${max} ${unit}`;
-  return `${sizes.length} ${sizes.length === 1 ? 'size' : 'sizes'} · ${range}`;
+  return t('categories.sizes', { count: sizes.length, range });
 }
 
 /** One category as a full-width row, like an order in My Orders. */
@@ -25,10 +27,11 @@ export function CategoryTile({ category, onPress }: {
 }) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
+  const { t } = useTranslation();
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Browse ${category.name}`}
+      accessibilityLabel={t('categories.browse', { name: category.name })}
       onPress={onPress}
       style={({ pressed }) => [styles.card, { opacity: pressed ? 0.8 : 1 }]}
     >
@@ -38,9 +41,9 @@ export function CategoryTile({ category, onPress }: {
       <View style={styles.body}>
         <Text style={styles.name} numberOfLines={1}>{category.name}</Text>
         <Text style={styles.description} numberOfLines={2}>
-          {category.description || 'Design it your way, piece by piece.'}
+          {category.description || t('categories.defaultDescription')}
         </Text>
-        <Text style={styles.meta} numberOfLines={1}>{sizeRange(category)}</Text>
+        <Text style={styles.meta} numberOfLines={1}>{sizeRange(t, category)}</Text>
       </View>
       <Icon name="chevron-forward" size={18} color={theme.colors.muted} />
     </Pressable>

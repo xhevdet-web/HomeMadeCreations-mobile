@@ -5,20 +5,23 @@ import { DesignThumbnail } from '@/components/products/DesignThumbnail';
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
 import { money } from '@/helper/pricing';
 import { type Theme } from '@/constants/theme';
+import { useTranslation } from 'react-i18next';
 import type { CommunityCreation } from '@/api/commerceModels';
 import { SectionHeader } from './SectionHeader';
 
 function CreationCard({ creation, onOpen }: { creation: CommunityCreation; onOpen: () => void }) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
+  const { t } = useTranslation();
   const { product } = creation;
+  const count = componentCount(t, product.itemCount, product.category?.builderType);
   const creatorName = `${product.createdBy.firstName} ${product.createdBy.lastName}`;
   const initials = [product.createdBy.firstName, product.createdBy.lastName]
     .map((part) => part?.trim()[0] ?? '').join('').toUpperCase();
   return (
     <Pressable style={({ pressed }) => [styles.creation, { opacity: pressed ? 0.85 : 1 }]}
       accessibilityRole="button" onPress={onOpen}
-      accessibilityLabel={`Order ${product.name} by ${creatorName}, ${componentCount(product.itemCount, product.category?.builderType)}, ${money(product.price)}`}>
+      accessibilityLabel={t('community.orderLabel', { name: product.name, creator: creatorName, count, price: money(product.price) })}>
       <View style={styles.creationImage}>
         <DesignThumbnail product={product} size={128} />
       </View>
@@ -32,7 +35,7 @@ function CreationCard({ creation, onOpen }: { creation: CommunityCreation; onOpe
       <View style={styles.cardFooter}>
         <View style={{ flex: 1 }}>
           <Text style={styles.price}>{money(product.price)}</Text>
-          <Text style={styles.caption}>{componentCount(product.itemCount, product.category?.builderType)}</Text>
+          <Text style={styles.caption}>{count}</Text>
         </View>
         <View style={styles.order}>
           <Icon name="bag-add-outline" size={15} color={theme.colors.onPrimary} />
@@ -54,8 +57,7 @@ function CreationSkeleton() {
 }
 
 export function CommunityCreations({ creations, loading, error, onRetry, onOpen,
-  eyebrow = 'COMMUNITY', title = 'Creations from others',
-  intro = 'Finished pieces from the HomeMade community. Love one? Order your own.',
+  eyebrow, title, intro,
   hideWhenEmpty = false }: {
   creations: CommunityCreation[];
   onOpen: (creation: CommunityCreation) => void;
@@ -69,11 +71,13 @@ export function CommunityCreations({ creations, loading, error, onRetry, onOpen,
   hideWhenEmpty?: boolean;
 }) {
   const theme = useTheme();
+  const { t } = useTranslation();
   const styles = useThemedStyles(createStyles);
   if (hideWhenEmpty && !loading && !error && !creations.length) return null;
   return (
     <View style={{ gap: 14 }}>
-      <SectionHeader eyebrow={eyebrow} title={title} subtitle={intro} />
+      <SectionHeader eyebrow={eyebrow ?? t('community.eyebrow')} title={title ?? t('community.title')}
+        subtitle={intro ?? t('community.intro')} />
       {loading ? (
         <ScrollView horizontal scrollEnabled={false} contentContainerStyle={{ gap: 12 }}>
           {[0, 1, 2].map((index) => <CreationSkeleton key={index} />)}
@@ -82,9 +86,9 @@ export function CommunityCreations({ creations, loading, error, onRetry, onOpen,
         <View style={styles.state}>
           <Icon name="cloud-offline-outline" size={22} color={theme.colors.muted} />
           <Text accessibilityRole="alert" style={styles.stateText}>
-            We couldn’t load community creations. {error}
+            {t('community.loadFailed', { error })}
           </Text>
-          <Button title="Try again" secondary onPress={onRetry} />
+          <Button title={t('common.retry')} secondary onPress={onRetry} />
         </View>
       ) : creations.length ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
@@ -97,7 +101,7 @@ export function CommunityCreations({ creations, loading, error, onRetry, onOpen,
         <View style={styles.state}>
           <Icon name="people-outline" size={22} color={theme.colors.accent} />
           <Text style={styles.stateText}>
-            No community creations yet. Finished pieces from other customers will appear here.
+            {t('community.empty')}
           </Text>
         </View>
       )}

@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { Icon, IconName } from '@/components/common/ui';
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
 import { type Theme } from '@/constants/theme';
+import { useTranslation } from 'react-i18next';
 
 export function SettingsSection({ title, children }: { title: string; children: ReactNode }) {
   const styles = useThemedStyles(createStyles);
@@ -36,6 +37,7 @@ export function SettingsRow({
   onPress?: () => void;
 }) {
   const theme = useTheme();
+  const { t } = useTranslation();
   const c = theme.colors;
   const styles = useThemedStyles(createStyles);
   const color = danger ? c.danger : c.text;
@@ -51,7 +53,7 @@ export function SettingsRow({
       {!!value && <Text style={styles.subtitle}>{value}</Text>}
       {soon && (
         <View style={styles.badge}>
-          <Text style={styles.badgeText}>Soon</Text>
+          <Text style={styles.badgeText}>{t('common.soon')}</Text>
         </View>
       )}
       {toggle ? (

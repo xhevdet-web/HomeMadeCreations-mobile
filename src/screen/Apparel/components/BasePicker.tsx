@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import type { SavedProduct } from '@/api/commerceModels';
 import { inStock, type SizeStock } from '@/api/apparelModels';
 import { CatalogImage } from '@/components/products/CatalogImage';
@@ -19,9 +20,10 @@ export function BaseCard({ product, width, selected = false, onPress }: {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
   const soldOut = !inStock(product);
+  const { t } = useTranslation();
   return (
     <Pressable accessibilityRole="button" accessibilityState={{ selected, disabled: soldOut }}
-      accessibilityLabel={`${product.name}, ${money(product.price)}${soldOut ? ', sold out' : ''}`}
+      accessibilityLabel={t(soldOut ? 'category.soldOutLabel' : 'category.productLabel', { name: product.name, price: money(product.price) })}
       disabled={soldOut} onPress={onPress}
       style={({ pressed }) => [styles.card, { width, transform: [{ scale: pressed ? 0.98 : 1 }] },
         selected && { borderColor: theme.colors.accent, borderWidth: 2 }, soldOut && { opacity: 0.55 }]}>
@@ -29,7 +31,7 @@ export function BaseCard({ product, width, selected = false, onPress }: {
         <CatalogImage imageUrl={product.imageUrl} name={product.name} size={width * 0.86} />
         {soldOut && (
           <View style={styles.soldOut}>
-            <Text style={styles.soldOutText}>Sold out</Text>
+            <Text style={styles.soldOutText}>{t('category.soldOut')}</Text>
           </View>
         )}
         {selected && (
@@ -57,6 +59,7 @@ export function SizePicker({ sizes, value, onChange }: {
   onChange: (size: string) => void;
 }) {
   const styles = useThemedStyles(createStyles);
+  const { t } = useTranslation();
   return (
     <View style={styles.sizes}>
       {sizes.map((entry) => {
@@ -65,7 +68,7 @@ export function SizePicker({ sizes, value, onChange }: {
         return (
           <Pressable key={entry.size} accessibilityRole="button"
             accessibilityState={{ selected: active, disabled: soldOut }}
-            accessibilityLabel={`Size ${entry.size}, ${soldOut ? 'sold out' : `${entry.stock} available`}`}
+            accessibilityLabel={t('apparel.sizeLabel', { size: entry.size, status: soldOut ? t('category.soldOut') : t('counts.available', { count: entry.stock }) })}
             disabled={soldOut} onPress={() => onChange(entry.size)}
             style={[styles.size, active && styles.sizeActive, soldOut && styles.sizeSoldOut]}>
             <Text style={[styles.sizeText, active && styles.sizeTextActive, soldOut && styles.strike]}>
@@ -73,7 +76,7 @@ export function SizePicker({ sizes, value, onChange }: {
             </Text>
             <Text style={[styles.available, active && styles.sizeTextActive,
               !soldOut && entry.stock < LOW_STOCK && !active && styles.low]}>
-              {soldOut ? 'Sold out' : `${entry.stock} available`}
+              {soldOut ? t('category.soldOut') : t('counts.available', { count: entry.stock })}
             </Text>
           </Pressable>
         );

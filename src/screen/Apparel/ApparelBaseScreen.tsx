@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Button, Header, Page, useUI } from '@/components/common/ui';
 import { CatalogState } from '@/components/products/CatalogState';
 import { parseSizes } from '@/api/apparelModels';
@@ -20,6 +21,7 @@ const GAP = 12;
  * reserved here; stock only changes when the order is placed.
  */
 export default function ApparelBaseScreen() {
+  const { t } = useTranslation();
   const ui = useUI();
   const styles = useThemedStyles(createStyles);
   const { width } = useWindowDimensions();
@@ -32,23 +34,23 @@ export default function ApparelBaseScreen() {
     if (!category) return;
     // Another category starts a fresh draft; the same one keeps its designs.
     if (edit !== '1' && useApparelStore.getState().categoryId !== category.id)
-      useApparelStore.getState().start(category.id, `My ${category.name}`);
+      useApparelStore.getState().start(category.id, t('drafts.myName', { name: category.name }));
     if (baseProductId) useApparelStore.getState().setBase(baseProductId);
-  }, [category, baseProductId, edit]);
+  }, [category, baseProductId, edit, t]);
 
   if (!category || (!bases.length && (basesResult.loading || basesResult.error)))
     return (
       <Page>
-        <Header title="Choose your base" back />
+        <Header title={t('apparel.chooseBase')} back />
         <CatalogState loading={categoryResult.loading || basesResult.loading}
           error={categoryResult.error || basesResult.error}
-          empty="This collection is unavailable." retry={basesResult.retry} />
+          empty={t('category.unavailable')} retry={basesResult.retry} />
       </Page>
     );
 
   const sizes = base ? parseSizes(base.sizes) : [];
   const needsSize = sizes.length > 0;
-  const blocker = !base ? 'Choose your base' : needsSize && !size ? 'Choose a size' : null;
+  const blocker = !base ? t('apparel.chooseBase') : needsSize && !size ? t('apparel.chooseSize') : null;
   const tileWidth = (Math.min(width, 760) - 44 - GAP) / 2;
 
   return (
@@ -64,7 +66,7 @@ export default function ApparelBaseScreen() {
               {base && <Text style={styles.total}>{money(base.price)}</Text>}
             </View>
             <Button
-              title={blocker ?? (edit === '1' ? 'Done' : 'Continue to Apparel Studio')}
+              title={blocker ?? (edit === '1' ? t('common.done') : t('apparel.continueToStudio'))}
               icon={blocker || edit === '1' ? undefined : 'color-palette-outline'}
               disabled={!!blocker}
               onPress={() => (edit === '1' ? router.back() : router.push('/apparel-studio'))}
@@ -73,12 +75,11 @@ export default function ApparelBaseScreen() {
         </SafeAreaView>
       }
     >
-      <Header title="Choose your base" subtitle={category.name} back />
+      <Header title={t('apparel.chooseBase')} subtitle={category.name} back />
       <View style={{ gap: 4 }}>
-        <Text style={styles.title}>Start from a piece you love</Text>
+        <Text style={styles.title}>{t('apparel.baseHeading')}</Text>
         <Text style={ui.body}>
-          Pick the {category.name.toLowerCase()} you want to design on, then its size. Your logos and
-          artwork are added in the studio.
+          {t('apparel.baseIntro', { name: category.name })}
         </Text>
       </View>
 
@@ -91,18 +92,18 @@ export default function ApparelBaseScreen() {
         </View>
       ) : (
         <Text style={ui.body}>
-          No {category.name.toLowerCase()} are available to design on yet. Please check back soon.
+          {t('apparel.noBases', { name: category.name })}
         </Text>
       )}
 
       {base && needsSize && (
         <View style={styles.section}>
           <View style={ui.between}>
-            <Text style={styles.label}>Size</Text>
+            <Text style={styles.label}>{t('apparel.size')}</Text>
             {size && <Text style={styles.value}>{size}</Text>}
           </View>
           <SizePicker sizes={sizes} value={size} onChange={draft.setSize} />
-          <Text style={ui.caption}>Your size is only reserved when you place the order.</Text>
+          <Text style={ui.caption}>{t('apparel.sizeReserved')}</Text>
         </View>
       )}
     </Page>

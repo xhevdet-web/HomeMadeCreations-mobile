@@ -1,4 +1,5 @@
 import { Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { IconButton, useUI } from '@/components/common/ui';
 import { CatalogImage } from '@/components/products/CatalogImage';
 import { useTheme } from '@/hooks/useTheme';
@@ -15,6 +16,7 @@ export function ComponentCard({
   setSelected: (quantity: number) => void;
 }) {
   const ui = useUI();
+  const { t } = useTranslation();
   const theme = useTheme();
   const quantity = Math.min(selected, component.stock);
   return (
@@ -32,36 +34,36 @@ export function ComponentCard({
         <CatalogImage imageUrl={component.imageUrl} name={component.name} />
         <View style={{ flex: 1, gap: 6 }}>
           <Text style={ui.sectionTitle}>{component.name}</Text>
-          <Text style={ui.caption}>Color: {component.color || 'Not specified'}</Text>
-          <Text style={ui.caption}>Type: {component.type || 'Not specified'}</Text>
-          <Text style={ui.label}>{money(component.price)} per bead</Text>
+          <Text style={ui.caption}>{t('jewelry.color', { color: component.color || t('jewelry.notSpecified') })}</Text>
+          <Text style={ui.caption}>{t('jewelry.typeLabel', { type: component.type || t('jewelry.notSpecified') })}</Text>
+          <Text style={ui.label}>{t('jewelry.perBead', { price: money(component.price) })}</Text>
           <Text style={ui.caption}>
-            {component.stock ? `${component.stock} available` : 'Out of stock'}
+            {component.stock ? t('counts.available', { count: component.stock }) : t('readyMade.outOfStock')}
           </Text>
         </View>
       </View>
       <View style={[ui.between, { flexWrap: 'wrap', gap: 8 }]}>
-        <Text style={ui.body}>Quantity</Text>
+        <Text style={ui.body}>{t('jewelry.quantity')}</Text>
         <View style={[ui.row, { gap: 12 }]}>
           <IconButton
             name="remove"
-            label={`Decrease quantity of ${component.name}`}
+            label={t('jewelry.decrease', { name: component.name })}
             disabled={quantity === 0}
             onPress={() => setSelected(Math.max(0, quantity - 1))}
           />
-          <Text accessibilityLabel={`Quantity of ${component.name}: ${quantity}`} style={ui.label}>
+          <Text accessibilityLabel={t('jewelry.quantityOf', { name: component.name, count: quantity })} style={ui.label}>
             {quantity}
           </Text>
           <IconButton
             name="add"
-            label={`Increase quantity of ${component.name}`}
+            label={t('jewelry.increase', { name: component.name })}
             disabled={quantity >= component.stock}
             onPress={() => setSelected(Math.min(component.stock, quantity + 1))}
           />
         </View>
       </View>
       <Text accessibilityLiveRegion="polite" style={ui.label}>
-        Estimated subtotal: {money(component.price * quantity)}
+        {t('jewelry.subtotal', { price: money(component.price * quantity) })}
       </Text>
     </View>
   );

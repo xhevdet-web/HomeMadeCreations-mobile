@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { EmptyState, Field, Header, Page, useUI } from '@/components/common/ui';
 import { PhotoStage } from './components/PhotoStage';
 import { TextAction } from '@/components/common/TextAction';
@@ -27,6 +28,7 @@ import { useCanvasCapture } from './components/useCanvasCapture';
 
 /** A clean look at the finished bouquet or gift before it is saved and ordered. */
 export default function CanvasPreviewScreen() {
+  const { t } = useTranslation();
   const ui = useUI();
   const styles = useThemedStyles(createStyles);
   const { width } = useWindowDimensions();
@@ -44,17 +46,17 @@ export default function CanvasPreviewScreen() {
   if (!draft.builderType || !draft.placements.length)
     return (
       <Page style={{ maxWidth: 600 }}>
-        <Header title="Your design" back />
-        <EmptyState icon="sparkles-outline" title="Nothing to preview yet"
-          description="Add a few pieces in the studio, then come back to see your creation."
-          action="Open the studio" onPress={edit} />
+        <Header title={t('canvasPreview.title')} back />
+        <EmptyState icon="sparkles-outline" title={t('canvasPreview.emptyTitle')}
+          description={t('canvasPreview.emptyBody')}
+          action={t('canvasPreview.openStudio')} onPress={edit} />
       </Page>
     );
 
   const builder = draft.builderType;
   const byId: Record<string, CatalogComponent> = Object.fromEntries((result.data ?? []).map((entry) => [entry.id, entry]));
   const lines = componentLines(draft.placements, (id) => ({
-    name: byId[id]?.name ?? 'Item', price: byId[id]?.price ?? 0, imageUrl: byId[id]?.imageUrl,
+    name: byId[id]?.name ?? t('studio.item'), price: byId[id]?.price ?? 0, imageUrl: byId[id]?.imageUrl,
   }));
   let signature = '';
   try { signature = canvasSignature(); } catch { /* Validated when continuing. */ }
@@ -80,7 +82,7 @@ export default function CanvasPreviewScreen() {
         useCommerceStore.getState().setCheckout(current.id, product);
         router.push('/checkout');
       } else {
-        toast.success('Saved to My Designs. Come back whenever you’re ready.');
+        toast.success(t('canvasPreview.savedForLater'));
       }
     } catch (failure) {
       setError(apiError(failure).message);
@@ -96,18 +98,18 @@ export default function CanvasPreviewScreen() {
       footer={
         <ActionFooter
           amount={total}
-          amountLabel={saved ? 'Design total' : 'Estimated total'}
-          title={intent === 'order' ? 'Saving your design…' : 'Continue to order'}
+          amountLabel={saved ? t('canvasPreview.designTotal') : t('canvasPreview.estimatedTotal')}
+          title={intent === 'order' ? t('canvasPreview.saving') : t('canvasPreview.continueToOrder')}
           onPress={() => void save(true)}
           loading={intent === 'order'}
           disabled={busy}
-          caption="Your design is saved when you continue. Stock is reserved when you order."
+          caption={t('canvasPreview.caption')}
         />
       }
     >
-      <Header title="Your design" back
+      <Header title={t('canvasPreview.title')} back
         right={
-          <TextAction title={saved ? 'Saved' : 'Save for later'} icon={saved ? 'checkmark' : 'bookmark-outline'}
+          <TextAction title={saved ? t('canvasPreview.saved') : t('canvasPreview.saveForLater')} icon={saved ? 'checkmark' : 'bookmark-outline'}
             onPress={() => void save(false)} loading={intent === 'save'} disabled={busy || !!saved} />
         } />
       <FlowStep step={1} />
@@ -120,19 +122,19 @@ export default function CanvasPreviewScreen() {
               texts={texts} components={byId} editable={false} />
           </View>
         </View>
-        <TextAction title="Edit design" icon="create-outline" onPress={edit} disabled={busy} />
+        <TextAction title={t('canvasPreview.editDesign')} icon="create-outline" onPress={edit} disabled={busy} />
       </View>
 
       <View style={{ gap: 2 }}>
         <Text style={styles.title}>{draft.base?.name ?? draft.categoryName}</Text>
         <Text style={ui.caption}>
-          {[draft.base ? draft.categoryName : null, componentCount(draft.placements.length, builder)]
+          {[draft.base ? draft.categoryName : null, componentCount(t, draft.placements.length, builder)]
             .filter(Boolean).join(' · ')}
         </Text>
       </View>
 
       <View style={styles.card}>
-        <Text style={ui.label}>{builder === 'BOUQUET' ? 'Components' : 'Items'}</Text>
+        <Text style={ui.label}>{builder === 'BOUQUET' ? t('canvasPreview.components') : t('canvasPreview.items')}</Text>
         {draft.base && (
           <View style={styles.line}>
             <View style={styles.thumb}>
@@ -153,22 +155,22 @@ export default function CanvasPreviewScreen() {
         ))}
         <View style={styles.divider} />
         <View style={styles.line}>
-          <Text style={[ui.label, { flex: 1 }]}>Total</Text>
+          <Text style={[ui.label, { flex: 1 }]}>{t('common.total')}</Text>
           <Text style={styles.total}>{money(total)}</Text>
         </View>
       </View>
 
       {texts.length > 0 && (
         <View style={styles.card}>
-          <Text style={ui.label}>Personalization</Text>
+          <Text style={ui.label}>{t('canvasPreview.personalization')}</Text>
           {texts.map((layer) => (
             <Text key={layer.id} style={styles.quote}>“{layer.text.trim()}”</Text>
           ))}
-          <Text style={ui.caption}>Included free of charge.</Text>
+          <Text style={ui.caption}>{t('canvasPreview.includedFree')}</Text>
         </View>
       )}
 
-      <Field label="Give your creation a name" value={draft.name} onChangeText={draft.rename}
+      <Field label={t('canvasPreview.nameLabel')} value={draft.name} onChangeText={draft.rename}
         editable={!busy} maxLength={150} />
       {!!error && <Text accessibilityRole="alert" style={ui.error}>{error}</Text>}
     </Page>

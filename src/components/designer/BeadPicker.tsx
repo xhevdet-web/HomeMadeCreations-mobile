@@ -1,6 +1,7 @@
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
 import { memo, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { items as localItems } from '@/services/catalog';
 import { CustomizationItem, ItemType } from '@/types/models';
 import { type Theme } from '@/constants/theme';
@@ -9,13 +10,16 @@ import { Chips, Field, Icon, useUI } from '@/components/common/ui';
 import { DesignItem } from './DesignItem';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useDesignStore } from '@/store/designStore';
-const categories: Record<string, ItemType | undefined> = {
+const categories: Record<'All' | 'Beads' | 'Charms' | 'Letters' | 'Spacers', ItemType | undefined> = {
   All: undefined,
   Beads: 'bead',
   Charms: 'charm',
   Letters: 'letter',
   Spacers: 'spacer',
 };
+type Category = keyof typeof categories;
+// Filters store ANY or a catalog value; only the "any" labels are translated.
+const ANY = '';
 export function BeadPicker({
   onPick,
   initialCategory = 'All',
@@ -43,88 +47,84 @@ export function BeadPicker({
   const { width } = useWindowDimensions();
   const items = sourceItems ?? localItems;
 
-  const [category, setCategory] = useState(initialCategory in categories ? initialCategory : 'All');
+  const { t } = useTranslation();
+  const [category, setCategory] = useState<Category>(initialCategory in categories ? initialCategory as Category : 'All');
   const [filterOpen, setFilterOpen] = useState(expanded);
-  const [color, setColor] = useState('Any color');
-  const [material, setMaterial] = useState('Any material');
-  const [shape, setShape] = useState('Any shape');
-  const [price, setPrice] = useState('Any price');
+  const [color, setColor] = useState(ANY);
+  const [material, setMaterial] = useState(ANY);
+  const [shape, setShape] = useState(ANY);
+  const [cheap, setCheap] = useState(false);
   const [search, setSearch] = useState('');
   const visible = useMemo(
     () =>
       items.filter(
         (item) =>
           (!categories[category] || item.type === categories[category]) &&
-          (color === 'Any color' || item.color === color) &&
-          (material === 'Any material' || item.material === material) &&
-          (shape === 'Any shape' || item.shape === shape) &&
-          (price === 'Any price' || item.price <= 50) &&
+          (color === ANY || item.color === color) &&
+          (material === ANY || item.material === material) &&
+          (shape === ANY || item.shape === shape) &&
+          (!cheap || item.price <= 50) &&
           item.name.toLowerCase().includes(search.toLowerCase()),
       ),
-    [items, category, color, material, shape, price, search],
+    [items, category, color, material, shape, cheap, search],
   );
-  const active =
-    color !== 'Any color' ||
-    material !== 'Any material' ||
-    shape !== 'Any shape' ||
-    price !== 'Any price';
+  const active = color !== ANY || material !== ANY || shape !== ANY || cheap;
+  // A chip row of one "any" label plus catalog values; picking the label clears the filter.
+  const filterChips = (anyLabel: string, values: string[], value: string, onChange: (next: string) => void) => (
+    <Chips options={[anyLabel, ...values]} value={value === ANY ? anyLabel : value}
+      onChange={(next) => onChange(next === anyLabel ? ANY : next)} />
+  );
+  const priceLabels = [t('jewelry.anyPrice'), t('jewelry.upToPrice', { price: money(50) })];
   return (
     <View style={{ gap: 16 }}>
       <View style={ui.between}>
         <View>
-          <Text style={[ui.sectionTitle, { fontSize: 19 }]}>Choose your details</Text>
+          <Text style={[ui.sectionTitle, { fontSize: 19 }]}>{t('jewelry.chooseDetails')}</Text>
           <Text style={ui.caption}>
             {disabled
-              ? 'Your piece is full. Drag a bead onto your piece to swap one.'
+              ? t('jewelry.pickerFull')
               : replacing
-                ? 'Tap to replace, or hold and drag onto your piece'
-                : 'Tap to add, or hold and drag onto your piece'}
+                ? t('jewelry.pickerReplace')
+                : t('jewelry.pickerAdd')}
           </Text>
         </View>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Toggle bead filters"
+          accessibilityLabel={t('jewelry.toggleFilters')}
           onPress={() => setFilterOpen(!filterOpen)}
           style={[ui.iconButton, active && { borderColor: theme.colors.accent }]}
         >
           <Icon name="options-outline" color={active ? theme.colors.accent : theme.colors.text} />
         </Pressable>
       </View>
-      {!sourceItems && <Chips options={Object.keys(categories)} value={category} onChange={setCategory} />}
+      {!sourceItems && (
+        <Chips options={(Object.keys(categories) as Category[]).map((key) => t(`jewelry.categories.${key}`))}
+          value={t(`jewelry.categories.${category}`)}
+          onChange={(label) => setCategory((Object.keys(categories) as Category[])
+            .find((key) => t(`jewelry.categories.${key}`) === label) ?? 'All')} />
+      )}
       {filterOpen && (
         <View style={ui.card}>
           <Field
-            label="Search components"
-            placeholder="Find a bead, charm, or letter…"
+            label={t('jewelry.searchLabel')}
+            placeholder={t('jewelry.searchPlaceholder')}
             value={search}
             onChangeText={setSearch}
           />
-          <Chips
-            options={['Any color', ...new Set(items.map((item) => item.color))]}
-            value={color}
-            onChange={setColor}
-          />
-          <Chips
-            options={['Any material', ...new Set(items.map((item) => item.material))]}
-            value={material}
-            onChange={setMaterial}
-          />
-          <Chips
-            options={['Any shape', ...new Set(items.map((item) => item.shape))]}
-            value={shape}
-            onChange={setShape}
-          />
-          <Chips options={['Any price', 'Up to €0.50']} value={price} onChange={setPrice} />
+          {filterChips(t('jewelry.anyColor'), [...new Set(items.map((item) => item.color))], color, setColor)}
+          {filterChips(t('jewelry.anyMaterial'), [...new Set(items.map((item) => item.material))], material, setMaterial)}
+          {filterChips(t('jewelry.anyShape'), [...new Set(items.map((item) => item.shape))], shape, setShape)}
+          <Chips options={priceLabels} value={priceLabels[cheap ? 1 : 0]} onChange={(label) => setCheap(label === priceLabels[1])} />
           <Pressable
             onPress={() => {
-              setColor('Any color');
-              setMaterial('Any material');
-              setShape('Any shape');
-              setPrice('Any price');
+              setColor(ANY);
+              setMaterial(ANY);
+              setShape(ANY);
+              setCheap(false);
               setSearch('');
             }}
           >
-            <Text style={ui.textLink}>Reset filters</Text>
+            <Text style={ui.textLink}>{t('jewelry.resetFilters')}</Text>
           </Pressable>
         </View>
       )}
@@ -137,7 +137,7 @@ export function BeadPicker({
       </View>
       {!visible.length && (
         <Text style={[ui.body, { textAlign: 'center', padding: 20 }]}>
-          No little treasures match these filters.
+          {t('jewelry.noMatch')}
         </Text>
       )}
     </View>
@@ -157,6 +157,7 @@ const DraggableBead = memo(function DraggableBead({ item, replacing, disabled, n
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
   const quantity = useDesignStore((state) => state.items.filter((entry) => entry.itemId === item.id).length);
+  const { t } = useTranslation();
   const replaceSame = useDesignStore((state) => state.items.some((entry) => entry.id === state.selectedId && entry.itemId === item.id));
   const atStockLimit = quantity - (replaceSame ? 1 : 0) >= item.stock;
   const unavailable = !item.available || atStockLimit;
@@ -171,7 +172,7 @@ const DraggableBead = memo(function DraggableBead({ item, replacing, disabled, n
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={
-          (replacing ? 'Replace with ' : 'Add ') + item.name + ', ' + money(item.price)
+          t(replacing ? 'jewelry.replaceWith' : 'jewelry.addItem', { name: item.name, price: money(item.price) })
         }
         disabled={unavailable}
         onPress={() => onPick(item)}
@@ -194,10 +195,10 @@ const DraggableBead = memo(function DraggableBead({ item, replacing, disabled, n
         </Text>
         {item.categoryId ? (
           <>
-            <Text numberOfLines={1} style={styles.stock}>Color: {item.color}</Text>
-            <Text numberOfLines={1} style={styles.tilePrice}>{money(item.price)} per bead</Text>
+            <Text numberOfLines={1} style={styles.stock}>{t('jewelry.color', { color: item.color })}</Text>
+            <Text numberOfLines={1} style={styles.tilePrice}>{t('jewelry.perBead', { price: money(item.price) })}</Text>
             <Text numberOfLines={1} style={[styles.stock, !item.stock && { color: theme.colors.danger }]}>
-              {!item.stock ? 'Out of stock' : atStockLimit ? `All ${item.stock} in use` : `${item.stock} available`}
+              {!item.stock ? t('readyMade.outOfStock') : atStockLimit ? t('jewelry.allInUse', { count: item.stock }) : t('counts.available', { count: item.stock })}
             </Text>
           </>
         ) : (

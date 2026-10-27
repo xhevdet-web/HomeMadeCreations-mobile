@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import type { CanvasPlacement, TextLayer as TextLayerModel } from '@/api/builderModels';
 import type { CatalogComponent } from '@/api/catalogModels';
 import type { Transform } from '@/components/studio/PlacedItem';
@@ -37,11 +38,13 @@ export function FreeDesignCanvas({ builder, size, base, placements, components, 
 }) {
   // The drawn gift bag holds the pieces; a base photo or a bouquet uses the whole canvas.
   const bounds = boundsFor(builder, !!base?.imageUrl);
+  const { t } = useTranslation();
   const lifted = (id: string, zIndex: number) => (editable && id === selectedId ? Z.lifted : zIndex);
   return (
     <View style={{ width: size, height: size }}
-      accessibilityLabel={`${base?.name ?? (builder === 'BOUQUET' ? 'Bouquet' : 'Gift')} with ${placements.length} `
-        + `${placements.length === 1 ? 'piece' : 'pieces'}${texts.length ? ` and ${texts.length} text` : ''}`}>
+      accessibilityLabel={t(texts.length ? 'canvasStudio.canvasLabelText' : 'canvasStudio.canvasLabel', {
+        name: base?.name ?? t(builder === 'BOUQUET' ? 'canvasStudio.bouquet' : 'canvasStudio.gift'),
+        pieces: t('counts.piece', { count: placements.length }), count: texts.length })}>
       <Pressable accessible={false} style={[StyleSheet.absoluteFill, { zIndex: 0 }]} disabled={!editable}
         onPress={() => onSelect?.(null)}>
         <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.center, { zIndex: Z.base }]}>

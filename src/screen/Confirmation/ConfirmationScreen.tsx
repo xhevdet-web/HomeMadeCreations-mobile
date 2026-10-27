@@ -1,5 +1,6 @@
 import { Text } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Header, IconButton, Page, useUI } from '@/components/common/ui';
 import { ActionFooter } from '@/components/checkout/ActionFooter';
 import { CatalogState } from '@/components/products/CatalogState';
@@ -13,6 +14,7 @@ import { OrderTracking } from './components/OrderTracking';
 
 export default function ConfirmationScreen() {
   const ui = useUI();
+  const { t } = useTranslation();
   const { id, placed } = useLocalSearchParams<{ id: string; placed?: string }>();
   const user = useAuthStore((state) => state.user);
   const result = useApiResult<ApiOrder>(useGetOrderByIdQuery(id ?? '', { skip: !id || !user }));
@@ -29,7 +31,7 @@ export default function ConfirmationScreen() {
       footer={
         order ? (
           <ActionFooter
-            title={success ? 'Track order' : 'Back to my orders'}
+            title={success ? t('confirmation.trackOrder') : t('confirmation.backToOrders')}
             onPress={
               success ? () => router.replace({ pathname: '/confirmation', params: { id } }) : orders
             }
@@ -38,15 +40,15 @@ export default function ConfirmationScreen() {
       }
     >
       <Header
-        title={success ? 'Order placed' : 'Track order'}
+        title={success ? t('confirmation.orderPlaced') : t('confirmation.trackOrder')}
         back={!success}
         right={
           success ? (
-            <IconButton name="close" label="Close confirmation" onPress={home} />
+            <IconButton name="close" label={t('confirmation.close')} onPress={home} />
           ) : order ? (
             <IconButton
               name="refresh-outline"
-              label="Refresh status"
+              label={t('confirmation.refresh')}
               disabled={result.loading}
               onPress={result.retry}
             />
@@ -63,14 +65,13 @@ export default function ConfirmationScreen() {
         <CatalogState
           loading={result.loading}
           error={result.error ?? ''}
-          empty="We couldn’t find this order. Open My Orders to check your purchases."
+          empty={t('confirmation.notFound')}
           retry={result.retry}
         />
       )}
       {order && result.error && (
         <Text accessibilityRole="alert" style={ui.caption}>
-          Your order is saved. We couldn’t refresh its latest status. Please check again when you’re
-          connected.
+          {t('confirmation.refreshFailed')}
         </Text>
       )}
     </Page>

@@ -1,5 +1,6 @@
 import { useTheme } from '@/hooks/useTheme';
 import { Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { DesignItem } from '@/types/models';
 import { designPrice, money, priceLines } from '@/helper/pricing';
 
@@ -17,6 +18,7 @@ export function PriceBreakdown({
 }) {
   const theme = useTheme();
   const ui = useUI();
+  const { t } = useTranslation();
 
   return (
     <View style={{ gap: 14 }}>
@@ -34,13 +36,13 @@ export function PriceBreakdown({
       ))}
       {delivery !== undefined && (
         <View style={ui.between}>
-          <Text style={ui.body}>Delivery</Text>
+          <Text style={ui.body}>{t('common.delivery')}</Text>
           <Text style={ui.label}>{money(delivery)}</Text>
         </View>
       )}
       <View style={ui.divider} />
       <View style={ui.between}>
-        <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '600' }}>Total</Text>
+        <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '600' }}>{t('common.total')}</Text>
         <Text style={{ color: theme.colors.accent, fontSize: 23, fontWeight: '600' }}>
           {money(designPrice(basePrice, items) + (delivery ?? 0))}
         </Text>

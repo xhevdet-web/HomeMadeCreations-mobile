@@ -4,6 +4,7 @@ import { Button, useUI } from '@/components/common/ui';
 import { useThemedStyles } from '@/hooks/useTheme';
 import { money } from '@/helper/pricing';
 import { type Theme } from '@/constants/theme';
+import { useTranslation } from 'react-i18next';
 
 export function DesignerFooter({ total, beads, label, disabled, onPreview }: {
   total: number;
@@ -15,17 +16,19 @@ export function DesignerFooter({ total, beads, label, disabled, onPreview }: {
 }) {
   const ui = useUI();
   const styles = useThemedStyles(createStyles);
+  const { t } = useTranslation();
+  const detail = label ?? (beads ? t('counts.bead', { count: beads }) : '');
   return (
     <SafeAreaView edges={['bottom']} style={styles.bottom}>
       <View style={[ui.between, { width: '100%', maxWidth: 876, alignSelf: 'center' }]}>
         <View>
           <Text style={ui.caption}>
-            Your creation{label ? ` · ${label}` : beads ? ` · ${beads} ${beads === 1 ? 'bead' : 'beads'}` : ''}
+            {detail ? t('studio.yourCreationWith', { detail }) : t('studio.yourCreation')}
           </Text>
           <Text style={styles.total}>{money(total)}</Text>
         </View>
         <Button
-          title="Preview"
+          title={t('studio.preview')}
           icon="arrow-forward"
           disabled={disabled}
           onPress={onPreview}

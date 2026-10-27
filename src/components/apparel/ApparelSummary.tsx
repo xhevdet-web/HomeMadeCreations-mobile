@@ -4,29 +4,31 @@ import { DetailRow } from '@/components/checkout/ProductOverview';
 import { useThemedStyles } from '@/hooks/useTheme';
 import { money } from '@/helper/pricing';
 import { type Theme } from '@/constants/theme';
+import { useTranslation } from 'react-i18next';
 import type { OrderedProduct } from '@/api/commerceModels';
 import { apparelImage } from '@/services/apparelDesign';
 
 /** Front/back previews, the base piece, its size and the placed designs of a custom garment. */
 export function ApparelSummary({ product }: { product: OrderedProduct }) {
   const styles = useThemedStyles(createStyles);
+  const { t } = useTranslation();
   const piece = product.baseProduct;
   const size = product.selectedSize?.name;
   const options = [
-    ...(piece ? [{ key: 'piece', name: 'Piece', value: piece.name, swatch: undefined }] : []),
-    ...(piece?.color ? [{ key: 'colour', name: 'Colour', value: piece.color, swatch: piece.colorHex ?? undefined }] : []),
-    ...(size ? [{ key: 'size', name: 'Size', value: size, swatch: undefined }] : []),
+    ...(piece ? [{ key: 'piece', name: t('apparelSummary.piece'), value: piece.name, swatch: undefined }] : []),
+    ...(piece?.color ? [{ key: 'colour', name: t('apparelSummary.colour'), value: piece.color, swatch: piece.colorHex ?? undefined }] : []),
+    ...(size ? [{ key: 'size', name: t('apparelSummary.size'), value: size, swatch: undefined }] : []),
   ];
   const designs = (product.items ?? []).map((item) => ({
     id: item.id,
     name: item.subCategory.name,
-    side: item.side === 'BACK' ? 'Back' : 'Front',
+    side: item.side === 'BACK' ? t('apparelSummary.back') : t('apparelSummary.front'),
     price: item.unitPrice * item.quantity,
   }));
   const base = product.basePrice ?? Math.max(product.price - designs.reduce((sum, d) => sum + d.price, 0), 0);
   const previews = [
-    { label: product.designPreviewUrl ? 'Front' : 'Your piece', url: apparelImage(product) },
-    ...(product.backDesignPreviewUrl ? [{ label: 'Back', url: product.backDesignPreviewUrl }] : []),
+    { label: product.designPreviewUrl ? t('apparelSummary.front') : t('apparelSummary.yourPiece'), url: apparelImage(product) },
+    ...(product.backDesignPreviewUrl ? [{ label: t('apparelSummary.back'), url: product.backDesignPreviewUrl }] : []),
   ];
   return (
     <View style={{ gap: 12 }}>
@@ -34,7 +36,7 @@ export function ApparelSummary({ product }: { product: OrderedProduct }) {
         {previews.map((preview) => (
           <View key={preview.label} style={styles.preview}>
             <View style={styles.image}>
-              <CatalogImage imageUrl={preview.url} name={`${product.name} ${preview.label.toLowerCase()}`} size={140} />
+              <CatalogImage imageUrl={preview.url} name={t('apparelSummary.imageOf', { name: product.name, view: preview.label })} size={140} />
             </View>
             <Text style={styles.previewLabel}>{preview.label.toUpperCase()}</Text>
           </View>
@@ -54,14 +56,14 @@ export function ApparelSummary({ product }: { product: OrderedProduct }) {
         </View>
       )}
       <View style={styles.card}>
-        <Text style={styles.title}>Designs</Text>
+        <Text style={styles.title}>{t('apparelSummary.designs')}</Text>
         {designs.map((design) => (
-          <DetailRow key={design.id} label={`${design.name} — ${design.side}`} value={money(design.price)} />
+          <DetailRow key={design.id} label={t('apparelSummary.designOnSide', { name: design.name, side: design.side })} value={money(design.price)} />
         ))}
         <View style={styles.divider} />
         <DetailRow label={piece ? [piece.name, size].filter(Boolean).join(' · ')
-          : product.category?.name ?? 'Garment'} value={money(base)} />
-        <DetailRow label="Total" value={money(product.price)} />
+          : product.category?.name ?? t('apparelSummary.garment')} value={money(base)} />
+        <DetailRow label={t('common.total')} value={money(product.price)} />
       </View>
     </View>
   );

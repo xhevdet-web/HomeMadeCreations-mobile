@@ -3,6 +3,7 @@ import { useFeedbackState } from '@/hooks/useFeedbackState';
 import { useState } from 'react';
 import { Text, View } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { EmptyState, Header, IconButton, Page, useUI } from '@/components/common/ui';
 import { CatalogState } from '@/components/products/CatalogState';
 import { useAuthStore } from '@/store/authStore';
@@ -17,6 +18,7 @@ import { DesignCard } from './components/DesignCard';
 
 export default function DesignsScreen() {
   const ui = useUI();
+  const { t } = useTranslation();
   const user = useAuthStore((state) => state.user);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [error, setError] = useFeedbackState();
@@ -31,22 +33,22 @@ export default function DesignsScreen() {
     try {
       if (isApparelProduct(product)) {
         loadApparelDesign(product);
-        toast.info('Design opened. Edit it, then review your order.');
+        toast.info(t('designs.openedApparel'));
         router.push('/apparel-studio');
         return;
       }
       if (isCanvasProduct(product)) {
         // Bouquets and gifts reopen with every position, layer and text restored.
         loadCanvasDesign(product);
-        toast.info('Design opened. Edit it, then preview and order.');
+        toast.info(t('designs.openedCanvas'));
         router.push('/studio');
         return;
       }
       await editSavedDesign(product.id, user.id);
-      toast.info('Design opened. Next, edit and save a copy before reviewing your order.');
+      toast.info(t('designs.openedJewelry'));
       router.push('/designer');
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : 'Unable to open design.');
+      setError(failure instanceof Error ? failure.message : t('designs.openFailed'));
     } finally {
       setEditingId(null);
     }
@@ -55,24 +57,24 @@ export default function DesignsScreen() {
   function order(product: SavedProduct) {
     if (!user) return;
     useCommerceStore.getState().setCheckout(user.id, product);
-    toast.info('Design selected. Next, review delivery details and place your order.');
+    toast.info(t('designs.selected'));
     router.push('/checkout');
   }
 
   return (
     <Page style={{ gap: 16 }}>
       <Header
-        title="My Designs"
-        subtitle={designs.length ? `${designs.length} saved ${designs.length === 1 ? 'design' : 'designs'}` : undefined}
+        title={t('designs.title')}
+        subtitle={designs.length ? t('designs.count', { count: designs.length }) : undefined}
         right={
           <View style={[ui.row, { gap: 8 }]}>
             <IconButton
               name="refresh-outline"
-              label="Refresh designs"
+              label={t('designs.refresh')}
               disabled={result.loading}
               onPress={result.retry}
             />
-            <IconButton name="add" label="Create a new design" onPress={create} />
+            <IconButton name="add" label={t('designs.create')} onPress={create} />
           </View>
         }
       />
@@ -102,9 +104,9 @@ export default function DesignsScreen() {
       ) : (
         <EmptyState
           icon="sparkles-outline"
-          title="No saved designs yet"
-          description="Create your first piece in the studio. Saved designs appear here, ready to order."
-          action="Start designing"
+          title={t('designs.emptyTitle')}
+          description={t('designs.emptyBody')}
+          action={t('designs.emptyAction')}
           onPress={create}
         />
       )}

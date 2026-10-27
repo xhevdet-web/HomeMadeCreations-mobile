@@ -1,13 +1,14 @@
 import { Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon, type IconName } from '@/components/common/ui';
 import { useTheme } from '@/hooks/useTheme';
 import { darkTheme, lightTheme } from '@/constants/theme';
 import { money } from '@/helper/pricing';
 import { type ApiOrder, orderStages, orderStatusLabel } from '@/api/commerceModels';
-import { stageDescriptions } from '@/screen/Confirmation/components/OrderTimeline';
+import { stageDescription } from '@/screen/Confirmation/components/OrderTimeline';
 import { useThemeStore } from '@/store/themeStore';
 
 // The brand's navy carries the header in both modes, with the apricot accent on top.
@@ -17,16 +18,20 @@ const ON_NAVY = '#FFFFFF';
 const ON_NAVY_MUTED = darkTheme.colors.muted;
 const GLASS = 'rgba(255,255,255,0.12)';
 
-function greeting() {
+function greetingKey() {
   const hour = new Date().getHours();
-  return hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  return hour < 12 ? 'home.greetingMorning' : hour < 18 ? 'home.greetingAfternoon' : 'home.greetingEvening';
 }
 
-const actions: { icon: IconName; label: string; onPress: () => void }[] = [
-  { icon: 'color-palette-outline', label: 'Create', onPress: () => router.push('/categories') },
-  { icon: 'cube-outline', label: 'Track', onPress: () => router.push('/orders') },
-  { icon: 'heart-outline', label: 'Designs', onPress: () => router.push('/designs') },
-  { icon: 'help-buoy-outline', label: 'Help', onPress: () => router.push('/help') },
+const actions: {
+  icon: IconName;
+  label: 'home.actionCreate' | 'home.actionTrack' | 'home.actionDesigns' | 'home.actionHelp';
+  onPress: () => void;
+}[] = [
+  { icon: 'color-palette-outline', label: 'home.actionCreate', onPress: () => router.push('/categories') },
+  { icon: 'cube-outline', label: 'home.actionTrack', onPress: () => router.push('/orders') },
+  { icon: 'heart-outline', label: 'home.actionDesigns', onPress: () => router.push('/designs') },
+  { icon: 'help-buoy-outline', label: 'home.actionHelp', onPress: () => router.push('/help') },
 ];
 
 function HeaderButton({ icon, label, onPress }: { icon: IconName; label: string; onPress: () => void }) {
@@ -50,6 +55,7 @@ export function HomeHeader({ firstName, lastName, search, onSearch, activeOrder 
   activeOrder?: ApiOrder;
 }) {
   const theme = useTheme();
+  const { t } = useTranslation();
   const toggleTheme = useThemeStore((state) => state.toggle);
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -66,26 +72,28 @@ export function HomeHeader({ firstName, lastName, search, onSearch, activeOrder 
               : <Icon name="person" size={20} color={lightTheme.colors.text} />}
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.greeting}>{greeting()}</Text>
-            <Text style={styles.name} numberOfLines={1} accessibilityRole="header">
-              {firstName ? `Hello, ${firstName}` : 'Hello'}
+            <Text style={styles.greeting}>{t(greetingKey())}</Text>
+            {/* Shrinks rather than cuts off longer greetings (e.g. Albanian) and long names. */}
+            <Text style={styles.name} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}
+              accessibilityRole="header">
+              {firstName ? t('home.hello', { name: firstName }) : t('home.helloNoName')}
             </Text>
           </View>
           {width >= 380 && (
-            <HeaderButton icon="heart-outline" label="My saved designs" onPress={() => router.push('/designs')} />
+            <HeaderButton icon="heart-outline" label={t('home.savedDesigns')} onPress={() => router.push('/designs')} />
           )}
-          <HeaderButton icon="bag-handle-outline" label="Open shopping bag" onPress={() => router.push('/checkout')} />
+          <HeaderButton icon="bag-handle-outline" label={t('home.openBag')} onPress={() => router.push('/checkout')} />
           <HeaderButton icon={theme.mode === 'dark' ? 'sunny-outline' : 'moon-outline'}
-            label={theme.mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} onPress={toggleTheme} />
+            label={theme.mode === 'dark' ? t('common.switchToLight') : t('common.switchToDark')} onPress={toggleTheme} />
         </View>
 
         <View style={styles.search}>
           <Icon name="search-outline" size={18} color={lightTheme.colors.muted} />
-          <TextInput accessibilityLabel="Search products" placeholder="Search ready-made pieces or categories"
+          <TextInput accessibilityLabel={t('home.searchLabel')} placeholder={t('home.searchPlaceholder')}
             placeholderTextColor={lightTheme.colors.muted} value={search} onChangeText={onSearch}
             returnKeyType="search" autoCorrect={false} style={styles.searchInput} />
           {search.length > 0 && (
-            <Pressable accessibilityRole="button" accessibilityLabel="Clear search" onPress={() => onSearch('')}
+            <Pressable accessibilityRole="button" accessibilityLabel={t('home.clearSearch')} onPress={() => onSearch('')}
               hitSlop={10}>
               <Icon name="close-circle" size={18} color={lightTheme.colors.muted} />
             </Pressable>
@@ -94,16 +102,16 @@ export function HomeHeader({ firstName, lastName, search, onSearch, activeOrder 
 
         {activeOrder ? (
           <Pressable accessibilityRole="button"
-            accessibilityLabel={`Track your order ${activeOrder.orderNumber}: ${orderStatusLabel(activeOrder.status)}`}
+            accessibilityLabel={t('home.trackOrder', { number: activeOrder.orderNumber, status: orderStatusLabel(t, activeOrder.status) })}
             onPress={() => router.push({ pathname: '/confirmation', params: { id: activeOrder.id } })}
             style={({ pressed }) => [styles.spotlight, { opacity: pressed ? 0.85 : 1 }]}>
-            <Text style={styles.spotlightLabel}>Your order</Text>
-            <Text style={styles.spotlightTitle}>{orderStatusLabel(activeOrder.status)}</Text>
+            <Text style={styles.spotlightLabel}>{t('home.yourOrder')}</Text>
+            <Text style={styles.spotlightTitle}>{orderStatusLabel(t, activeOrder.status)}</Text>
             <View style={styles.pill}>
               <Text style={styles.pillText} numberOfLines={1}>{activeOrder.product.name}</Text>
             </View>
             <Text style={styles.spotlightDetail} numberOfLines={2}>
-              {stageDescriptions[activeOrder.status] ?? `${activeOrder.orderNumber} · ${money(activeOrder.totalPrice)}`}
+              {stageDescription(t, activeOrder.status) ?? `${activeOrder.orderNumber} · ${money(activeOrder.totalPrice)}`}
             </Text>
             <View style={styles.progress} accessibilityElementsHidden>
               {orderStages.map((stage, index) => (
@@ -113,19 +121,19 @@ export function HomeHeader({ firstName, lastName, search, onSearch, activeOrder 
           </Pressable>
         ) : (
           <View style={styles.spotlight}>
-            <Text style={styles.spotlightLabel}>HomeMade Creator</Text>
-            <Text style={styles.spotlightTitle}>What will you create today?</Text>
+            <Text style={styles.spotlightLabel}>{t('common.appName')}</Text>
+            <Text style={styles.spotlightTitle}>{t('home.greetingSubtitle')}</Text>
           </View>
         )}
 
         <View style={styles.actions}>
           {actions.map((action) => (
-            <Pressable key={action.label} accessibilityRole="button" accessibilityLabel={action.label}
+            <Pressable key={action.label} accessibilityRole="button" accessibilityLabel={t(action.label)}
               onPress={action.onPress} style={({ pressed }) => [styles.action, { opacity: pressed ? 0.7 : 1 }]}>
-              <View style={[styles.actionIcon, action.label === 'Create' && { backgroundColor: APRICOT }]}>
-                <Icon name={action.icon} size={20} color={action.label === 'Create' ? lightTheme.colors.text : ON_NAVY} />
+              <View style={[styles.actionIcon, action.label === 'home.actionCreate' && { backgroundColor: APRICOT }]}>
+                <Icon name={action.icon} size={20} color={action.label === 'home.actionCreate' ? lightTheme.colors.text : ON_NAVY} />
               </View>
-              <Text style={styles.actionLabel}>{action.label}</Text>
+              <Text style={styles.actionLabel}>{t(action.label)}</Text>
             </Pressable>
           ))}
         </View>

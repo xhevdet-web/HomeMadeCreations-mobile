@@ -2,6 +2,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { IconButton } from '@/components/common/ui';
 import { useThemedStyles } from '@/hooks/useTheme';
 import { type Theme } from '@/constants/theme';
+import { useTranslation } from 'react-i18next';
 
 /**
  * Tools for the selected piece or text, shown only while something is selected. The same
@@ -25,22 +26,23 @@ export function CanvasToolbar({ name, canDuplicate, canForward, canBackward, onS
   onDone: () => void;
 }) {
   const styles = useThemedStyles(createStyles);
+  const { t } = useTranslation();
   return (
     <View style={styles.toolbar}>
       <Text style={styles.name} numberOfLines={1}>{name}</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}
         keyboardShouldPersistTaps="handled">
-        <IconButton name="remove" label={`Make ${name} smaller`} onPress={onSmaller} />
-        <IconButton name="add" label={`Make ${name} larger`} onPress={onLarger} />
-        <IconButton name="refresh-outline" label={`Rotate ${name} left`} onPress={onRotateLeft} />
-        <IconButton name="reload-outline" label={`Rotate ${name} right`} onPress={onRotateRight} />
-        <IconButton name="arrow-up-circle-outline" label={`Bring ${name} forward`} onPress={onForward}
+        <IconButton name="remove" label={t('studio.smaller', { name })} onPress={onSmaller} />
+        <IconButton name="add" label={t('studio.larger', { name })} onPress={onLarger} />
+        <IconButton name="refresh-outline" label={t('studio.rotateLeft', { name })} onPress={onRotateLeft} />
+        <IconButton name="reload-outline" label={t('studio.rotateRight', { name })} onPress={onRotateRight} />
+        <IconButton name="arrow-up-circle-outline" label={t('studio.forward', { name })} onPress={onForward}
           disabled={!canForward} />
-        <IconButton name="arrow-down-circle-outline" label={`Send ${name} backward`} onPress={onBackward}
+        <IconButton name="arrow-down-circle-outline" label={t('studio.backward', { name })} onPress={onBackward}
           disabled={!canBackward} />
-        <IconButton name="copy-outline" label={`Duplicate ${name}`} onPress={onDuplicate} disabled={!canDuplicate} />
-        <IconButton name="trash-outline" label={`Delete ${name}`} onPress={onRemove} />
-        <IconButton name="checkmark" label="Done editing" onPress={onDone} />
+        <IconButton name="copy-outline" label={t('studio.duplicate', { name })} onPress={onDuplicate} disabled={!canDuplicate} />
+        <IconButton name="trash-outline" label={t('studio.delete', { name })} onPress={onRemove} />
+        <IconButton name="checkmark" label={t('studio.doneEditing')} onPress={onDone} />
       </ScrollView>
     </View>
   );

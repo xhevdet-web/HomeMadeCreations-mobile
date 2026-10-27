@@ -3,35 +3,39 @@ import { Icon, IconName } from '@/components/common/ui';
 import type { CatalogCategory } from '@/api/catalogModels';
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
 import { type Theme } from '@/constants/theme';
+import { useTranslation } from 'react-i18next';
 
-// What each Creative Studio lets the customer do; decided by builderType, never the name.
-const STUDIOS: Record<string, { icon: IconName; text: string }> = {
-  JEWELRY: { icon: 'diamond-outline', text: 'Choose a size, then string beads and charms piece by piece.' },
-  BOUQUET: { icon: 'flower-outline', text: 'Arrange flowers, greenery, fillers and wrapping your way.' },
-  GIFT: { icon: 'gift-outline', text: 'Fill a box with treats and decorations, and add a personal note.' },
-  APPAREL: { icon: 'shirt-outline', text: 'Pick your piece and size, then add logos, graphics or your own artwork.' },
+// Each Creative Studio's icon; its text is category.studioText.<builderType>. Decided by
+// builderType, never the category name.
+const STUDIOS: Record<'JEWELRY' | 'BOUQUET' | 'GIFT' | 'APPAREL', { icon: IconName }> = {
+  JEWELRY: { icon: 'diamond-outline' },
+  BOUQUET: { icon: 'flower-outline' },
+  GIFT: { icon: 'gift-outline' },
+  APPAREL: { icon: 'shirt-outline' },
 };
 
 /** The prominent entry to the category's Creative Studio, shown before its products. */
 export function CreateOwnCard({ category, onPress }: { category: CatalogCategory; onPress: () => void }) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
-  const studio = STUDIOS[category.builderType ?? 'JEWELRY'] ?? STUDIOS.JEWELRY;
+  const { t } = useTranslation();
+  const builder = category.builderType ?? 'JEWELRY';
+  const studio = STUDIOS[builder];
   const c = theme.colors;
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={`Create your own ${category.name} design`}
+    <Pressable accessibilityRole="button" accessibilityLabel={t('category.createOwnLabel', { name: category.name })}
       onPress={onPress} style={({ pressed }) => [styles.card, { transform: [{ scale: pressed ? 0.985 : 1 }] }]}>
       <View style={styles.glow} />
       <View style={styles.iconWrap}>
         <Icon name={studio.icon} size={22} color={c.onPrimary} />
       </View>
       <View style={{ gap: 6 }}>
-        <Text style={styles.eyebrow}>CREATIVE STUDIO</Text>
-        <Text style={styles.title}>Create your own design</Text>
-        <Text style={styles.text}>{studio.text}</Text>
+        <Text style={styles.eyebrow}>{t('category.studioEyebrow')}</Text>
+        <Text style={styles.title}>{t('category.createOwnTitle')}</Text>
+        <Text style={styles.text}>{t(`category.studioText.${builder}`)}</Text>
       </View>
       <View style={styles.cta}>
-        <Text style={styles.ctaText}>Start creating</Text>
+        <Text style={styles.ctaText}>{t('category.startCreating')}</Text>
         <Icon name="arrow-forward" size={16} color={c.primary} />
       </View>
     </Pressable>

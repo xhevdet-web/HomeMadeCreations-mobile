@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import type { ApparelPlacement, ApparelText, DesignSide } from '@/api/builderModels';
 import type { Transform } from '@/components/studio/PlacedItem';
 import { TextLayer } from '@/screen/CreativeStudio/components/TextLayer';
@@ -36,10 +37,12 @@ export function ApparelCanvas({ piece, side, color, size, placements, texts = []
   const area = printAreaFor(piece, side);
   const mockup = piece ? mockupFor(piece, side) : null;
   const editing = editable && !exportMode;
+  const { t } = useTranslation();
   return (
     <View style={{ width: size, height: size }}
-      accessibilityLabel={`${side === 'FRONT' ? 'Front' : 'Back'} with ${placements.length} designs`
-        + (texts.length ? ` and ${texts.length} text` : '')}>
+      accessibilityLabel={t(texts.length ? 'apparel.canvasLabelText' : 'apparel.canvasLabel', {
+        side: t(side === 'FRONT' ? 'apparel.front' : 'apparel.back'),
+        designs: t('counts.design', { count: placements.length }), count: texts.length })}>
       <Pressable accessible={false} style={StyleSheet.absoluteFill} disabled={!editing}
         onPress={() => onSelect?.(null)}>
         {mockup ? (
@@ -54,7 +57,7 @@ export function ApparelCanvas({ piece, side, color, size, placements, texts = []
           borderColor: theme.colors.accent,
         }]}>
           {!placements.length && !texts.length && (
-            <Text style={[styles.areaLabel, { color: theme.colors.accent }]}>PRINT AREA</Text>
+            <Text style={[styles.areaLabel, { color: theme.colors.accent }]}>{t('apparel.printArea')}</Text>
           )}
         </View>
       )}
@@ -65,7 +68,7 @@ export function ApparelCanvas({ piece, side, color, size, placements, texts = []
           area={area}
           canvas={size}
           imageUrl={placement.imageUri ?? designs[placement.subCategoryId]?.imageUrl}
-          name={designs[placement.subCategoryId]?.name ?? 'Design'}
+          name={designs[placement.subCategoryId]?.name ?? t('apparel.design')}
           selected={placement.id === selectedId}
           editable={editing}
           onSelect={() => onSelect?.(placement.id)}

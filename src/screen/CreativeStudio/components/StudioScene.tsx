@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import Svg, { Ellipse, G, Path, Rect, Text as SvgText } from 'react-native-svg';
 import { GIFT_BAG, type CanvasBuilder } from '@/helper/canvasStudio';
 
@@ -9,7 +10,8 @@ const PAPER = '#E8DCCB';
 const BAG = '#F4E9E4';
 
 /** A hand-tied bouquet: paper wrap behind and in front, folds, a ribbon bow and stems. */
-function Bouquet({ labels }: { labels: boolean }) {
+/** `labels`: the editing-aid caption, or null when capturing the preview. */
+function Bouquet({ labels }: { labels: string | null }) {
   return (
     <G stroke={INK} strokeWidth={0.45} strokeLinecap="round" strokeLinejoin="round">
       {/* Back paper rising behind the flowers. */}
@@ -30,7 +32,7 @@ function Bouquet({ labels }: { labels: boolean }) {
       {labels && (
         <SvgText x={50} y={40} fill={INK} stroke="none" fontSize={2.6} fontWeight="600" letterSpacing={0.6}
           textAnchor="middle" opacity={0.55}>
-          FLOWERS &amp; GREENERY
+          {labels}
         </SvgText>
       )}
     </G>
@@ -38,7 +40,7 @@ function Bouquet({ labels }: { labels: boolean }) {
 }
 
 /** A gift bag seen from the front: body, top fold, side gussets and handles. */
-function GiftBag({ labels }: { labels: boolean }) {
+function GiftBag({ labels }: { labels: string | null }) {
   // Drawn from the same shape that keeps the pieces on the bag.
   const left = GIFT_BAG.left * 100;
   const top = GIFT_BAG.top * 100;
@@ -58,7 +60,7 @@ function GiftBag({ labels }: { labels: boolean }) {
       {labels && (
         <SvgText x={50} y={bottom - 3} fill={INK} stroke="none" fontSize={2.6} fontWeight="600" letterSpacing={0.6}
           textAnchor="middle" opacity={0.55}>
-          FRONT OF BAG
+          {labels}
         </SvgText>
       )}
     </G>
@@ -71,9 +73,11 @@ function GiftBag({ labels }: { labels: boolean }) {
  * on the bouquet or bag. Labels are editing aids and are never saved.
  */
 export function StudioScene({ builder, size, labels }: { builder: CanvasBuilder; size: number; labels: boolean }) {
+  const { t } = useTranslation();
+  const label = labels ? t(builder === 'BOUQUET' ? 'studioMessages.flowersGreenery' : 'studioMessages.frontOfBag') : null;
   return (
     <Svg width={size} height={size} viewBox="0 0 100 100" style={StyleSheet.absoluteFill} pointerEvents="none">
-      {builder === 'BOUQUET' ? <Bouquet labels={labels} /> : <GiftBag labels={labels} />}
+      {builder === 'BOUQUET' ? <Bouquet labels={label} /> : <GiftBag labels={label} />}
     </Svg>
   );
 }

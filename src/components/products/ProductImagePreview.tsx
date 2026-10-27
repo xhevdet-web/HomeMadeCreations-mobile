@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Modal, StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { IconButton, useUI } from '@/components/common/ui';
 import { useTheme } from '@/hooks/useTheme';
@@ -11,6 +12,7 @@ export function ProductImagePreview({ product, onClose }: {
   product: SavedProduct | null;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const ui = useUI();
   const [imageSize, setImageSize] = useState(0);
@@ -21,10 +23,10 @@ export function ProductImagePreview({ product, onClose }: {
         {product && <View testID="product-image-preview" accessibilityViewIsModal style={styles.content}>
           <View style={styles.header}>
             <View style={{ flex: 1, gap: 4 }}>
-              <Text style={[ui.eyebrow, { marginBottom: 0 }]}>A CLOSER LOOK</Text>
-              <Text style={ui.caption}>Product preview</Text>
+              <Text style={[ui.eyebrow, { marginBottom: 0 }]}>{t('imagePreview.eyebrow')}</Text>
+              <Text style={ui.caption}>{t('imagePreview.caption')}</Text>
             </View>
-            <IconButton name="close" label="Close image preview" onPress={onClose} />
+            <IconButton name="close" label={t('productDetails.closePreview')} onPress={onClose} />
           </View>
 
           <View style={[styles.imageStage, { backgroundColor: theme.colors.preview }]}

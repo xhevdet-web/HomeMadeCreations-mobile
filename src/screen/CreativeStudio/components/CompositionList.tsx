@@ -5,6 +5,7 @@ import { CatalogImage } from '@/components/products/CatalogImage';
 import { useThemedStyles } from '@/hooks/useTheme';
 import { money } from '@/helper/pricing';
 import { type Theme } from '@/constants/theme';
+import { useTranslation } from 'react-i18next';
 
 export interface CompositionLine {
   component: CatalogComponent;
@@ -24,6 +25,7 @@ export function CompositionList({ title, lines, total, canAdd, onAdd, onRemove }
   onRemove: (component: CatalogComponent) => void;
 }) {
   const styles = useThemedStyles(createStyles);
+  const { t } = useTranslation();
   if (!lines.length) return null;
   return (
     <View style={styles.card}>
@@ -41,9 +43,9 @@ export function CompositionList({ title, lines, total, canAdd, onAdd, onRemove }
             <Text style={styles.meta}>{count} × {money(component.price)}</Text>
           </View>
           <View style={styles.stepper}>
-            <IconButton name="remove" label={`Remove one ${component.name}`} onPress={() => onRemove(component)} />
-            <Text style={styles.count} accessibilityLabel={`${count} ${component.name}`}>{count}</Text>
-            <IconButton name="add" label={`Add another ${component.name}`} onPress={() => onAdd(component)}
+            <IconButton name="remove" label={t('studio.removeOne', { name: component.name })} onPress={() => onRemove(component)} />
+            <Text style={styles.count} accessibilityLabel={t('studio.countOf', { count, name: component.name })}>{count}</Text>
+            <IconButton name="add" label={t('studio.addAnother', { name: component.name })} onPress={() => onAdd(component)}
               disabled={!canAdd(component)} />
           </View>
         </View>

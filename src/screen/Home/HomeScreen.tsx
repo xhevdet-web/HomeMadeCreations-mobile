@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { setStatusBarStyle } from 'expo-status-bar';
+import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUI } from '@/components/common/ui';
 import { useTheme } from '@/hooks/useTheme';
@@ -38,7 +39,6 @@ import { HomeSearchResults } from './components/HomeSearchResults';
 import { WhyHomeMade } from './components/Highlights';
 
 const READY_MADE_LIMIT = 10;
-const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? '' : 's'}`;
 
 /** True when a studio draft differs from the product last saved from it (or was never saved). */
 function unsaved(signature: () => string, saved: { signature: string } | null) {
@@ -57,6 +57,7 @@ function unsaved(signature: () => string, saved: { signature: string } | null) {
 export default function HomeScreen() {
   const ui = useUI();
   const theme = useTheme();
+  const { t } = useTranslation();
   const [search, setSearch] = useState('');
   const user = useAuthStore((state) => state.user);
   const authenticated = useAuthStore((state) => state.status === 'authenticated');
@@ -105,24 +106,24 @@ export default function HomeScreen() {
   const jewelryProduct = jewelry.items.length ? productById[jewelry.productId] : undefined;
   if (jewelryProduct)
     continueItems.push({
-      key: 'jewelry', icon: 'color-palette-outline', eyebrow: 'UNSAVED DESIGN',
+      key: 'jewelry', icon: 'color-palette-outline', eyebrow: t('home.unsavedDesign'),
       title: jewelry.name.trim() || jewelryProduct.name,
-      detail: `${plural(jewelry.items.length, 'bead')} · ${money(designPrice(jewelryProduct.basePrice, jewelry.items))}`,
+      detail: `${t('counts.bead', { count: jewelry.items.length })} · ${money(designPrice(jewelryProduct.basePrice, jewelry.items))}`,
       onPress: () => router.push('/designer'),
     });
   const canvasPieces = canvas.placements.length + canvas.texts.length;
   if (canvas.categoryId && canvasPieces && unsaved(canvasSignature, canvas.saved))
     continueItems.push({
       key: 'canvas', icon: canvas.builderType === 'BOUQUET' ? 'rose-outline' : 'gift-outline',
-      eyebrow: 'UNSAVED DESIGN', title: canvas.name.trim() || canvas.categoryName,
-      detail: `${canvas.categoryName} · ${plural(canvasPieces, 'piece')}`,
+      eyebrow: t('home.unsavedDesign'), title: canvas.name.trim() || canvas.categoryName,
+      detail: `${canvas.categoryName} · ${t('counts.piece', { count: canvasPieces })}`,
       onPress: () => router.push('/studio'),
     });
   const apparelPieces = apparel.placements.length + apparel.texts.length;
   if (apparel.categoryId && apparelPieces && unsaved(() => apparelSignature(apparel.categoryId!), apparel.saved))
     continueItems.push({
-      key: 'apparel', icon: 'shirt-outline', eyebrow: 'UNSAVED DESIGN',
-      title: apparel.name.trim() || 'My design', detail: plural(apparelPieces, 'design'),
+      key: 'apparel', icon: 'shirt-outline', eyebrow: t('home.unsavedDesign'),
+      title: apparel.name.trim() || t('home.myDesign'), detail: t('counts.design', { count: apparelPieces }),
       onPress: () => router.push('/apparel-studio'),
     });
 
@@ -151,9 +152,9 @@ export default function HomeScreen() {
               {/* Optional: hidden when empty or unavailable rather than showing an error. */}
               {!creations.error && (
                 <CommunityCreations
-                  eyebrow="MADE BY THE COMMUNITY"
-                  title="See what others are creating"
-                  intro="Finished pieces from other customers. Love one? Order your own."
+                  eyebrow={t('home.communityEyebrow')}
+                  title={t('home.communityTitle')}
+                  intro={t('home.communityIntro')}
                   creations={creations.data ?? []}
                   loading={creations.loading || !authenticated || unauthorized}
                   error=""

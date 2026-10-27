@@ -4,6 +4,7 @@ import { useTheme, useThemedStyles } from '@/hooks/useTheme';
 import { useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { Header, Icon, IconButton, Notice, Page, useUI } from '@/components/common/ui';
 import { JewelryCanvas } from '@/components/designer/JewelryCanvas';
@@ -34,11 +35,12 @@ const STAGE_MARGIN = 16;
 export default function DesignerScreen() {
   const theme = useTheme();
   const ui = useUI();
+  const { t } = useTranslation();
   const styles = useThemedStyles(createStyles);
 
   const design = useDesignStore();
   const limit = design.selectedSize?.maxItems ?? Infinity;
-  const limitMessage = design.selectedSize ? `${design.selectedSize.name} supports up to ${limit} components.` : '';
+  const limitMessage = design.selectedSize ? t('jewelry.sizeLimit', { size: design.selectedSize.name, max: limit }) : '';
   const sizeLabel = design.selectedSize ? `${design.selectedSize.name} • ${design.selectedSize.measurement} ${design.selectedSize.unit}` : design.size;
   const [message, setMessage, setInlineMessage] = useFeedbackState('info');
   const [saving, setSaving] = useState(false);
@@ -121,7 +123,7 @@ export default function DesignerScreen() {
     state.placeItem(id, nearestBead(point, state.items.length, product.type,
       layoutFor(state.items.length)).index);
     state.select(id);
-    setInlineMessage('Detail moved. Hold and drag it again to adjust its position.');
+    setInlineMessage(t('jewelry.moved'));
   }
   function moveReorder(x: number, y: number) {
     if (reorderId.current) moveDrag(x, y);
@@ -160,7 +162,7 @@ export default function DesignerScreen() {
     const point = { x: (x - piece.x) * 320 / piece.width, y: (y - piece.y) * 320 / piece.height };
     if (state.selectedId) {
       state.replaceItemAt(state.selectedId, item.id);
-      setInlineMessage(`${item.name} replaced the selected detail.`);
+      setInlineMessage(t('jewelry.replacedSelected', { name: item.name }));
       return;
     }
     const current = layoutFor(state.items.length);
@@ -168,50 +170,50 @@ export default function DesignerScreen() {
     const target = state.items[nearest.index];
     if (target && nearest.distance < Math.max(12, current.beadRadius * 1.1)) {
       state.replaceItemAt(target.id, item.id);
-      setInlineMessage(`${item.name} replaced a detail on your ${product.type}.`);
+      setInlineMessage(t('jewelry.replacedOn', { name: item.name, piece: t(`jewelry.pieceTypes.${product.type}`) }));
       return;
     }
-    if (state.items.length >= limit) { setInlineMessage(limitMessage + ' Drag onto an existing detail to replace it.'); return; }
+    if (state.items.length >= limit) { setInlineMessage(t('jewelry.dragToReplace', { limit: limitMessage })); return; }
     // Insert where the new bead would sit once the strand has one more bead.
     const slot = nearestBead(point, state.items.length + 1, product.type,
       layoutFor(state.items.length + 1));
     state.insertItem(item.id, slot.index);
-    setInlineMessage(`${item.name} added to your ${product.type}.`);
+    setInlineMessage(t('jewelry.addedTo', { name: item.name, piece: t(`jewelry.pieceTypes.${product.type}`) }));
   }
   async function save() {
     const user = useAuthStore.getState().user;
     if (!user) { router.push('/login'); return; }
     if (savingRef.current) return;
     savingRef.current = true; setSaving(true);
-    toast.info('Saving your design. Please wait for confirmation before continuing.');
+    toast.info(t('jewelry.saving'));
     try {
       const saved = await saveCurrentDesign(user.id, () =>
         capture(useDesignStore.getState().items), (formData) => createProduct(formData).unwrap());
-      setMessage(`Saved to My Designs. ${saved.itemCount} beads · ${money(saved.price)}. Stock is not reserved. Next, preview your creation and review your order.`, 'success');
+      setMessage(t('jewelry.saved', { beads: t('counts.bead', { count: saved.itemCount }), price: money(saved.price) }), 'success');
     } catch (error) {
       const message = apiError(error).message;
-      setMessage(message + ' Your design is still here. Check the issue, then save again.', 'error');
+      setMessage(t('jewelry.saveFailed', { message }), 'error');
     }
     finally { savingRef.current = false; setSaving(false); }
   }
   const hint = design.selectedId
-    ? 'Tap a bead below to swap this one, or use the arrows to move it.'
+    ? t('jewelry.hintSelected')
     : full
-      ? 'Your piece is complete. Tap a bead on it to swap or remove it.'
+      ? t('jewelry.hintFull')
       : design.items.length
-        ? 'Hold and drag a bead on your piece to reposition it. Tap to select.'
-        : 'Tap a bead below, or hold and drag it onto your piece.';
+        ? t('jewelry.hintReposition')
+        : t('jewelry.hintStart');
   return (
     <View ref={screenRef} collapsable={false} style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Page scroll={false} style={{ padding: 0, gap: 0 }}>
         <View style={styles.headerWrap}><Header
-          title="Your creative studio"
+          title={t('jewelry.title')}
           subtitle={[product.name, sizeLabel].filter(Boolean).join(' • ')}
           back
           right={
             <IconButton
               name="bookmark-outline"
-              label="Save design"
+              label={t('studio.saveDesign')}
               onPress={save}
               disabled={!design.items.length || saving}
             />
@@ -244,7 +246,7 @@ export default function DesignerScreen() {
             <>
               {[0, 1].map((index) => (
                 <Pressable key={index} accessibilityRole="button"
-                  accessibilityLabel={`Add suggested bead ${itemById[product.palette[index]].name}`}
+                  accessibilityLabel={t('jewelry.suggested', { name: itemById[product.palette[index]].name })}
                   onPress={() => design.addItem(product.palette[index])}
                   style={[styles.quickAdd, index === 0
                     ? { left: stageSize * 0.2 - 18 }
@@ -256,9 +258,10 @@ export default function DesignerScreen() {
           )}
           {draggingItem && <View pointerEvents="none" style={styles.dropOverlay} />}
           <StageOverlay
-            label={[product.type.toUpperCase(), design.selectedSize?.name.toUpperCase()]
+            label={[t(`jewelry.pieceTypesUpper.${product.type}`), design.selectedSize?.name.toUpperCase()]
               .filter(Boolean).join(' · ')}
-            counter={design.selectedSize ? `${design.items.length} / ${limit} beads` : `${design.items.length} components`}
+            counter={design.selectedSize ? t('jewelry.counterSized', { count: design.items.length, max: limit })
+              : t('jewelry.counterFree', { count: design.items.length })}
             full={full}
             progress={design.selectedSize ? design.items.length / limit : undefined}
             onUndo={design.undo}
@@ -267,7 +270,7 @@ export default function DesignerScreen() {
             canRedo={design.historyIndex !== design.history.length - 1}
             onClear={() => {
               design.clear();
-              setMessage('Canvas cleared. Tap Undo to bring it back.');
+              setMessage(t('jewelry.cleared'));
             }}
             canClear={design.items.length > 0}
           />
@@ -306,7 +309,7 @@ export default function DesignerScreen() {
             setMessage('');
             const state = useDesignStore.getState();
             if (state.selectedId) state.replaceItem(item.id);
-            else if (state.items.length >= limit) toast.info(limitMessage + ' Hold and drag onto an existing detail to replace it.');
+            else if (state.items.length >= limit) toast.info(t('jewelry.holdToReplace', { limit: limitMessage }));
             else state.addItem(item.id);
           }}
           onDragStart={startDrag}

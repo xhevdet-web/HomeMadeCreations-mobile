@@ -3,8 +3,9 @@ import { useUI } from '@/components/common/ui';
 import { CatalogImage } from '@/components/products/CatalogImage';
 import { useThemedStyles } from '@/hooks/useTheme';
 import { type Theme } from '@/constants/theme';
+import { useTranslation } from 'react-i18next';
 import { CatalogCategory } from '@/api/catalogModels';
-import { builderOf, CREATE_LABELS } from '../homeContent';
+import { builderOf } from '../homeContent';
 import { SectionHeader, SectionRetry } from './SectionHeader';
 
 /** "Start creating": every active category, as an invitation to make one. */
@@ -17,13 +18,14 @@ export function CategoryRail({ categories, loading, error, onRetry, onOpen, onSe
   onSeeAll: () => void;
 }) {
   const ui = useUI();
+  const { t } = useTranslation();
   const styles = useThemedStyles(createStyles);
   if (!loading && !error && !categories.length) return null;
   return (
     <View style={{ gap: 14 }}>
-      <SectionHeader eyebrow="START CREATING" title="What would you like to make?"
-        action="See all" onAction={onSeeAll} />
-      {error ? <SectionRetry what="categories" onRetry={onRetry} /> : loading ? (
+      <SectionHeader eyebrow={t('home.startEyebrow')} title={t('home.startTitle')}
+        action={t('common.seeAll')} onAction={onSeeAll} />
+      {error ? <SectionRetry message={t('home.loadCategoriesFailed')} onRetry={onRetry} /> : loading ? (
         <View style={{ flexDirection: 'row', gap: 12 }}>
           {[0, 1, 2].map((index) => <View key={index} style={[styles.tile, styles.skeleton]} />)}
         </View>
@@ -32,12 +34,14 @@ export function CategoryRail({ categories, loading, error, onRetry, onOpen, onSe
           horizontal
           data={categories}
           keyExtractor={(category) => category.id}
+          // Items translate inline: redraw them when the language changes.
+          extraData={t}
           showsHorizontalScrollIndicator={false}
           ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
           renderItem={({ item: category }) => (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={`${category.name}: ${CREATE_LABELS[builderOf(category)]}`}
+              accessibilityLabel={`${category.name}: ${t(`home.createLabels.${builderOf(category)}`)}`}
               onPress={() => onOpen(category)}
               style={({ pressed }) => [styles.tile, { opacity: pressed ? 0.75 : 1 }]}
             >
@@ -45,7 +49,7 @@ export function CategoryRail({ categories, loading, error, onRetry, onOpen, onSe
                 <CatalogImage imageUrl={category.imageUrl} name={category.name} size={84} />
               </View>
               <Text style={styles.name} numberOfLines={1}>{category.name}</Text>
-              <Text style={[ui.caption, styles.action]} numberOfLines={1}>{CREATE_LABELS[builderOf(category)]}</Text>
+              <Text style={[ui.caption, styles.action]} numberOfLines={1}>{t(`home.createLabels.${builderOf(category)}`)}</Text>
             </Pressable>
           )}
         />

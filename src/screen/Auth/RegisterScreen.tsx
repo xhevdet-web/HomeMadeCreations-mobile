@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
+import { PASSWORD_MIN_LENGTH } from '@/helper/passwordPolicy';
 import { Button, Field } from '@/components/common/ui';
 import { PasswordInput } from '@/components/common/PasswordInput';
 import { toast } from '@/store/toastStore';
@@ -17,6 +19,7 @@ import { AuthFeedback } from './components/AuthFeedback';
 import { PasswordMatch, PasswordStrength } from './components/PasswordChecks';
 
 export default function RegisterScreen() {
+  const { t } = useTranslation();
   const { next } = useLocalSearchParams<{ next?: string }>();
   const [form, setForm] = useState<RegistrationForm>(emptyRegistration);
   const [error, setError] = useFeedbackState();
@@ -31,12 +34,12 @@ export default function RegisterScreen() {
     const invalid = validateRegistration(form);
     if (invalid) return setError(invalid);
     setBusy(true);
-    toast.info('Creating your account. Please wait for confirmation before continuing.');
+    toast.info(t('auth.register.creating'));
     try {
       const { confirm: _confirm, ...input } = form;
       await register(input).unwrap();
       setForm((current) => ({ ...current, password: '', confirm: '' }));
-      toast.success('Account created successfully. Please log in. Next, choose a product or start your design.');
+      toast.success(t('auth.register.created'));
       router.replace({ pathname: '/login', params: { next, registered: '1' } });
     } catch (failure) {
       setError(registrationErrorMessage(failure));
@@ -48,60 +51,61 @@ export default function RegisterScreen() {
 
   return (
     <AuthLayout
-      title="Create Account"
-      subtitle="Join our creative community. It takes less than a minute."
-      tagline="Your idea. Made real."
+      title={t('auth.register.title')}
+      subtitle={t('auth.register.subtitle')}
+      tagline={t('auth.register.tagline')}
       highlights={[
-        { icon: 'color-palette-outline', label: 'Design your own' },
-        { icon: 'hand-left-outline', label: 'Handmade for you' },
-        { icon: 'cash-outline', label: 'Pay on delivery' },
+        { icon: 'color-palette-outline', label: t('auth.register.highlightDesign') },
+        { icon: 'hand-left-outline', label: t('auth.register.highlightHandmade') },
+        { icon: 'cash-outline', label: t('auth.register.highlightPayOnDelivery') },
       ]}
-      backLabel="Back to login"
+      backLabel={t('auth.register.backToLogin')}
       onBack={() => router.replace('/login')}
-      switchPrompt="Already have an account? "
-      switchAction="Log In"
+      switchPrompt={t('auth.register.haveAccount')}
+      switchAction={t('auth.register.logIn')}
       onSwitch={() => router.replace({ pathname: '/login', params: { next } })}
     >
       <View style={{ gap: 16 }}>
-        <FormSection title="About you" icon="person-outline">
-          <Field label="First name" icon="person-outline" value={form.firstName}
+        <FormSection title={t('auth.register.aboutYou')} icon="person-outline">
+          <Field label={t('auth.register.firstName')} icon="person-outline" value={form.firstName}
             onChangeText={update('firstName')} autoComplete="given-name" />
-          <Field label="Last name" icon="person-outline" value={form.lastName}
+          <Field label={t('auth.register.lastName')} icon="person-outline" value={form.lastName}
             onChangeText={update('lastName')} autoComplete="family-name" />
         </FormSection>
 
-        <FormSection title="Your account" icon="lock-closed-outline"
-          hint="You can sign in with your email or username.">
-          <Field label="Email address" icon="mail-outline" value={form.email}
+        <FormSection title={t('auth.register.yourAccount')} icon="lock-closed-outline"
+          hint={t('auth.register.accountHint')}>
+          <Field label={t('auth.register.email')} icon="mail-outline" value={form.email}
             onChangeText={update('email')} keyboardType="email-address" autoCapitalize="none"
             autoComplete="email" autoCorrect={false} />
-          <Field label="Username (optional)" icon="at-outline"
-            placeholder="3–30 letters, numbers, dots, _ or -" value={form.userName}
+          <Field label={t('auth.register.userName')} icon="at-outline"
+            placeholder={t('auth.register.userNamePlaceholder')} value={form.userName}
             onChangeText={update('userName')} autoCapitalize="none" autoCorrect={false}
             autoComplete="username" maxLength={30} />
-          <PasswordInput label="Password" placeholder="At least 12 characters"
+          <PasswordInput label={t('auth.register.password')}
+            placeholder={t('auth.register.passwordPlaceholder', { count: PASSWORD_MIN_LENGTH })}
             value={form.password} onChangeText={update('password')} autoComplete="new-password" />
           <PasswordStrength password={form.password} />
-          <PasswordInput label="Confirm password" value={form.confirm}
+          <PasswordInput label={t('auth.register.confirmPassword')} value={form.confirm}
             onChangeText={update('confirm')} />
           <PasswordMatch password={form.password} confirm={form.confirm} />
         </FormSection>
 
-        <FormSection title="Delivery details" icon="location-outline"
-          hint="Optional. Add them now to order in one tap later.">
-          <Field label="Phone (optional)" icon="call-outline" value={form.phone}
+        <FormSection title={t('auth.register.deliveryDetails')} icon="location-outline"
+          hint={t('auth.register.deliveryHint')}>
+          <Field label={t('auth.register.phone')} icon="call-outline" value={form.phone}
             onChangeText={update('phone')} keyboardType="phone-pad" autoComplete="tel" maxLength={32} />
-          <Field label="Country (optional)" icon="globe-outline" value={form.country}
+          <Field label={t('auth.register.country')} icon="globe-outline" value={form.country}
             onChangeText={update('country')} autoComplete="country" maxLength={100} />
-          <Field label="Address (optional)" icon="home-outline" value={form.address}
+          <Field label={t('auth.register.address')} icon="home-outline" value={form.address}
             onChangeText={update('address')} autoComplete="street-address" maxLength={300} />
-          <Field label="Postal code (optional)" icon="location-outline" value={form.postalCode}
+          <Field label={t('auth.register.postalCode')} icon="location-outline" value={form.postalCode}
             onChangeText={update('postalCode')} autoComplete="postal-code" maxLength={20} />
         </FormSection>
 
         <View style={{ gap: 18 }}>
           <AuthFeedback error={error} />
-          <Button loading={busy} title="Create Account" icon="arrow-forward" onPress={submit} />
+          <Button loading={busy} title={t('auth.register.submit')} icon="arrow-forward" onPress={submit} />
         </View>
       </View>
     </AuthLayout>

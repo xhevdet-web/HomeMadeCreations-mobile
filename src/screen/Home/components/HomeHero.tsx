@@ -2,24 +2,26 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Button, Icon } from '@/components/common/ui';
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
 import { type Theme } from '@/constants/theme';
+import { useTranslation } from 'react-i18next';
 
 /** The strongest call to action on Home; kept compact so discovery follows quickly. */
 export function HomeHero({ onCreate }: { onCreate: () => void }) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
+  const { t } = useTranslation();
   return (
     <View style={styles.hero}>
       <View style={styles.eyebrowRow}>
         <Icon name="sparkles-outline" size={16} color={theme.colors.accent} />
-        <Text style={styles.eyebrow}>IMAGINE SOMETHING YOURS</Text>
+        <Text style={styles.eyebrow}>{t('home.heroEyebrow')}</Text>
       </View>
       <Text style={styles.heroTitle}>
-        Your idea.{'\n'}<Text style={styles.titleAccent}>Made real.</Text>
+        {t('home.heroTitle')}{'\n'}<Text style={styles.titleAccent}>{t('home.heroTitleAccent')}</Text>
       </Text>
       <Text style={styles.heroBody}>
-        Create something that’s completely yours. We make it by hand and deliver it to your door.
+        {t('home.heroBody')}
       </Text>
-      <Button title="Create your own" icon="arrow-forward" onPress={onCreate} />
+      <Button title={t('home.createYourOwn')} icon="arrow-forward" onPress={onCreate} />
     </View>
   );
 }

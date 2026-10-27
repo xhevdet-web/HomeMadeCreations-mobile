@@ -1,5 +1,6 @@
 import { useTheme } from '@/hooks/useTheme';
 import { Tabs } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Text, View } from 'react-native';
 import { Icon, IconName } from '@/components/common/ui';
 
@@ -15,6 +16,7 @@ export default function TabsLayout() {
   const c = theme.colors;
 
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   return (
     <Tabs
       screenOptions={({ route }) => ({
@@ -89,11 +91,11 @@ export default function TabsLayout() {
           ),
       })}
     >
-      <Tabs.Screen name="index" options={{ title: 'Home' }} />
-      <Tabs.Screen name="create" options={{ title: 'Create' }} />
-      <Tabs.Screen name="designs" options={{ title: 'My Designs' }} />
-      <Tabs.Screen name="orders" options={{ title: 'Orders' }} />
-      <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
+      <Tabs.Screen name="index" options={{ title: t('navigation.home') }} />
+      <Tabs.Screen name="create" options={{ title: t('navigation.create') }} />
+      <Tabs.Screen name="designs" options={{ title: t('navigation.myDesigns') }} />
+      <Tabs.Screen name="orders" options={{ title: t('navigation.orders') }} />
+      <Tabs.Screen name="profile" options={{ title: t('navigation.profile') }} />
     </Tabs>
   );
 }

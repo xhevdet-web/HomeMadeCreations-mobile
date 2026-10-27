@@ -1,5 +1,6 @@
 import { memo, useMemo, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import type { CatalogComponent } from '@/api/catalogModels';
 import { CatalogImage } from '@/components/products/CatalogImage';
@@ -34,6 +35,7 @@ const ComponentCard = memo(function ComponentCard({ component, used, chosen, dis
   const styles = useThemedStyles(createStyles);
   const soldOut = component.trackStock !== false && component.stock <= 0;
   const left = remainingStock(component, used);
+  const { t } = useTranslation();
   const blocked = !chosen && (soldOut || left <= 0 || disabled);
   const gesture = useMemo(() => Gesture.Pan().activateAfterLongPress(220).runOnJS(true)
     .enabled(!blocked && !chosen)
@@ -41,14 +43,14 @@ const ComponentCard = memo(function ComponentCard({ component, used, chosen, dis
     .onUpdate((event) => drag.onDragMove(event.absoluteX, event.absoluteY))
     .onFinalize((event, success) => drag.onDragEnd(component, event.absoluteX, event.absoluteY, !success)),
   [component, blocked, chosen, drag]);
-  const status = soldOut ? 'Sold out'
-    : chosen ? 'On your design'
-      : left === Infinity ? 'Available'
-        : left <= 0 ? `All ${component.stock} in use` : `${left} available`;
+  const status = soldOut ? t('studio.soldOut')
+    : chosen ? t('studio.onDesign')
+      : left === Infinity ? t('studio.available')
+        : left <= 0 ? t('studio.allInUse', { count: component.stock }) : t('studio.leftAvailable', { count: left });
   return (
     <GestureDetector gesture={gesture}>
       <Pressable accessibilityRole="button"
-        accessibilityLabel={`${chosen ? 'Remove' : 'Add'} ${component.name}, ${money(component.price)}, ${status}`}
+        accessibilityLabel={t(chosen ? 'studio.removeLabel' : 'studio.addLabel', { name: component.name, price: money(component.price), status })}
         accessibilityState={{ disabled: blocked, selected: chosen }}
         disabled={blocked} onPress={() => onAdd(component)}
         style={({ pressed }) => [styles.card, (used > 0 || chosen) && styles.cardUsed,

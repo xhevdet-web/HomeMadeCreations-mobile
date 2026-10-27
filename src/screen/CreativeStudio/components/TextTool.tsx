@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import {
   MAX_TEXT_LAYERS, MAX_TEXT_LENGTH, TEXT_FONTS, TEXT_WEIGHTS, type TextFont, type TextLayer, type TextWeight,
 } from '@/api/builderModels';
 import { Button, Field, Icon, useUI } from '@/components/common/ui';
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
 import { type Theme } from '@/constants/theme';
-import { FONT_LABELS, fontFamily, TEXT_COLORS, textStyle, WEIGHT_LABELS } from './TextLayer';
+import { fontFamily, TEXT_COLORS, textStyle } from './TextLayer';
 
 export type TextLook = { font: TextFont; color: string; weight: TextWeight; italic: boolean; scale: number };
 // Each size step makes the text about a fifth bigger or smaller.
@@ -28,6 +29,7 @@ export function TextTool({ selected, count, onAdd, onChange, onRemove, onDone }:
 }) {
   const ui = useUI();
   const theme = useTheme();
+  const { t } = useTranslation();
   const styles = useThemedStyles(createStyles);
   const [draft, setDraft] = useState('');
   const [font, setFont] = useState<TextFont>('SCRIPT');
@@ -61,29 +63,29 @@ export function TextTool({ selected, count, onAdd, onChange, onRemove, onDone }:
   return (
     <View style={styles.panel}>
       {selected ? (
-        <Field label="Edit your text" value={selected.text} maxLength={MAX_TEXT_LENGTH}
+        <Field label={t('textTool.editLabel')} value={selected.text} maxLength={MAX_TEXT_LENGTH}
           onChangeText={(text) => onChange({ text }, false)}
-          onBlur={() => onChange({ text: selected.text.trim() || 'Your text' })}
-          placeholder="Your text" returnKeyType="done" />
+          onBlur={() => onChange({ text: selected.text.trim() || t('textTool.placeholder') })}
+          placeholder={t('textTool.placeholder')} returnKeyType="done" />
       ) : (
-        <Field label={`Add a message${count ? ` (${count} of ${MAX_TEXT_LAYERS})` : ''}`} value={draft}
+        <Field label={count ? t('textTool.addLabelCount', { count, max: MAX_TEXT_LAYERS }) : t('textTool.addLabel')} value={draft}
           maxLength={MAX_TEXT_LENGTH} onChangeText={setDraft} onSubmitEditing={add}
-          placeholder="Thank you · Kate & Mike · 08.06.2032" returnKeyType="done" editable={!full} />
+          placeholder={t('textTool.addPlaceholder')} returnKeyType="done" editable={!full} />
       )}
       <View style={{ gap: 8 }}>
-        <Text style={ui.label}>Style</Text>
+        <Text style={ui.label}>{t('textTool.style')}</Text>
         <View style={styles.row}>
           {TEXT_FONTS.map((value) => {
             const active = value === current.font;
             return (
               <Pressable key={value} accessibilityRole="button" accessibilityState={{ selected: active }}
-                accessibilityLabel={`${FONT_LABELS[value]} lettering`} onPress={() => pickFont(value)}
+                accessibilityLabel={t('textTool.fontLabel', { font: t(`textTool.fonts.${value}`) })} onPress={() => pickFont(value)}
                 style={[styles.font, active && styles.fontActive]}>
                 <Text style={[styles.fontSample, { fontFamily: fontFamily(value) },
                   active && styles.fontSampleActive]}>
                   Aa
                 </Text>
-                <Text style={[styles.fontName, active && styles.fontSampleActive]}>{FONT_LABELS[value]}</Text>
+                <Text style={[styles.fontName, active && styles.fontSampleActive]}>{t(`textTool.fonts.${value}`)}</Text>
               </Pressable>
             );
           })}
@@ -93,33 +95,33 @@ export function TextTool({ selected, count, onAdd, onChange, onRemove, onDone }:
             const active = value === current.weight;
             return (
               <Pressable key={value} accessibilityRole="button" accessibilityState={{ selected: active }}
-                accessibilityLabel={`${WEIGHT_LABELS[value]} weight`} onPress={() => pickWeight(value)}
+                accessibilityLabel={t('textTool.weightLabel', { weight: t(`textTool.weights.${value}`) })} onPress={() => pickWeight(value)}
                 style={[styles.chip, active && styles.fontActive]}>
                 <Text style={[styles.chipText, textStyle({ font: current.font, weight: value }),
                   active && styles.fontSampleActive]}>
-                  {WEIGHT_LABELS[value]}
+                  {t(`textTool.weights.${value}`)}
                 </Text>
               </Pressable>
             );
           })}
           <Pressable accessibilityRole="button" accessibilityState={{ selected: current.italic }}
-            accessibilityLabel="Italic" onPress={toggleItalic}
+            accessibilityLabel={t('textTool.italic')} onPress={toggleItalic}
             style={[styles.chip, current.italic && styles.fontActive]}>
             <Text style={[styles.chipText, { fontStyle: 'italic' }, current.italic && styles.fontSampleActive]}>
-              Italic
+              {t('textTool.italic')}
             </Text>
           </Pressable>
         </View>
         <View style={styles.size}>
-          <Text style={ui.label}>Size</Text>
-          <Pressable accessibilityRole="button" accessibilityLabel="Smaller text" onPress={() => resize(1 / SIZE_STEP)}
+          <Text style={ui.label}>{t('textTool.size')}</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel={t('textTool.smaller')} onPress={() => resize(1 / SIZE_STEP)}
             style={styles.step} hitSlop={6}>
             <Text style={[styles.stepText, { fontSize: 13 }]}>A−</Text>
           </Pressable>
-          <Text style={styles.sizeValue} accessibilityLabel={`Text size ${Math.round(current.scale * 100)} percent`}>
+          <Text style={styles.sizeValue} accessibilityLabel={t('textTool.sizePercent', { percent: Math.round(current.scale * 100) })}>
             {Math.round(current.scale * 100)}%
           </Text>
-          <Pressable accessibilityRole="button" accessibilityLabel="Bigger text" onPress={() => resize(SIZE_STEP)}
+          <Pressable accessibilityRole="button" accessibilityLabel={t('textTool.bigger')} onPress={() => resize(SIZE_STEP)}
             style={styles.step} hitSlop={6}>
             <Text style={[styles.stepText, { fontSize: 18 }]}>A+</Text>
           </Pressable>
@@ -130,7 +132,7 @@ export function TextTool({ selected, count, onAdd, onChange, onRemove, onDone }:
             const swatch = entry.value;
             return (
               <Pressable key={entry.value} accessibilityRole="button" accessibilityState={{ selected: active }}
-                accessibilityLabel={`${entry.name} text`} onPress={() => pickColor(entry.value)}
+                accessibilityLabel={t('textTool.colorLabel', { color: t(`textTool.colors.${entry.name}`) })} onPress={() => pickColor(entry.value)}
                 style={[styles.ring, active && { borderColor: theme.colors.accent }]}>
                 {/* A `.value` read inside an inline style trips Reanimated's shared-value warning. */}
                 <View style={[styles.swatch, { backgroundColor: swatch }]}>
@@ -143,15 +145,15 @@ export function TextTool({ selected, count, onAdd, onChange, onRemove, onDone }:
       </View>
       {selected ? (
         <View style={styles.row}>
-          <View style={{ flex: 1 }}><Button title="Remove" secondary onPress={onRemove} /></View>
-          <View style={{ flex: 1 }}><Button title="Done" icon="checkmark" onPress={onDone} /></View>
+          <View style={{ flex: 1 }}><Button title={t('textTool.remove')} secondary onPress={onRemove} /></View>
+          <View style={{ flex: 1 }}><Button title={t('textTool.done')} icon="checkmark" onPress={onDone} /></View>
         </View>
       ) : (
-        <Button title={full ? `Up to ${MAX_TEXT_LAYERS} texts` : 'Add text'} icon="text-outline"
+        <Button title={full ? t('textTool.maxTexts', { max: MAX_TEXT_LAYERS }) : t('textTool.addText')} icon="text-outline"
           disabled={!draft.trim() || full} onPress={add} />
       )}
       <Text style={ui.caption}>
-        Personalised text is free. Drag it to place it; pinch, the corner handle or Size change how big it is.
+        {t('textTool.caption')}
       </Text>
     </View>
   );

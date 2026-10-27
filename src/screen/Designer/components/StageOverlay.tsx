@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Icon, IconButton } from '@/components/common/ui';
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
 import { type Theme } from '@/constants/theme';
+import { useTranslation } from 'react-i18next';
 
 export function StageOverlay({ label, counter, full, progress, onUndo, onRedo, canUndo, canRedo,
   onClear, canClear }: {
@@ -19,6 +20,7 @@ export function StageOverlay({ label, counter, full, progress, onUndo, onRedo, c
 }) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
+  const { t } = useTranslation();
   return (
     <>
       <View pointerEvents="none" style={styles.topRow}>
@@ -31,12 +33,12 @@ export function StageOverlay({ label, counter, full, progress, onUndo, onRedo, c
         </View>
       </View>
       <View style={styles.bottomRow} pointerEvents="box-none">
-        <IconButton name="trash-outline" label="Clear design" onPress={onClear}
+        <IconButton name="trash-outline" label={t('studio.clearDesign')} onPress={onClear}
           disabled={!canClear} />
         <View style={styles.history}>
-          <IconButton name="arrow-undo-outline" label="Undo" onPress={onUndo}
+          <IconButton name="arrow-undo-outline" label={t('studio.undo')} onPress={onUndo}
             disabled={!canUndo} />
-          <IconButton name="arrow-redo-outline" label="Redo" onPress={onRedo}
+          <IconButton name="arrow-redo-outline" label={t('studio.redo')} onPress={onRedo}
             disabled={!canRedo} />
         </View>
       </View>

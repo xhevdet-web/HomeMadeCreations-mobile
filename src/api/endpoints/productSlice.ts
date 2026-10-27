@@ -1,4 +1,5 @@
 import { File } from 'expo-file-system';
+import i18n from '@/i18n';
 import { fetch } from 'expo/fetch';
 import { apiSlice, ApiError } from '../apiSlice';
 import { PRODUCT_URL, USER_URL } from '../constants';
@@ -16,7 +17,7 @@ async function appendPreview(data: FormData, field: string, previewUri: string, 
   }
   const preview = new File(previewUri.startsWith('/') ? 'file://' + previewUri : previewUri);
   if (!preview.exists || !preview.size)
-    throw new ApiError('The preview file is unavailable. Your design is safe; please capture it again.', 400);
+    throw new ApiError(i18n.t('studioMessages.previewMissing'), 400);
   data.append(field, preview);
 }
 

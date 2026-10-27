@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Text, useWindowDimensions, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Button, Header, Page, useUI } from '@/components/common/ui';
 import { TextAction } from '@/components/common/TextAction';
 import { ActionFooter } from '@/components/checkout/ActionFooter';
@@ -19,6 +20,7 @@ import { CreationBeads, CreationHero, CreationPromise, type CreationLine } from 
 
 export default function CreationScreen() {
   const ui = useUI();
+  const { t } = useTranslation();
   const { width } = useWindowDimensions();
   // `collection` is set when opened from a category's carousel, so the same list is read.
   const { id, collection } = useLocalSearchParams<{ id: string; collection?: string }>();
@@ -61,29 +63,28 @@ export default function CreationScreen() {
     try {
       if (isApparelProduct(creation.product)) {
         // Apparel copies open in the Apparel Studio, where they are saved as the buyer's own.
-        loadApparelDesign(creation.product, `My ${creation.product.name}`);
-        toast.info('Design opened. Review it in the studio, then continue to your order.');
+        loadApparelDesign(creation.product, t('drafts.myName', { name: creation.product.name }));
+        toast.info(t('creation.openedApparel'));
         router.push('/apparel-studio');
         return;
       }
       if (isCanvasProduct(creation.product)) {
         // A copy opens as the buyer's own design; it is saved when they continue.
-        loadCanvasDesign(creation.product, `My ${creation.product.name}`);
-        toast.info(mode === 'order' ? 'Design ready. Review it, then continue to your order.'
-          : 'Design opened. Make it yours, then preview and order.');
+        loadCanvasDesign(creation.product, t('drafts.myName', { name: creation.product.name }));
+        toast.info(mode === 'order' ? t('creation.readyCanvas') : t('creation.openedCanvas'));
         router.push(mode === 'order' ? '/studio-preview' : '/studio');
         return;
       }
       await copyCreation(creation.product, user.id);
       if (mode === 'order') {
-        toast.info('Design ready. Review it, then continue to delivery.');
+        toast.info(t('creation.readyJewelry'));
         router.push('/preview');
       } else {
-        toast.info('Design opened in your studio. Make it yours, then preview and order.');
+        toast.info(t('creation.openedJewelry'));
         router.push('/designer');
       }
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : 'Unable to open this design.');
+      setError(failure instanceof Error ? failure.message : t('creation.openFailed'));
     } finally {
       setOpening(null);
     }
@@ -92,13 +93,13 @@ export default function CreationScreen() {
   if (!creation)
     return (
       <Page style={{ maxWidth: 600 }}>
-        <Header title="Creation" back />
+        <Header title={t('creation.title')} back />
         {result.loading || result.error ? (
           <CatalogState loading={result.loading} error={result.error} empty="" retry={result.retry} />
         ) : (
           <>
-            <Text style={ui.body}>This creation is no longer available.</Text>
-            <Button title="Back to home" onPress={() => router.replace('/')} />
+            <Text style={ui.body}>{t('creation.unavailable')}</Text>
+            <Button title={t('creation.backHome')} onPress={() => router.replace('/')} />
           </>
         )}
       </Page>
@@ -110,31 +111,31 @@ export default function CreationScreen() {
       footer={
         <ActionFooter
           amount={total}
-          amountLabel={pricesChanged ? 'Price today' : 'Total'}
-          title={opening === 'order' ? 'Preparing your design…' : 'Order this design'}
+          amountLabel={pricesChanged ? t('creation.priceToday') : t('common.total')}
+          title={opening === 'order' ? t('creation.preparing') : t('creation.orderThis')}
           onPress={() => void open('order')}
           loading={opening === 'order'}
           disabled={!!opening || unavailable.length > 0}
           caption={unavailable.length
-            ? 'Some beads are unavailable. Customize the design to replace them.'
-            : 'Pay cash when your order arrives.'}
+            ? t('creation.someUnavailable')
+            : t('creation.payCash')}
         />
       }
     >
-      <Header title="Creation" back />
+      <Header title={t('creation.title')} back />
       <CreationHero creation={creation} width={Math.min(width, 600) - 44} />
-      <CreationBeads lines={lines} title={isApparelProduct(creation.product) ? 'Designs on this piece'
-        : creation.product.category?.builderType === 'BOUQUET' ? 'Flowers in this bouquet'
-          : creation.product.category?.builderType === 'GIFT' ? 'Items in this gift' : undefined} />
+      <CreationBeads lines={lines} title={isApparelProduct(creation.product) ? t('creation.designsOnPiece')
+        : creation.product.category?.builderType === 'BOUQUET' ? t('creation.flowersInBouquet')
+          : creation.product.category?.builderType === 'GIFT' ? t('creation.itemsInGift') : undefined} />
       {pricesChanged && (
         <Text style={ui.caption}>
-          Bead prices have changed since this piece was made, so your price is based on today’s prices.
+          {t('creation.pricesChanged')}
         </Text>
       )}
       <CreationPromise />
       <View style={{ alignItems: 'center' }}>
         <TextAction
-          title={opening === 'customize' ? 'Opening the studio…' : 'Customize it first'}
+          title={opening === 'customize' ? t('creation.openingStudio') : t('creation.customizeFirst')}
           icon="color-palette-outline"
           onPress={() => void open('customize')}
           loading={opening === 'customize'}

@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Icon, useUI } from '@/components/common/ui';
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
 import { type Theme } from '@/constants/theme';
+import { useTranslation } from 'react-i18next';
 
 /** Compact heading shared by every Home section: eyebrow, serif title, optional action. */
 export function SectionHeader({ eyebrow, title, subtitle, action, onAction, right }: {
@@ -38,16 +39,17 @@ export function SectionHeader({ eyebrow, title, subtitle, action, onAction, righ
 }
 
 /** A quiet "couldn't load" row with a retry; never shows raw API errors on Home. */
-export function SectionRetry({ what, onRetry }: { what: string; onRetry: () => void }) {
+export function SectionRetry({ message, onRetry }: { message: string; onRetry: () => void }) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
+  const { t } = useTranslation();
   return (
     <View style={styles.retry} accessibilityRole="alert">
       <Icon name="cloud-offline-outline" size={18} color={theme.colors.muted} />
-      <Text style={styles.retryText}>We couldn’t load {what}.</Text>
-      <Pressable accessibilityRole="button" accessibilityLabel={`Try loading ${what} again`} onPress={onRetry}
+      <Text style={styles.retryText}>{message}</Text>
+      <Pressable accessibilityRole="button" accessibilityLabel={t('home.retryLabel', { message })} onPress={onRetry}
         hitSlop={8}>
-        <Text style={[styles.retryText, { color: theme.colors.accent, fontWeight: '600' }]}>Try again</Text>
+        <Text style={[styles.retryText, { color: theme.colors.accent, fontWeight: '600' }]}>{t('common.retry')}</Text>
       </Pressable>
     </View>
   );

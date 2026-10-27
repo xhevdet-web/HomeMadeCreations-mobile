@@ -1,15 +1,18 @@
 import { Text, View } from 'react-native';
 import { Icon } from '@/components/common/ui';
 import { useTheme } from '@/hooks/useTheme';
+import { useTranslation } from 'react-i18next';
 
 export function FlowStep({ step }: { step: 1 | 2 }) {
   const theme = useTheme();
+  const { t } = useTranslation();
+  const labels = [t('checkout.stepDesign'), t('checkout.stepDelivery')];
   return (
     <View
-      accessibilityLabel={`Step ${step} of 2: ${step === 1 ? 'Your design' : 'Delivery and payment'}`}
+      accessibilityLabel={t('checkout.step', { step, label: labels[step - 1] })}
       style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}
     >
-      {['Your design', 'Delivery & payment'].map((label, index) => (
+      {labels.map((label, index) => (
         <View key={label} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
           <View
             style={{

@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Icon } from '@/components/common/ui';
@@ -133,12 +134,13 @@ export function PlacedItem({ transform, frame, width, height, clamp, label, name
   }));
   // Handles keep a constant on-screen size however the item is scaled.
   const handleStyle = useAnimatedStyle(() => ({ transform: [{ scale: 1 / scale.value }] }));
+  const { t } = useTranslation();
 
   return (
     <Animated.View pointerEvents={editable ? 'auto' : 'none'} style={[styles.box, { width, height, zIndex }, style]}>
       <GestureDetector gesture={gesture}>
         <View accessible accessibilityRole="button"
-          accessibilityLabel={`${label}${selected ? ', selected' : ''}`}
+          accessibilityLabel={selected ? t('studio.selected', { label }) : label}
           style={{ width, height }}>
           {children}
         </View>
@@ -147,14 +149,14 @@ export function PlacedItem({ transform, frame, width, height, clamp, label, name
         <>
           <View pointerEvents="none" style={[styles.outline, { borderColor: theme.colors.accent }]} />
           <Animated.View style={[styles.remove, handleStyle]}>
-            <Pressable accessibilityRole="button" accessibilityLabel={`Remove ${name}`} onPress={onRemove}
+            <Pressable accessibilityRole="button" accessibilityLabel={t('studio.removeName', { name })} onPress={onRemove}
               hitSlop={8} style={[styles.handle, { backgroundColor: theme.colors.danger }]}>
               <Icon name="close" size={14} color="#FFFFFF" />
             </Pressable>
           </Animated.View>
           {!fixed && (
             <GestureDetector gesture={handleGesture}>
-              <Animated.View accessibilityLabel={`Resize or rotate ${name}`}
+              <Animated.View accessibilityLabel={t('studio.resizeRotate', { name })}
                 style={[styles.resize, handleStyle, styles.handle, { backgroundColor: theme.colors.primary }]}>
                 <Icon name="expand-outline" size={13} color={theme.colors.onPrimary} />
               </Animated.View>

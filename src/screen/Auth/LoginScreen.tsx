@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Button, Field, useUI } from '@/components/common/ui';
 import { PasswordInput } from '@/components/common/PasswordInput';
 import { toast } from '@/store/toastStore';
@@ -13,6 +14,7 @@ import { AuthFeedback } from './components/AuthFeedback';
 
 export default function LoginScreen() {
   const ui = useUI();
+  const { t } = useTranslation();
   const { next } = useLocalSearchParams<{ next?: string; registered?: string }>();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -26,13 +28,13 @@ export default function LoginScreen() {
     const invalid = validateLogin(identifier, password);
     if (invalid) return setError(invalid);
     setBusy(true);
-    toast.info('Signing you in. Please wait while we check your account.');
+    toast.info(t('auth.login.signingIn'));
     try {
       const ticket = useAuthStore.getState().beginLogin();
       const tokens = await login({ identifier, password }).unwrap();
       if (!await useAuthStore.getState().acceptLogin(tokens, ticket)) return;
       setPassword('');
-      toast.success('Signed in. Next, choose a ready-made product or create your own design.');
+      toast.success(t('auth.login.signedIn'));
       // The protected navigator opens Home once the session is authenticated.
     } catch (failure) {
       setError(loginErrorMessage(failure));
@@ -44,18 +46,18 @@ export default function LoginScreen() {
 
   return (
     <AuthLayout
-      title="Welcome back!"
-      subtitle="Sign in to pick up your designs and track your orders."
-      tagline="Handmade pieces, designed by you"
-      backLabel="Go to registration"
+      title={t('auth.login.title')}
+      subtitle={t('auth.login.subtitle')}
+      tagline={t('auth.login.tagline')}
+      backLabel={t('auth.login.toRegistration')}
       onBack={() => router.replace('/register')}
-      switchPrompt="Don't have an account? "
-      switchAction="Sign Up"
+      switchPrompt={t('auth.login.noAccount')}
+      switchAction={t('auth.login.signUp')}
       onSwitch={() => router.replace({ pathname: '/register', params: { next } })}
     >
       <View style={{ gap: 18 }}>
         <Field
-          label="Email or username"
+          label={t('auth.login.identifier')}
           icon="mail-outline"
           value={identifier}
           onChangeText={setIdentifier}
@@ -64,19 +66,19 @@ export default function LoginScreen() {
           autoCorrect={false}
         />
         <PasswordInput
-          label="Password"
-          placeholder="Your password"
+          label={t('auth.login.password')}
+          placeholder={t('auth.login.passwordPlaceholder')}
           value={password}
           onChangeText={setPassword}
           autoComplete="current-password"
         />
-        <Pressable accessibilityRole="button" accessibilityLabel="Forgot password?" hitSlop={8}
+        <Pressable accessibilityRole="button" accessibilityLabel={t('auth.login.forgotPassword')} hitSlop={8}
           style={{ alignSelf: 'flex-end', marginTop: -6 }}
-          onPress={() => toast.info('Password reset is coming soon. Contact us if you can’t sign in.')}>
-          <Text style={ui.textLink}>Forgot password?</Text>
+          onPress={() => toast.info(t('auth.login.forgotPasswordSoon'))}>
+          <Text style={ui.textLink}>{t('auth.login.forgotPassword')}</Text>
         </Pressable>
         <AuthFeedback error={error} />
-        <Button loading={busy} title="Log In" icon="arrow-forward" onPress={submit} />
+        <Button loading={busy} title={t('auth.login.submit')} icon="arrow-forward" onPress={submit} />
       </View>
     </AuthLayout>
   );

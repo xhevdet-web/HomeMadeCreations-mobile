@@ -1,3 +1,5 @@
+import i18n from '@/i18n';
+import type { TFunction } from 'i18next';
 import type { SavedProduct } from './commerceModels';
 import type { CategorySize } from '@/types/models';
 import { parseBuilderConfig, parseBuilderType, type BuilderConfig, type BuilderType } from './builderModels';
@@ -36,7 +38,7 @@ export function parseCategory(value: unknown): CatalogCategory {
     typeof item.isActive !== 'boolean' ||
     !Number.isFinite(item.sortOrder)
   )
-    throw new Error('The catalog returned an invalid category. Please retry.');
+    throw new Error(i18n.t('designErrors.invalidCatalog'));
   return {
     ...item,
     sizes: item.sizes == null ? [] : parseCategorySizes(item.sizes),
@@ -54,15 +56,15 @@ export function parseCategorySize(value: unknown): CategorySize {
       !Number.isFinite(size.measurement) || size.measurement <= 0 ||
       typeof size.unit !== 'string' || !size.unit.trim() ||
       !Number.isSafeInteger(size.maxItems) || size.maxItems <= 0)
-    throw new Error('The server returned an invalid size configuration. Please retry.');
+    throw new Error(i18n.t('designErrors.invalidCatalog'));
   return { id: size.id, name: size.name, measurement: size.measurement,
     unit: size.unit, maxItems: size.maxItems };
 }
 function parseCategorySizes(value: unknown): CategorySize[] {
-  if (!Array.isArray(value)) throw new Error('The server returned invalid category sizes. Please retry.');
+  if (!Array.isArray(value)) throw new Error(i18n.t('designErrors.invalidCatalog'));
   const sizes = value.map(parseCategorySize);
   if (new Set(sizes.map(size => size.id)).size !== sizes.length)
-    throw new Error('The server returned duplicate size IDs. Please retry.');
+    throw new Error(i18n.t('designErrors.invalidCatalog'));
   return sizes;
 }
 export function parseComponent(value: unknown): CatalogComponent {
@@ -74,7 +76,7 @@ export function parseComponent(value: unknown): CatalogComponent {
     !Number.isSafeInteger(item.stock) ||
     item.stock < 0
   )
-    throw new Error('The catalog returned an invalid component. Please retry.');
+    throw new Error(i18n.t('designErrors.invalidCatalog'));
   return {
     ...item,
     color: typeof item.color === 'string' ? item.color : null,
@@ -82,7 +84,7 @@ export function parseComponent(value: unknown): CatalogComponent {
   };
 }
 export function activeList<T extends CatalogCategory>(value: unknown, parse: (entry: unknown) => T): T[] {
-  if (!Array.isArray(value)) throw new Error('The catalog returned an invalid list. Please retry.');
+  if (!Array.isArray(value)) throw new Error(i18n.t('designErrors.invalidCatalog'));
   return value
     .map(parse)
     .filter((item) => item.isActive)
@@ -92,19 +94,18 @@ export function parseProduct(value: unknown): SavedProduct {
   const item = value as SavedProduct | null;
   if (!item || typeof item.id !== 'string' || typeof item.name !== 'string' ||
       typeof item.categoryId !== 'string' || !Number.isSafeInteger(item.price) || item.price < 0)
-    throw new Error('The catalog returned an invalid product. Please retry.');
+    throw new Error(i18n.t('designErrors.invalidCatalog'));
   return item;
 }
 export const isCompanyProduct = (product: Pick<SavedProduct, 'origin'>) => product.origin === 'COMPANY';
 
 /** Why a company product cannot be ordered (in this size), or null when it can. */
-export function companyUnavailable(product: SavedProduct, size?: string | null): string | null {
-  if (!isCompanyProduct(product) || product.isActive !== true) return 'This product is unavailable.';
+export function companyUnavailable(t: TFunction, product: SavedProduct, size?: string | null): string | null {
+  if (!isCompanyProduct(product) || product.isActive !== true) return t('availability.unavailable');
   if (isSized(product)) {
-    if (!size) return 'Choose a size';
-    return sizeStock(product, size) > 0 ? null : `Size ${size} is sold out`;
+    if (!size) return t('availability.chooseSize');
+    return sizeStock(product, size) > 0 ? null : t('availability.sizeSoldOut', { size });
   }
-  if (!Number.isSafeInteger(product.stock) || product.stock! < 0)
-    return 'Stock is unavailable. The backend must return available stock before ordering.';
-  return product.stock === 0 ? 'Out of stock' : null;
+  if (!Number.isSafeInteger(product.stock) || product.stock! < 0) return t('availability.stockUnknown');
+  return product.stock === 0 ? t('readyMade.outOfStock') : null;
 }

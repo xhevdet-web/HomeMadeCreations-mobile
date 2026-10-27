@@ -5,6 +5,7 @@ import { CatalogImage } from '@/components/products/CatalogImage';
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
 import { money } from '@/helper/pricing';
 import { type Theme } from '@/constants/theme';
+import { useTranslation } from 'react-i18next';
 import type { SavedProduct } from '@/api/commerceModels';
 import { apparelImage, apparelMeta, isApparelProduct } from '@/services/apparelDesign';
 
@@ -42,14 +43,15 @@ export function DesignCard({
   const ui = useUI();
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
+  const { t } = useTranslation();
   const readyMade = product.origin === 'COMPANY';
   const lines = readyMade ? [] : materials(product);
   const size = product.selectedSize;
   const apparel = !readyMade && isApparelProduct(product);
   const meta = (apparel
-    ? apparelMeta(product)
+    ? apparelMeta(t, product)
     : [
-      readyMade ? 'Ready-made' : componentCount(product.itemCount, product.category?.builderType),
+      readyMade ? t('designs.readyMade') : componentCount(t, product.itemCount, product.category?.builderType),
       size ? `${size.name} · ${size.measurement} ${size.unit}` : product.category?.name,
     ]).filter(Boolean).join(' · ');
 
@@ -86,7 +88,7 @@ export function DesignCard({
           ))}
           {lines.length > VISIBLE_MATERIALS && (
             <View style={styles.chip}>
-              <Text style={styles.chipText}>+{lines.length - VISIBLE_MATERIALS} more</Text>
+              <Text style={styles.chipText}>{t('designs.more', { count: lines.length - VISIBLE_MATERIALS })}</Text>
             </View>
           )}
         </View>
@@ -96,7 +98,7 @@ export function DesignCard({
         {!readyMade ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={'Edit a copy of ' + product.name}
+            accessibilityLabel={t('designs.editCopyOf', { name: product.name })}
             accessibilityState={{ disabled, busy: editing }}
             disabled={disabled}
             onPress={onEdit}
@@ -108,17 +110,17 @@ export function DesignCard({
             ) : (
               <Icon name="create-outline" size={17} color={theme.colors.accent} />
             )}
-            <Text style={styles.editText}>Edit copy</Text>
+            <Text style={styles.editText}>{t('designs.editCopy')}</Text>
           </Pressable>
         ) : <View />}
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={'Order ' + product.name}
+          accessibilityLabel={t('designs.orderName', { name: product.name })}
           disabled={disabled}
           onPress={onOrder}
           style={({ pressed }) => [styles.order, { opacity: disabled ? 0.4 : pressed ? 0.75 : 1 }]}
         >
-          <Text style={styles.orderText}>Order</Text>
+          <Text style={styles.orderText}>{t('designs.order')}</Text>
           <Icon name="arrow-forward" size={16} color={theme.colors.onPrimary} />
         </Pressable>
       </View>

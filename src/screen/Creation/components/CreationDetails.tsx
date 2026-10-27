@@ -6,6 +6,7 @@ import { DesignThumbnail } from '@/components/products/DesignThumbnail';
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
 import { money } from '@/helper/pricing';
 import { type Theme } from '@/constants/theme';
+import { useTranslation } from 'react-i18next';
 import type { CommunityCreation } from '@/api/commerceModels';
 
 export interface CreationLine {
@@ -20,6 +21,7 @@ export interface CreationLine {
 
 export function CreationHero({ creation, width }: { creation: CommunityCreation; width: number }) {
   const styles = useThemedStyles(createStyles);
+  const { t } = useTranslation();
   const { product } = creation;
   const creatorName = `${product.createdBy.firstName} ${product.createdBy.lastName}`;
   const initials = [product.createdBy.firstName, product.createdBy.lastName]
@@ -31,7 +33,7 @@ export function CreationHero({ creation, width }: { creation: CommunityCreation;
         <DesignThumbnail product={product} size={width * 0.86} />
         <View style={styles.badge}>
           <Icon name="checkmark-circle" size={12} color="#FFFFFF" />
-          <Text style={styles.badgeText}>Made & delivered</Text>
+          <Text style={styles.badgeText}>{t('creation.madeDelivered')}</Text>
         </View>
       </View>
       <View style={{ gap: 8 }}>
@@ -40,10 +42,10 @@ export function CreationHero({ creation, width }: { creation: CommunityCreation;
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{initials}</Text>
           </View>
-          <Text style={styles.makerText}>Designed by <Text style={styles.makerName}>{creatorName}</Text></Text>
+          <Text style={styles.makerText}>{t('creation.designedBy')}<Text style={styles.makerName}>{creatorName}</Text></Text>
         </View>
         <Text style={styles.meta}>
-          {[componentCount(product.itemCount, product.category?.builderType), size && `${size.name} · ${size.measurement} ${size.unit}`]
+          {[componentCount(t, product.itemCount, product.category?.builderType), size && `${size.name} · ${size.measurement} ${size.unit}`]
             .filter(Boolean).join(' · ')}
         </Text>
         {!!product.description && <Text style={styles.description}>{product.description}</Text>}
@@ -52,12 +54,13 @@ export function CreationHero({ creation, width }: { creation: CommunityCreation;
   );
 }
 
-export function CreationBeads({ lines, title = 'Beads in this design' }: { lines: CreationLine[]; title?: string }) {
+export function CreationBeads({ lines, title }: { lines: CreationLine[]; title?: string }) {
   const theme = useTheme();
+  const { t } = useTranslation();
   const styles = useThemedStyles(createStyles);
   return (
     <View style={styles.card}>
-      <Text style={styles.title}>{title}</Text>
+      <Text style={styles.title}>{title ?? t('creation.beadsInDesign')}</Text>
       {lines.map((line) => (
         <View key={line.id} style={[styles.line, !line.available && { opacity: 0.55 }]}>
           <View style={styles.bead}>
@@ -66,7 +69,7 @@ export function CreationBeads({ lines, title = 'Beads in this design' }: { lines
           <View style={{ flex: 1 }}>
             <Text style={styles.lineName} numberOfLines={1}>{line.name}</Text>
             <Text style={[styles.meta, !line.available && { color: theme.colors.danger }]}>
-              {line.available ? `${line.quantity} × ${money(line.unitPrice)}` : 'No longer available'}
+              {line.available ? `${line.quantity} × ${money(line.unitPrice)}` : t('creation.noLongerAvailable')}
             </Text>
           </View>
           <Text style={styles.lineTotal}>{money(line.quantity * line.unitPrice)}</Text>
@@ -78,13 +81,13 @@ export function CreationBeads({ lines, title = 'Beads in this design' }: { lines
 
 export function CreationPromise() {
   const theme = useTheme();
+  const { t } = useTranslation();
   const styles = useThemedStyles(createStyles);
   return (
     <View style={styles.promise}>
       <Icon name="hand-left-outline" size={18} color={theme.colors.accent} />
       <Text style={styles.promiseText}>
-        We handcraft a brand-new piece just for you. It’s saved to My Designs as your own,
-        and you pay on delivery.
+        {t('creation.promise')}
       </Text>
     </View>
   );

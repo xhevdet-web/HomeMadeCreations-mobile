@@ -2,6 +2,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useState } from 'react';
 import { Text, useWindowDimensions, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Button, Chips, Header, Icon, Page, useUI } from '@/components/common/ui';
 import { CatalogImage } from '@/components/products/CatalogImage';
@@ -27,57 +28,58 @@ function CustomDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const local = products.find((product) => product.id === id);
   const result = useApiResult<Product>(useGetCanvasProductByIdQuery(id ?? '', { skip: !!local || !id }));
+  const { t } = useTranslation();
   const product = local ?? result.data;
   const [size, setSize] = useState<string | null>(null);
   const { width } = useWindowDimensions();
-  if (!local && (result.loading || result.error)) return <Page><Header title="Product details" back />
-    <CatalogState {...result} error={result.error ?? ''} empty="Product unavailable." /></Page>;
+  if (!local && (result.loading || result.error)) return <Page><Header title={t('legacy.productDetails')} back />
+    <CatalogState {...result} error={result.error ?? ''} empty={t('legacy.unavailable')} /></Page>;
   if (!product)
     return (
       <Page>
-        <Header title="Piece not found" back />
-        <Button title="Explore the collection" onPress={() => router.replace('/')} />
+        <Header title={t('legacy.notFound')} back />
+        <Button title={t('legacy.exploreCollection')} onPress={() => router.replace('/')} />
       </Page>
     );
   const selectedSize = size ?? product.sizes[1];
   return (
     <Page>
-      <Header title="A beautiful beginning" back />
+      <Header title={t('legacy.beginning')} back />
       <LinearGradient colors={theme.gradients.details} style={{ borderRadius: 24, padding: 12 }}>
         <Text style={[ui.eyebrow, { textAlign: 'center', marginTop: 15 }]}>
-          {product.tag ?? 'MAKE IT YOURS'}
+          {product.tag ?? t('legacy.makeItYours')}
         </Text>
         <View style={{ alignItems: 'center' }}><CatalogImage imageUrl={product.imageUrl}
           name={product.name} size={Math.min(width - 70, 370)} /></View>
         <Text style={[ui.caption, { textAlign: 'center', marginBottom: 12 }]}>
-          An idea to inspire you. Your design starts with a blank base.
+          {t('legacy.inspiration')}
         </Text>
       </LinearGradient>
       <View>
-        <Text style={ui.eyebrow}>{product.type.toUpperCase()} COLLECTION</Text>
+        <Text style={ui.eyebrow}>{t('legacy.collectionOf', { type: product.type.toUpperCase() })}</Text>
         <Text style={ui.title}>{product.name}</Text>
       </View>
       <View style={ui.between}>
-        <Text style={ui.body}>{product.price === undefined ? 'Your blank canvas, from' : 'Saved design price'}</Text>
+        <Text style={ui.body}>{product.price === undefined ? t('legacy.blankFrom') : t('legacy.savedPrice')}</Text>
         <Text style={{ fontSize: 25, color: theme.colors.accent }}>{money(product.price ?? product.basePrice)}</Text>
       </View>
       <Text style={ui.body}>{product.description}</Text>
       <View style={{ gap: 12 }}>
-        <Text style={ui.label}>Choose your size</Text>
+        <Text style={ui.label}>{t('legacy.chooseSize')}</Text>
         <Chips options={product.sizes} value={selectedSize} onChange={setSize} />
       </View>
       <View style={ui.card}>
         <View style={ui.row}>
           <Icon name="diamond-outline" color={theme.colors.gold} />
-          <Text style={ui.body}>Thoughtfully selected materials</Text>
+          <Text style={ui.body}>{t('legacy.materials')}</Text>
         </View>
         <View style={ui.row}>
           <Icon name="heart-outline" color={theme.colors.gold} />
-          <Text style={ui.body}>Handcrafted to your design</Text>
+          <Text style={ui.body}>{t('legacy.handcrafted')}</Text>
         </View>
       </View>
       <Button
-        title="Create your design"
+        title={t('legacy.createDesign')}
         icon="sparkles-outline"
         onPress={() => {
           useDesignStore.getState().start(product.id, selectedSize);
@@ -85,7 +87,7 @@ function CustomDetailsScreen() {
         }}
       />
       <Text style={[ui.caption, { textAlign: 'center' }]}>
-        Beads and charms are priced individually as you create.
+        {t('legacy.pricedIndividually')}
       </Text>
     </Page>
   );

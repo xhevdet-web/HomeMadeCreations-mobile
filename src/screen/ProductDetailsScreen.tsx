@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { toast } from '@/store/toastStore';
 import { Button, Header, Page, useUI } from '@/components/common/ui';
 import { CatalogImage } from '@/components/products/CatalogImage';
@@ -25,6 +26,7 @@ export default function ProductDetailsScreen() {
   const ui = useUI();
   const styles = useThemedStyles(createStyles);
   const { width } = useWindowDimensions();
+  const { t } = useTranslation();
   const user = useAuthStore((state) => state.user);
   const result = useApiResult<SavedProduct>(useGetProductByIdQuery(id ?? '', { skip: !id }));
   const [size, setSize] = useState<string | null>(null);
@@ -34,27 +36,27 @@ export default function ProductDetailsScreen() {
   if (result.loading || result.error || !product || !isCompanyProduct(product))
     return (
       <Page>
-        <Header title="Product details" back />
+        <Header title={t('productDetails.title')} back />
         {result.loading || result.error
           ? <CatalogState {...result} error={result.error ?? ''} empty="" />
-          : <Text style={ui.body}>Product unavailable.</Text>}
+          : <Text style={ui.body}>{t('productDetails.unavailable')}</Text>}
       </Page>
     );
 
   const sizes = parseSizes(product.sizes);
-  const unavailable = companyUnavailable(product, size);
+  const unavailable = companyUnavailable(t, product, size);
   const apparel = product.category?.builderType === 'APPAREL';
   // Apparel, bouquets and gifts can be customised starting from this exact product.
   const customizable = apparel || isCanvasBuilder(product.category?.builderType);
   const photos = [
-    { label: 'Front', url: product.imageUrl },
-    ...(product.backImageUrl ? [{ label: 'Back', url: product.backImageUrl }] : []),
+    { label: t('productDetails.front'), url: product.imageUrl },
+    ...(product.backImageUrl ? [{ label: t('productDetails.back'), url: product.backImageUrl }] : []),
   ];
   const shown = photos[Math.min(photo, photos.length - 1)];
   const imageSize = Math.min(width - 44, 360);
 
   function order() {
-    if (!user) { toast.info('Please log in, then return to this product to order.'); router.push('/login'); return; }
+    if (!user) { toast.info(t('productDetails.loginToOrder')); router.push('/login'); return; }
     if (!product || unavailable) return;
     useCommerceStore.getState().setCheckout(user.id, product, size);
     router.push('/checkout');
@@ -75,13 +77,13 @@ export default function ProductDetailsScreen() {
             <View style={styles.actions}>
               {customizable && (
                 <View style={{ flex: 1 }}>
-                  <Button title="Customize" icon="color-palette-outline" secondary
+                  <Button title={t('productDetails.customize')} icon="color-palette-outline" secondary
                     onPress={() => router.push({ pathname: apparel ? '/apparel-base' : '/design-base',
                       params: { categoryId: product.categoryId, baseProductId: product.id } })} />
                 </View>
               )}
               <View style={{ flex: 1.3 }}>
-                <Button title={unavailable ?? 'Order Now'} icon={unavailable ? undefined : 'bag-add-outline'}
+                <Button title={unavailable ?? t('productDetails.orderNow')} icon={unavailable ? undefined : 'bag-add-outline'}
                   disabled={!!unavailable} onPress={order} />
               </View>
             </View>
@@ -89,7 +91,7 @@ export default function ProductDetailsScreen() {
         </SafeAreaView>
       }
     >
-      <Header title={product.category?.name ?? 'Product details'} back />
+      <Header title={product.category?.name ?? t('productDetails.title')} back />
       <View style={{ gap: 10 }}>
         <View style={[styles.photo, { width: imageSize, height: imageSize }]}>
           <CatalogImage imageUrl={shown?.url} name={product.name} size={imageSize - 16} />
@@ -97,7 +99,7 @@ export default function ProductDetailsScreen() {
         {photos.length > 1 && (
           <View style={styles.thumbs}>
             {photos.map((entry, index) => (
-              <Pressable key={entry.label} accessibilityRole="button" accessibilityLabel={`Show ${entry.label}`}
+              <Pressable key={entry.label} accessibilityRole="button" accessibilityLabel={t('productDetails.showPhoto', { view: entry.label })}
                 accessibilityState={{ selected: index === photo }} onPress={() => setPhoto(index)}
                 style={[styles.thumb, index === photo && styles.thumbActive]}>
                 <CatalogImage imageUrl={entry.url} name={entry.label} size={50} />
@@ -121,24 +123,24 @@ export default function ProductDetailsScreen() {
       {sizes.length > 0 ? (
         <View style={styles.section}>
           <View style={ui.between}>
-            <Text style={styles.label}>Size</Text>
+            <Text style={styles.label}>{t('productDetails.size')}</Text>
             {size && <Text style={styles.value}>{size}</Text>}
           </View>
           <SizePicker sizes={sizes} value={size} onChange={setSize} />
         </View>
       ) : (
         <Text style={ui.caption}>
-          {(product.stock ?? 0) > 0 ? `${product.stock} available` : 'Out of stock'}
+          {(product.stock ?? 0) > 0 ? t('counts.available', { count: product.stock ?? 0 }) : t('readyMade.outOfStock')}
         </Text>
       )}
 
       {!!product.description && <Text style={ui.body}>{product.description}</Text>}
       <Text style={ui.caption}>
         {apparel
-          ? 'Order it as it is, or customize it with logos and your own artwork. Pay cash on delivery.'
+          ? t('productDetails.apparelHint')
           : customizable
-            ? 'Order it as it is, or customize it and add your own touches. Pay cash on delivery.'
-            : 'Handmade and ready to be yours. Pay cash on delivery.'}
+            ? t('productDetails.customizableHint')
+            : t('productDetails.readyMadeHint')}
       </Text>
     </Page>
   );

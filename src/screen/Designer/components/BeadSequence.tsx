@@ -1,4 +1,5 @@
 import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { IconButton, useUI } from '@/components/common/ui';
 import { DesignItem } from '@/components/designer/DesignItem';
@@ -13,6 +14,7 @@ export function BeadSequence({ items, selectedId, onSelect }: {
   onSelect: (id: string | null) => void;
 }) {
   const theme = useTheme();
+  const { t } = useTranslation();
   const styles = useThemedStyles(createStyles);
   return (
     <ScrollView
@@ -24,7 +26,7 @@ export function BeadSequence({ items, selectedId, onSelect }: {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={
-            'Select position ' + (index + 1) + ', ' + itemById[entry.itemId].name
+            t('jewelry.selectPosition', { position: index + 1, name: itemById[entry.itemId].name })
           }
           key={entry.id}
           onPress={() => onSelect(entry.id === selectedId ? null : entry.id)}
@@ -50,27 +52,28 @@ export function SelectionToolbar({ name, canMoveLeft, canMoveRight, onMove, onRe
   onClose: () => void;
 }) {
   const ui = useUI();
+  const { t } = useTranslation();
   return (
     <Animated.View entering={FadeIn.duration(180)} style={ui.between}>
       <Text style={[ui.caption, { flex: 1 }]}>{name}</Text>
       <IconButton
         name="arrow-back"
-        label="Move detail left"
+        label={t('jewelry.moveLeft')}
         onPress={() => onMove(-1)}
         disabled={!canMoveLeft}
       />
       <IconButton
         name="arrow-forward"
-        label="Move detail right"
+        label={t('jewelry.moveRight')}
         onPress={() => onMove(1)}
         disabled={!canMoveRight}
       />
       <IconButton
         name="trash-outline"
-        label="Remove selected detail"
+        label={t('jewelry.removeSelected')}
         onPress={onRemove}
       />
-      <IconButton name="close" label="Finish selecting" onPress={onClose} />
+      <IconButton name="close" label={t('jewelry.finishSelecting')} onPress={onClose} />
     </Animated.View>
   );
 }

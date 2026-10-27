@@ -1,4 +1,5 @@
 import type { ProductInput, SavedProduct } from '@/api/commerceModels';
+import i18n from '@/i18n';
 import { parseCategorySize } from '@/api/catalogModels';
 import { productFormData, productSlice } from '@/api/endpoints/productSlice';
 import { categorySlice } from '@/api/endpoints/categorySlice';
@@ -13,12 +14,12 @@ import { uniqueId } from '@/helper/design';
 export function productInput(): ProductInput {
   const draft = useDesignStore.getState();
   const categoryId = productById[draft.productId]?.categoryId;
-  if (!categoryId) throw new Error('Choose an API category to save this design.');
-  if (!draft.items.length) throw new Error('Add at least one component.');
+  if (!categoryId) throw new Error(i18n.t('designErrors.chooseCategory'));
+  if (!draft.items.length) throw new Error(i18n.t('designErrors.addComponent'));
   if (productById[draft.productId]?.categorySizes?.length && !draft.selectedSize)
-    throw new Error('Choose a category size before saving your design.');
+    throw new Error(i18n.t('designErrors.chooseSize'));
   if (draft.selectedSize && draft.items.length > draft.selectedSize.maxItems)
-    throw new Error(`${draft.selectedSize.name} supports up to ${draft.selectedSize.maxItems} components. Remove extra components before saving.`);
+    throw new Error(i18n.t('designErrors.tooManyComponents', { size: draft.selectedSize.name, max: draft.selectedSize.maxItems }));
   // Consecutive runs preserve the design order, including repeated components.
   const items: ProductInput['items'] = [];
   for (const [position, entry] of draft.items.entries()) {
@@ -29,7 +30,7 @@ export function productInput(): ProductInput {
   return {
     categoryId,
     ...(draft.selectedSize ? { selectedSizeId: draft.selectedSize.id } : {}),
-    name: draft.name.trim() || 'My design',
+    name: draft.name.trim() || i18n.t('drafts.myDesign'),
     description: draft.description.trim() || undefined,
     items,
   };
@@ -62,7 +63,7 @@ export async function editSavedDesign(id: string, userId: string) {
   let saved: SavedProduct;
   try { saved = await request.unwrap(); } catch (error) { throw apiError(error); }
   finally { request.unsubscribe(); }
-  if (saved.createdById !== userId) throw new Error('This design belongs to another account.');
+  if (saved.createdById !== userId) throw new Error(i18n.t('designErrors.otherAccount'));
   await loadIntoStudio(saved, userId, saved.id);
 }
 
@@ -75,7 +76,7 @@ type DesignSource = Pick<SavedProduct,
  * continue to delivery, using today's bead prices and stock.
  */
 export async function copyCreation(product: DesignSource, userId: string) {
-  if (!product.items?.length) throw new Error('This creation has no beads to copy.');
+  if (!product.items?.length) throw new Error(i18n.t('designErrors.nothingToCopy'));
   await loadIntoStudio(product, userId, uniqueId());
 }
 

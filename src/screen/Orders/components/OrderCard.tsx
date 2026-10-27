@@ -4,28 +4,31 @@ import { CatalogImage } from '@/components/products/CatalogImage';
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
 import { money } from '@/helper/pricing';
 import { type Theme } from '@/constants/theme';
+import { dateLocale } from '@/i18n';
+import { useTranslation } from 'react-i18next';
 import { ApiOrder, orderStages, orderStatusLabel, paymentLabel } from '@/api/commerceModels';
 
-function orderDate(value: string) {
+function orderDate(value: string, language: string) {
   const date = new Date(value);
   return Number.isNaN(date.getTime())
     ? ''
-    : date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+    : date.toLocaleDateString(dateLocale(language), { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 export function OrderCard({ order, onPress }: { order: ApiOrder; onPress: () => void }) {
   const ui = useUI();
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
+  const { t, i18n } = useTranslation();
   const current = orderStages.findIndex((stage) => stage === order.status);
   const completed = order.status === 'COMPLETED';
-  const status = orderStatusLabel(order.status);
-  const date = orderDate(order.createdAt);
+  const status = orderStatusLabel(t, order.status);
+  const date = orderDate(order.createdAt, i18n.language);
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={'Track ' + order.orderNumber}
+      accessibilityLabel={t('orders.track', { number: order.orderNumber })}
       accessibilityHint={`${order.product.name}, ${status}`}
       onPress={onPress}
       style={({ pressed }) => [styles.card, { opacity: pressed ? 0.8 : 1 }]}
@@ -53,7 +56,7 @@ export function OrderCard({ order, onPress }: { order: ApiOrder; onPress: () => 
           </Text>
           <View style={styles.bottomRow}>
             <Text style={styles.price}>{money(order.totalPrice)}</Text>
-            <Text style={ui.caption}>{paymentLabel(order.paymentType)}</Text>
+            <Text style={ui.caption}>{paymentLabel(t, order.paymentType)}</Text>
           </View>
         </View>
         <Icon name="chevron-forward" size={18} color={theme.colors.muted} />
@@ -61,7 +64,7 @@ export function OrderCard({ order, onPress }: { order: ApiOrder; onPress: () => 
       {current >= 0 && (
         <View
           style={styles.progress}
-          accessibilityLabel={`Step ${current + 1} of ${orderStages.length}`}
+          accessibilityLabel={t('orders.stepOf', { step: current + 1, total: orderStages.length })}
         >
           {orderStages.map((stage, index) => (
             <View

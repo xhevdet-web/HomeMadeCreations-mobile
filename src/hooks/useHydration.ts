@@ -7,7 +7,9 @@ import { useThemeStore } from '@/store/themeStore';
 import { useOnboardingStore } from '@/store/onboardingStore';
 import { useCatalogStore } from '@/store/catalogStore';
 import { useCommerceStore } from '@/store/commerceStore';
-const stores = [useSavedStore, useOrderStore, useCartStore, useDesignStore, useThemeStore, useOnboardingStore, useCatalogStore, useCommerceStore];
+import { useLanguageStore } from '@/store/languageStore';
+// Includes the language store, so a saved language applies before the first screen renders.
+const stores = [useSavedStore, useOrderStore, useCartStore, useDesignStore, useThemeStore, useOnboardingStore, useCatalogStore, useCommerceStore, useLanguageStore];
 export function useHydration() {
   const [hydrated, setHydrated] = useState(stores.every((store) => store.persist.hasHydrated()));
   useEffect(() => {

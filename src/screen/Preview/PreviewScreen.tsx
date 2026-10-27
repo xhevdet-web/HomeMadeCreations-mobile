@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { EmptyState, Field, Header, Page, useUI } from '@/components/common/ui';
 import { Disclosure } from '@/components/common/Disclosure';
 import { TextAction } from '@/components/common/TextAction';
@@ -22,6 +23,7 @@ import { apiError } from '@/api/apiSlice';
 import { PriceLineRow } from './components/PriceLineRow';
 
 export default function PreviewScreen() {
+  const { t } = useTranslation();
   const ui = useUI();
   const theme = useTheme();
   const draft = useDesignStore();
@@ -77,7 +79,7 @@ export default function PreviewScreen() {
         useCommerceStore.getState().setCheckout(user.id, result);
         router.push('/checkout');
       } else {
-        toast.success('Saved to My Designs. Come back whenever you’re ready.');
+        toast.success(t('canvasPreview.savedForLater'));
       }
     } catch (failure) {
       setError(apiError(failure).message);
@@ -90,12 +92,12 @@ export default function PreviewScreen() {
   if (!product || !draft.items.length)
     return (
       <Page style={{ maxWidth: 600 }}>
-        <Header title="Your design" back />
+        <Header title={t('canvasPreview.title')} back />
         <EmptyState
           icon="sparkles-outline"
-          title="Your story starts with a bead."
-          description="Add a few details in the studio, then come back to see your finished piece."
-          action="Open the studio"
+          title={t('jewelry.previewEmptyTitle')}
+          description={t('jewelry.previewEmptyBody')}
+          action={t('canvasPreview.openStudio')}
           onPress={edit}
         />
       </Page>
@@ -107,27 +109,27 @@ export default function PreviewScreen() {
       footer={
         <ActionFooter
           amount={total}
-          amountLabel={saved ? 'Design total' : 'Estimated total'}
+          amountLabel={saved ? t('canvasPreview.designTotal') : t('canvasPreview.estimatedTotal')}
           title={
             !product.categoryId
-              ? 'Choose a category'
+              ? t('jewelry.chooseCategory')
               : intent === 'checkout'
-                ? 'Saving your design…'
-                : 'Continue to delivery'
+                ? t('canvasPreview.saving')
+                : t('jewelry.continueToDelivery')
           }
           onPress={() => (product.categoryId ? void save(true) : router.push('/categories'))}
           loading={intent === 'checkout'}
           disabled={busy}
-          caption="Your design is saved when you continue."
+          caption={t('jewelry.previewCaption')}
         />
       }
     >
       <Header
-        title="Your design"
+        title={t('canvasPreview.title')}
         back
         right={
           <TextAction
-            title={saved ? 'Saved' : 'Save for later'}
+            title={saved ? t('canvasPreview.saved') : t('canvasPreview.saveForLater')}
             icon={saved ? 'checkmark' : 'bookmark-outline'}
             onPress={() => void save(false)}
             loading={intent === 'save'}
@@ -156,7 +158,7 @@ export default function PreviewScreen() {
           />
         </View>
         <Text style={ui.caption}>
-          {draft.items.length} beads
+          {t('counts.bead', { count: draft.items.length })}
           {draft.selectedSize
             ? ' · ' +
               draft.selectedSize.name +
@@ -166,18 +168,18 @@ export default function PreviewScreen() {
               draft.selectedSize.unit
             : ''}
         </Text>
-        <TextAction title="Edit design" icon="create-outline" onPress={edit} disabled={busy} />
+        <TextAction title={t('canvasPreview.editDesign')} icon="create-outline" onPress={edit} disabled={busy} />
       </View>
       <Field
-        label="Give your creation a name"
+        label={t('canvasPreview.nameLabel')}
         value={draft.name}
         onChangeText={draft.rename}
         editable={!busy}
         maxLength={150}
       />
       <Disclosure
-        title="Beads & price details"
-        summary={lines.length + ' materials · ' + money(total)}
+        title={t('jewelry.beadsPriceDetails')}
+        summary={t('jewelry.materials', { count: lines.length, price: money(total) })}
         disabled={busy}
       >
         {lines.map((line) => (
@@ -196,13 +198,13 @@ export default function PreviewScreen() {
         ))}
       </Disclosure>
       <Disclosure
-        title="Add a description"
-        summary="Optional · a little meaning behind your piece"
+        title={t('jewelry.descriptionTitle')}
+        summary={t('jewelry.descriptionSummary')}
         initiallyOpen={!!draft.description}
         disabled={busy}
       >
         <Field
-          label="Description (optional)"
+          label={t('jewelry.descriptionLabel')}
           value={draft.description}
           onChangeText={draft.describe}
           editable={!busy}

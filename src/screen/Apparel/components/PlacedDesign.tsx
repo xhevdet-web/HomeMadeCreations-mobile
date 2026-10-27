@@ -1,4 +1,5 @@
 import type { ApparelPlacement, PrintArea } from '@/api/builderModels';
+import { useTranslation } from 'react-i18next';
 import { clampPlacement, designSize } from '@/helper/apparel';
 import { CatalogImage } from '@/components/products/CatalogImage';
 import { PlacedItem, type Transform } from '@/components/studio/PlacedItem';
@@ -20,6 +21,7 @@ export function PlacedDesign({ placement, area, canvas, imageUrl, name, selected
   onRemove: () => void;
 }) {
   const box = designSize(area, canvas, 1);
+  const { t } = useTranslation();
   return (
     <PlacedItem
       transform={placement}
@@ -27,7 +29,7 @@ export function PlacedDesign({ placement, area, canvas, imageUrl, name, selected
       width={box}
       height={box}
       clamp={(next: Transform) => ({ ...next, ...clampPlacement(next, area) })}
-      label={`${name} on the ${placement.side.toLowerCase()}`}
+      label={t('apparel.onSide', { name, side: t(placement.side === 'BACK' ? 'apparel.back' : 'apparel.front') })}
       name={name}
       selected={selected}
       editable={editable}

@@ -6,30 +6,30 @@ import { useAuthStore } from '@/store/authStore';
 import { useThemeStore } from '@/store/themeStore';
 import { toast } from '@/store/toastStore';
 import { useTheme } from '@/hooks/useTheme';
+import { useTranslation } from 'react-i18next';
+import { useLanguageStore } from '@/store/languageStore';
 import { ProfileForm } from './components/ProfileForm';
 import { ProfileHeader } from './components/ProfileHeader';
 import { SettingsRow, SettingsSection } from './components/Settings';
 import type { IconName } from '@/components/common/ui';
 import type { Href } from 'expo-router';
 
-// Placeholders for features without backend support yet. Replace `soon` with a real
-// onPress when the endpoint or screen exists.
-const preferences: { icon: IconName; title: string; value?: string }[] = [
-  { icon: 'notifications-outline', title: 'Notifications' },
-  { icon: 'language-outline', title: 'Language', value: 'English' },
+// Rows hold translation keys; the text is translated when the screen renders.
+const support: { icon: IconName; title: 'profile.help' | 'profile.contact' | 'profile.terms' | 'profile.privacy'; href: Href }[] = [
+  { icon: 'help-circle-outline', title: 'profile.help', href: '/help' },
+  { icon: 'chatbubble-ellipses-outline', title: 'profile.contact', href: '/contact' },
+  { icon: 'document-text-outline', title: 'profile.terms', href: '/terms' },
+  { icon: 'shield-checkmark-outline', title: 'profile.privacy', href: '/privacy' },
 ];
-const support: { icon: IconName; title: string; href: Href }[] = [
-  { icon: 'help-circle-outline', title: 'Help & FAQ', href: '/help' },
-  { icon: 'chatbubble-ellipses-outline', title: 'Contact us', href: '/contact' },
-  { icon: 'document-text-outline', title: 'Terms of service', href: '/terms' },
-  { icon: 'shield-checkmark-outline', title: 'Privacy policy', href: '/privacy' },
-];
-const comingSoon = (title: string) => toast.info(`${title} is coming soon.`);
 
 export default function ProfileScreen() {
   const ui = useUI();
   const theme = useTheme();
+  const { t } = useTranslation();
+  const language = useLanguageStore((state) => state.language);
   const user = useAuthStore((state) => state.user);
+  // Notifications have no backend support yet, so the row stays marked Soon.
+  const comingSoon = (feature: string) => toast.info(t('profile.comingSoon', { feature }));
   const toggleTheme = useThemeStore((state) => state.toggle);
   const { next } = useLocalSearchParams<{ next?: string }>();
   const editDetails = () => router.push('/account');
@@ -38,11 +38,11 @@ export default function ProfileScreen() {
   if (next === 'checkout')
     return (
       <Page style={{ gap: 18 }}>
-        <Header title="Delivery details" back />
+        <Header title={t('profile.deliveryDetails')} back />
         {user ? (
           <ProfileForm key={user.id} user={user} returnToCheckout />
         ) : (
-          <Button title="Sign in" onPress={() => router.push('/login')} />
+          <Button title={t('profile.signIn')} onPress={() => router.push('/login')} />
         )}
       </Page>
     );
@@ -50,8 +50,8 @@ export default function ProfileScreen() {
   if (!user)
     return (
       <Page>
-        <Header title="Your profile" />
-        <Button title="Sign in" onPress={() => router.push('/login')} />
+        <Header title={t('profile.title')} />
+        <Button title={t('profile.signIn')} onPress={() => router.push('/login')} />
       </Page>
     );
 
@@ -68,84 +68,86 @@ export default function ProfileScreen() {
 
   return (
     <Page style={{ gap: 22 }}>
-      <Header title="Your profile" />
+      <Header title={t('profile.title')} />
       <ProfileHeader user={user} onEdit={editDetails} />
 
       {missingDelivery && (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Complete your delivery details"
+          accessibilityLabel={t('profile.completeDelivery')}
           onPress={editDetails}
           style={[ui.notice, { backgroundColor: theme.colors.soft }]}
         >
           <Icon name="alert-circle-outline" size={18} color={theme.colors.accent} />
           <Text style={[ui.caption, { flex: 1, color: theme.colors.text }]}>
-            Add your phone and address so you can order in one tap.
+            {t('profile.completeDeliveryHint')}
           </Text>
           <Icon name="chevron-forward" size={16} color={theme.colors.muted} />
         </Pressable>
       )}
 
-      <SettingsSection title="Account">
+      <SettingsSection title={t('profile.account')}>
         <SettingsRow
           icon="person-outline"
-          title="Personal details"
-          subtitle={user.phone || 'Name and phone'}
+          title={t('profile.personalDetails')}
+          subtitle={user.phone || t('profile.nameAndPhone')}
           onPress={editDetails}
         />
         <SettingsRow
           icon="location-outline"
-          title="Delivery address"
-          subtitle={address || 'Not added yet'}
+          title={t('profile.deliveryAddress')}
+          subtitle={address || t('profile.notAddedYet')}
           onPress={editDetails}
         />
         <SettingsRow
           icon="lock-closed-outline"
-          title="Change password"
+          title={t('profile.changePassword')}
           last
           onPress={() => router.push('/change-password')}
         />
       </SettingsSection>
 
-      <SettingsSection title="My activity">
+      <SettingsSection title={t('profile.myActivity')}>
         <SettingsRow
           icon="heart-outline"
-          title="My Designs"
+          title={t('profile.myDesigns')}
           onPress={() => router.push('/designs')}
         />
         <SettingsRow
           icon="bag-handle-outline"
-          title="My Orders"
+          title={t('profile.myOrders')}
           last
           onPress={() => router.push('/orders')}
         />
       </SettingsSection>
 
-      <SettingsSection title="Preferences">
+      <SettingsSection title={t('profile.preferences')}>
         <SettingsRow
           icon={theme.mode === 'dark' ? 'moon' : 'moon-outline'}
-          title="Dark mode"
+          title={t('profile.darkMode')}
           toggle={{ value: theme.mode === 'dark', onChange: toggleTheme }}
         />
-        {preferences.map((item, index) => (
-          <SettingsRow
-            key={item.title}
-            icon={item.icon}
-            title={item.title}
-            value={item.value}
-            soon
-            last={index === preferences.length - 1}
-            onPress={() => comingSoon(item.title)}
-          />
-        ))}
+        <SettingsRow
+          icon="notifications-outline"
+          title={t('profile.notifications')}
+          soon
+          onPress={() => comingSoon(t('profile.notifications'))}
+        />
+        <SettingsRow
+          icon="language-outline"
+          title={t('profile.language')}
+          value={language === 'sq' ? t('language.albanian') : t('language.english')}
+          last
+          onPress={() => router.push('/language')}
+        />
       </SettingsSection>
 
-      <SettingsSection title="Support">
+      <SettingsSection title={t('profile.support')}>
         {support.map((item, index) => (
           <SettingsRow
             key={item.title}
             icon={item.icon}
-            title={item.title}
+            title={t(item.title)}
             last={index === support.length - 1}
             onPress={() => router.push(item.href)}
           />
@@ -153,17 +155,17 @@ export default function ProfileScreen() {
       </SettingsSection>
 
       <View style={{ gap: 14 }}>
-        <SettingsSection title="Session">
+        <SettingsSection title={t('profile.session')}>
           <SettingsRow
             icon="log-out-outline"
-            title="Sign out"
+            title={t('profile.signOut')}
             danger
             last
             onPress={() => void useAuthStore.getState().logout()}
           />
         </SettingsSection>
         <Text style={[ui.caption, { textAlign: 'center' }]}>
-          HomeMade Creator · Version {Constants.expoConfig?.version ?? '1.0.0'}
+          {t('profile.version', { version: Constants.expoConfig?.version ?? '1.0.0' })}
         </Text>
       </View>
     </Page>

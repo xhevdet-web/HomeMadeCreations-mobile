@@ -3,6 +3,7 @@ import { ImageBackground, Pressable, StyleSheet, Text, View } from 'react-native
 import { LinearGradient } from 'expo-linear-gradient';
 import { Brand, Icon, IconButton, IconName, Page, useUI } from '@/components/common/ui';
 import { ThemeToggleButton } from '@/components/common/ThemeToggleButton';
+import { LanguageToggle } from '@/components/common/LanguageToggle';
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
 import { type Theme } from '@/constants/theme';
 import { useOnboardingStore } from '@/store/onboardingStore';
@@ -37,9 +38,13 @@ export function AuthLayout({ title, subtitle, tagline, highlights, backLabel, on
           style={StyleSheet.absoluteFill} />
         <View style={styles.heroBar}>
           <IconButton name="arrow-back" label={backLabel} onPress={onBack} />
-          <ThemeToggleButton />
+          <View style={styles.heroActions}>
+            <LanguageToggle />
+            <ThemeToggleButton />
+          </View>
         </View>
-        <View style={styles.heroBrand}>
+        {/* The logo artwork overflows its box; it must never cover the corner buttons. */}
+        <View style={styles.heroBrand} pointerEvents="none">
           <Brand />
           <Text style={styles.tagline}>{tagline}</Text>
         </View>
@@ -102,9 +107,10 @@ const createStyles = (theme: Theme) => {
   const c = theme.colors;
   return StyleSheet.create({
     hero: { height: 260, justifyContent: 'space-between', overflow: 'hidden' },
+    heroActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     heroBar: {
       flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-      paddingHorizontal: 22, paddingTop: 12,
+      paddingHorizontal: 22, paddingTop: 12, zIndex: 2,
     },
     heroBrand: { alignItems: 'center', gap: 8, paddingBottom: 48 },
     tagline: {

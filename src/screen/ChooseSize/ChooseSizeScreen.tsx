@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Button, Header, Page, useUI } from '@/components/common/ui';
 import { CatalogState } from '@/components/products/CatalogState';
 import { useGetCategoryByIdQuery } from '@/api/endpoints/categorySlice';
@@ -13,6 +14,7 @@ import { CategorySize } from '@/types/models';
 import { SelectedSizeDetails, SizeOption } from './components/SizeCards';
 
 export default function ChooseSizeScreen() {
+  const { t } = useTranslation();
   const { categoryId } = useLocalSearchParams<{ categoryId: string }>();
   const ui = useUI();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -36,17 +38,17 @@ export default function ChooseSizeScreen() {
     if (category && !category.sizes?.length) openBuilder();
   }, [category, openBuilder]);
   return <Page>
-    <Header title="Choose Size" back />
+    <Header title={t('jewelry.chooseSize')} back />
     {result.loading || result.error ? <CatalogState {...result} error={result.error ?? ''} empty="" /> :
       category && <>
         <Text style={ui.sectionTitle}>{category.name}</Text>
-        <Text style={ui.body}>Compare the measurements and component limits. Select a size to see its details before continuing.</Text>
+        <Text style={ui.body}>{t('jewelry.compareSizes')}</Text>
         <View style={{ gap: 12 }}>
           {category.sizes?.map(size => <SizeOption key={size.id} size={size}
             selected={size.id === selectedId} onPress={() => setSelectedId(size.id)} />)}
         </View>
-        {selectedSize ? <SelectedSizeDetails size={selectedSize} /> : <Text style={ui.caption}>Select a size above to review its details.</Text>}
-        <Button title="Continue to Builder" icon="arrow-forward" disabled={!selectedSize}
+        {selectedSize ? <SelectedSizeDetails size={selectedSize} /> : <Text style={ui.caption}>{t('jewelry.selectSizeHint')}</Text>}
+        <Button title={t('jewelry.continueToBuilder')} icon="arrow-forward" disabled={!selectedSize}
           onPress={() => { if (selectedSize) openBuilder(selectedSize); }} />
       </>}
   </Page>;

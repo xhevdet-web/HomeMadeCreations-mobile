@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Button, Header, Page, useUI } from '@/components/common/ui';
 import { CatalogState } from '@/components/products/CatalogState';
 import { useGetCategoryByIdQuery } from '@/api/endpoints/categorySlice';
@@ -25,6 +26,7 @@ const baseOf = (product: SavedProduct) =>
  */
 export default function DesignBaseScreen() {
   const ui = useUI();
+  const { t } = useTranslation();
   const styles = useThemedStyles(createStyles);
   const { width } = useWindowDimensions();
   const { categoryId = '', baseProductId } = useLocalSearchParams<{ categoryId: string; baseProductId?: string }>();
@@ -45,22 +47,22 @@ export default function DesignBaseScreen() {
   if (!data || bases.loading || bases.error)
     return (
       <Page>
-        <Header title="Choose your base" back />
+        <Header title={t('designBase.title')} back />
         <CatalogState loading={category.loading || bases.loading} error={category.error || bases.error}
-          empty="This collection is unavailable." retry={bases.retry} />
+          empty={t('category.unavailable')} retry={bases.retry} />
       </Page>
     );
 
   const tileWidth = (Math.min(width, 760) - 44 - GAP) / 2;
   const products = bases.data ?? [];
-  const noun = data.builderType === 'GIFT' ? 'gift' : 'bouquet';
+  const builder = data.builderType === 'GIFT' ? 'GIFT' : 'BOUQUET';
   return (
     <Page style={{ gap: 18 }}>
-      <Header title="Choose your base" subtitle={data.name} back />
+      <Header title={t('designBase.title')} subtitle={data.name} back />
       <View style={{ gap: 4 }}>
-        <Text style={styles.title}>What will you build on?</Text>
+        <Text style={styles.title}>{t('designBase.heading')}</Text>
         <Text style={ui.body}>
-          Pick the base for your {noun}. Then add, move, size and layer every piece exactly the way you like.
+          {t(`designBase.intro${builder}`)}
         </Text>
       </View>
       {products.length ? (
@@ -73,9 +75,9 @@ export default function DesignBaseScreen() {
       ) : (
         <View style={styles.empty}>
           <Text style={ui.body}>
-            There are no {noun} bases yet. You can still design your {noun} freely on an empty canvas.
+            {t(`designBase.empty${builder}`)}
           </Text>
-          <Button title="Start with an empty canvas" icon="color-palette-outline"
+          <Button title={t('designBase.emptyCanvas')} icon="color-palette-outline"
             onPress={() => openCanvasStudio(data, null)} />
         </View>
       )}

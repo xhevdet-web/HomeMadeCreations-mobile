@@ -4,8 +4,9 @@ import { Icon } from '@/components/common/ui';
 import { CatalogImage } from '@/components/products/CatalogImage';
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
 import { type Theme } from '@/constants/theme';
+import { useTranslation } from 'react-i18next';
 import type { CatalogCategory } from '@/api/catalogModels';
-import { builderOf, categoriesFor, CREATE_LABELS, OCCASIONS } from '../homeContent';
+import { builderOf, categoriesFor, OCCASIONS } from '../homeContent';
 import { SectionHeader } from './SectionHeader';
 
 /**
@@ -17,6 +18,7 @@ export function OccasionSection({ categories, onOpen }: {
   onOpen: (category: CatalogCategory) => void;
 }) {
   const theme = useTheme();
+  const { t } = useTranslation();
   const styles = useThemedStyles(createStyles);
   // Only occasions with something to make right now.
   const occasions = OCCASIONS
@@ -28,37 +30,40 @@ export function OccasionSection({ categories, onOpen }: {
 
   return (
     <View style={{ gap: 14 }}>
-      <SectionHeader eyebrow="CREATE FOR AN OCCASION" title="Make something meaningful" />
+      <SectionHeader eyebrow={t('home.occasionEyebrow')} title={t('home.occasionTitle')} />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
         {occasions.map((occasion) => {
           const active = occasion.id === selectedId;
+          const title = t(`home.occasions.${occasion.id}.title`);
+          const line = t(`home.occasions.${occasion.id}.line`);
           return (
             <Pressable key={occasion.id} accessibilityRole="button" accessibilityState={{ selected: active }}
-              accessibilityLabel={`${occasion.title}: ${occasion.line}`}
+              accessibilityLabel={`${title}: ${line}`}
               onPress={() => setSelectedId(active ? null : occasion.id)}
               style={({ pressed }) => [styles.occasion, active && styles.occasionActive, { opacity: pressed ? 0.8 : 1 }]}>
               <View style={[styles.occasionIcon, active && { backgroundColor: theme.colors.accent }]}>
                 <Icon name={occasion.icon} size={18} color={active ? theme.colors.onPrimary : theme.colors.accent} />
               </View>
-              <Text style={styles.occasionTitle} numberOfLines={1}>{occasion.title}</Text>
-              <Text style={styles.occasionLine} numberOfLines={2}>{occasion.line}</Text>
+              <Text style={styles.occasionTitle} numberOfLines={1}>{title}</Text>
+              <Text style={styles.occasionLine} numberOfLines={2}>{line}</Text>
             </Pressable>
           );
         })}
       </ScrollView>
       {selected && (
         <View style={styles.suggestions} accessibilityLiveRegion="polite">
-          <Text style={styles.suggestionsTitle}>Ideas for {selected.title.toLowerCase()}</Text>
+          <Text style={styles.suggestionsTitle}>{t('home.occasionIdeas')}</Text>
           {selected.suggestions.map((category) => (
             <Pressable key={category.id} accessibilityRole="button"
-              accessibilityLabel={`${category.name} for ${selected.title}`} onPress={() => onOpen(category)}
+              accessibilityLabel={t('home.categoryForOccasion', { category: category.name, occasion: t(`home.occasions.${selected.id}.title`) })}
+              onPress={() => onOpen(category)}
               style={({ pressed }) => [styles.suggestion, { opacity: pressed ? 0.75 : 1 }]}>
               <View style={styles.suggestionImage}>
                 <CatalogImage imageUrl={category.imageUrl} name={category.name} size={40} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.suggestionName} numberOfLines={1}>{category.name}</Text>
-                <Text style={styles.occasionLine} numberOfLines={1}>{CREATE_LABELS[builderOf(category)]}</Text>
+                <Text style={styles.occasionLine} numberOfLines={1}>{t(`home.createLabels.${builderOf(category)}`)}</Text>
               </View>
               <Icon name="chevron-forward" size={16} color={theme.colors.muted} />
             </Pressable>

@@ -1,5 +1,6 @@
 import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Header, Page, useUI } from '@/components/common/ui';
 import { CatalogState } from '@/components/products/CatalogState';
 import { useGetCategoryByIdQuery } from '@/api/endpoints/categorySlice';
@@ -21,6 +22,7 @@ const GAP = 12;
  * Creative Studio, then the company products to explore and order as they are.
  */
 export default function CategoryProductsScreen() {
+  const { t } = useTranslation();
   const ui = useUI();
   const styles = useThemedStyles(createStyles);
   const { width } = useWindowDimensions();
@@ -38,9 +40,9 @@ export default function CategoryProductsScreen() {
   if (!data)
     return (
       <Page>
-        <Header title="Collection" back />
+        <Header title={t('category.collection')} back />
         <CatalogState loading={category.loading} error={category.error}
-          empty="This collection is unavailable." retry={category.retry} />
+          empty={t('category.unavailable')} retry={category.retry} />
       </Page>
     );
 
@@ -48,19 +50,19 @@ export default function CategoryProductsScreen() {
     <Page style={{ gap: 20 }}>
       <Header title="" back />
       <View style={{ gap: 6 }}>
-        <Text style={ui.eyebrow}>COLLECTION</Text>
+        <Text style={ui.eyebrow}>{t('category.eyebrow')}</Text>
         <Text style={styles.title}>{data.name}</Text>
-        <Text style={ui.body}>{data.description || "Design something that's completely yours."}</Text>
+        <Text style={ui.body}>{data.description || t('category.defaultDescription')}</Text>
       </View>
 
       <CreateOwnCard category={data} onPress={() => startDesign(data)} />
 
       <View style={{ gap: 14 }}>
         <View style={ui.between}>
-          <Text style={styles.heading}>Explore {data.name}</Text>
+          <Text style={styles.heading}>{t('category.explore', { name: data.name })}</Text>
           {!!products.data?.length && (
             <Text style={ui.caption}>
-              {products.data.length} {products.data.length === 1 ? 'piece' : 'pieces'}
+              {t('counts.product', { count: products.data.length })}
             </Text>
           )}
         </View>
@@ -71,7 +73,7 @@ export default function CategoryProductsScreen() {
         ) : products.error ? (
           <CatalogState loading={false} error={products.error} retry={products.retry} empty="" />
         ) : !products.data?.length ? (
-          <Text style={ui.body}>No ready-made {data.name.toLowerCase()} yet. Create your own above.</Text>
+          <Text style={ui.body}>{t('category.noReadyMade', { name: data.name })}</Text>
         ) : (
           <View style={styles.grid}>
             {products.data.map((product) => (
@@ -83,8 +85,8 @@ export default function CategoryProductsScreen() {
       </View>
 
       <CommunityCreations
-        title={`${data.name} by others`}
-        intro={`Finished ${data.name.toLowerCase()} designed by other customers. Love one? Order your own.`}
+        title={t('community.byOthers', { category: data.name })}
+        intro={t('category.byOthersIntro', { name: data.name })}
         creations={creations.data ?? []}
         loading={creations.loading}
         error={creations.error}

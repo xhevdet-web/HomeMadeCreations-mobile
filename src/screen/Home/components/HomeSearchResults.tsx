@@ -6,9 +6,10 @@ import { ProductImagePreview } from '@/components/products/ProductImagePreview';
 import { ReadyMadeCard } from '@/components/products/ReadyMadeCard';
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
 import { type Theme } from '@/constants/theme';
+import { useTranslation } from 'react-i18next';
 import type { CatalogCategory } from '@/api/catalogModels';
 import type { SavedProduct } from '@/api/commerceModels';
-import { builderOf, CREATE_LABELS } from '../homeContent';
+import { builderOf } from '../homeContent';
 import { SectionHeader } from './SectionHeader';
 
 /** What the header search finds: categories to create in, and ready-made pieces to buy. */
@@ -19,6 +20,7 @@ export function HomeSearchResults({ query, categories, products, onOpenCategory 
   onOpenCategory: (category: CatalogCategory) => void;
 }) {
   const theme = useTheme();
+  const { t } = useTranslation();
   const styles = useThemedStyles(createStyles);
   const [preview, setPreview] = useState<SavedProduct | null>(null);
   const term = query.trim().toLowerCase();
@@ -30,7 +32,7 @@ export function HomeSearchResults({ query, categories, products, onOpenCategory 
     return (
       <View style={styles.empty} accessibilityLiveRegion="polite">
         <Icon name="search-outline" size={22} color={theme.colors.muted} />
-        <Text style={styles.emptyText}>Nothing matches “{query.trim()}”. Try another word.</Text>
+        <Text style={styles.emptyText}>{t('home.searchNoMatch', { query: query.trim() })}</Text>
       </View>
     );
 
@@ -38,10 +40,10 @@ export function HomeSearchResults({ query, categories, products, onOpenCategory 
     <View style={{ gap: 24 }}>
       {matchingCategories.length > 0 && (
         <View style={{ gap: 10 }}>
-          <SectionHeader eyebrow="CREATE YOUR OWN" title="Categories" />
+          <SectionHeader eyebrow={t('home.searchCreateEyebrow')} title={t('home.searchCategories')} />
           {matchingCategories.map((category) => (
             <Pressable key={category.id} accessibilityRole="button"
-              accessibilityLabel={`${category.name}: ${CREATE_LABELS[builderOf(category)]}`}
+              accessibilityLabel={`${category.name}: ${t(`home.createLabels.${builderOf(category)}`)}`}
               onPress={() => onOpenCategory(category)}
               style={({ pressed }) => [styles.row, { opacity: pressed ? 0.8 : 1 }]}>
               <View style={styles.rowImage}>
@@ -49,7 +51,7 @@ export function HomeSearchResults({ query, categories, products, onOpenCategory 
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.rowTitle}>{category.name}</Text>
-                <Text style={styles.rowLine}>{CREATE_LABELS[builderOf(category)]}</Text>
+                <Text style={styles.rowLine}>{t(`home.createLabels.${builderOf(category)}`)}</Text>
               </View>
               <Icon name="chevron-forward" size={16} color={theme.colors.muted} />
             </Pressable>
@@ -58,7 +60,7 @@ export function HomeSearchResults({ query, categories, products, onOpenCategory 
       )}
       {matchingProducts.length > 0 && (
         <View style={{ gap: 14 }}>
-          <SectionHeader eyebrow="READY-MADE" title={`${matchingProducts.length} ${matchingProducts.length === 1 ? 'piece' : 'pieces'}`} />
+          <SectionHeader eyebrow={t('home.readyMadeEyebrow')} title={t('counts.product', { count: matchingProducts.length })} />
           <FlatList horizontal data={matchingProducts} keyExtractor={(product) => product.id}
             showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled"
             ItemSeparatorComponent={() => <View style={{ width: 12 }} />}

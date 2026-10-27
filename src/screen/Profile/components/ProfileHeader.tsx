@@ -3,11 +3,13 @@ import { Icon } from '@/components/common/ui';
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
 import { type Theme } from '@/constants/theme';
 import { User } from '@/types/models';
+import { useTranslation } from 'react-i18next';
 
 export function ProfileHeader({ user, onEdit }: { user: User; onEdit: () => void }) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
-  const name = [user.firstName, user.lastName].filter(Boolean).join(' ') || 'Your account';
+  const { t } = useTranslation();
+  const name = [user.firstName, user.lastName].filter(Boolean).join(' ') || t('profile.yourAccount');
   const initials = [user.firstName, user.lastName]
     .map((part) => part?.trim()[0] ?? '')
     .join('')
@@ -15,7 +17,7 @@ export function ProfileHeader({ user, onEdit }: { user: User; onEdit: () => void
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel="Edit personal details"
+      accessibilityLabel={t('profile.editDetails')}
       onPress={onEdit}
       style={({ pressed }) => [styles.card, { opacity: pressed ? 0.85 : 1 }]}
     >

@@ -2,6 +2,7 @@ import { useFeedbackState } from '@/hooks/useFeedbackState';
 import { useRef, useState } from 'react';
 import { Text } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Button, Field, Header, Page, useUI } from '@/components/common/ui';
 import { CatalogState } from '@/components/products/CatalogState';
 import { Disclosure } from '@/components/common/Disclosure';
@@ -34,6 +35,7 @@ import { ApparelSummary } from '@/components/apparel/ApparelSummary';
 
 function CheckoutForm({ product, user, size }: { product: SavedProduct; user: User; size?: string | null }) {
   const ui = useUI();
+  const { t } = useTranslation();
   const readyMade = isCompanyProduct(product);
   const apparel = !readyMade && isApparelProduct(product);
   const canvas = !readyMade && isCanvasProduct(product);
@@ -45,7 +47,7 @@ function CheckoutForm({ product, user, size }: { product: SavedProduct; user: Us
     user.address?.country,
     user.address?.street,
   ].every((value) => value?.trim());
-  const unavailable = readyMade ? companyUnavailable(currentProduct, size) : null;
+  const unavailable = readyMade ? companyUnavailable(t, currentProduct, size) : null;
   const [needsProfile, setNeedsProfile] = useState(false);
   const [notes, setNotes] = useState(() => useCommerceStore.getState().checkout?.notes ?? '');
   const [error, setError] = useFeedbackState();
@@ -89,14 +91,14 @@ function CheckoutForm({ product, user, size }: { product: SavedProduct; user: Us
       const savedDraft = useCommerceStore.getState().savedDraft;
       const apparelDraft = useApparelStore.getState();
       if (apparel && apparelDraft.saved?.product.id === product.id && apparelDraft.categoryId)
-        apparelDraft.start(apparelDraft.categoryId, `My ${product.category.name}`);
+        apparelDraft.start(apparelDraft.categoryId, t('drafts.myName', { name: product.category.name }));
       const canvasDraft = useCanvasStore.getState();
       if (canvas && canvasDraft.saved?.product.id === product.id && canvasDraft.categoryId) {
         // Ordered: the studio starts fresh for the next bouquet or gift.
         canvasDraft.load({
           builderType: canvasDraft.builderType, categoryId: canvasDraft.categoryId,
           categoryName: canvasDraft.categoryName, base: canvasDraft.base,
-          name: `My ${canvasDraft.categoryName}`, placements: [], texts: [],
+          name: t('drafts.myName', { name: canvasDraft.categoryName }), placements: [], texts: [],
         });
         canvasDraft.markSaved(null);
       }
@@ -123,7 +125,7 @@ function CheckoutForm({ product, user, size }: { product: SavedProduct; user: Us
       if (sent && !uncertain) useCommerceStore.getState().setPending(key, false);
       setError(
         uncertain
-          ? 'We could not confirm whether your order was placed. Check My Orders before doing anything else. This checkout will not submit again.'
+          ? t('checkout.uncertain')
           : requestError.message,
       );
       if ([400, 409, 422].includes(requestError.status)) {
@@ -133,10 +135,7 @@ function CheckoutForm({ product, user, size }: { product: SavedProduct; user: Us
           try {
             await refreshStock();
           } catch {
-            setError(
-              requestError.message +
-                ' Could not refresh stock. Reopen this order review to check availability.',
-            );
+            setError(t('checkout.stockRefreshFailed', { message: requestError.message }));
           }
         } else {
           void refreshStock().catch(() => undefined);
@@ -176,7 +175,7 @@ function CheckoutForm({ product, user, size }: { product: SavedProduct; user: Us
       if (!sameDraft) await editSavedDesign(product.id, user.id);
       router.dismissTo('/designer');
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : 'Unable to open the design.');
+      setError(failure instanceof Error ? failure.message : t('checkout.openDesignFailed'));
     } finally {
       setEditing(false);
     }
@@ -190,15 +189,15 @@ function CheckoutForm({ product, user, size }: { product: SavedProduct; user: Us
       footer={
         <ActionFooter
           amount={currentProduct.price}
-          amountLabel="Total due on delivery"
+          amountLabel={t('checkout.totalDue')}
           title={
             pending && !busy
-              ? 'Check my orders'
+              ? t('checkout.checkOrders')
               : requiresDelivery
-                ? 'Add delivery details'
+                ? t('checkout.addDelivery')
                 : busy
-                  ? 'Placing your order…'
-                  : 'Place Order'
+                  ? t('checkout.placing')
+                  : t('checkout.placeOrder')
           }
           onPress={
             pending && !busy ? checkOrders : requiresDelivery ? updateDelivery : () => void place()
@@ -207,15 +206,15 @@ function CheckoutForm({ product, user, size }: { product: SavedProduct; user: Us
           disabled={busy || editing || (!!unavailable && !pending)}
           caption={
             pending && !busy
-              ? 'Check your orders before trying again.'
+              ? t('checkout.captionCheckOrders')
               : requiresDelivery
-                ? 'We need an address and phone number to deliver your order.'
-                : 'Pay cash when your order arrives.'
+                ? t('checkout.captionNeedDelivery')
+                : t('checkout.captionPayCash')
           }
         />
       }
     >
-      <Header title="Delivery & payment" back />
+      <Header title={t('checkout.title')} back />
       {!readyMade && <FlowStep step={2} />}
       <ProductOverview
         product={currentProduct}
@@ -223,7 +222,7 @@ function CheckoutForm({ product, user, size }: { product: SavedProduct; user: Us
         action={
           !readyMade && (
             <TextAction
-              title="Edit Design"
+              title={t('checkout.editDesign')}
               icon="create-outline"
               disabled={busy || editing || pending}
               loading={editing}
@@ -235,13 +234,13 @@ function CheckoutForm({ product, user, size }: { product: SavedProduct; user: Us
       <DeliveryCard user={user} onEdit={updateDelivery} disabled={busy || pending} />
       <CashOnDeliveryCard />
       <Disclosure
-        title="Add a delivery note"
-        summary="Optional · anything your courier should know"
+        title={t('checkout.noteTitle')}
+        summary={t('checkout.noteSummary')}
         initiallyOpen={!!notes}
         disabled={busy || pending}
       >
         <Field
-          label="Customer notes (optional)"
+          label={t('checkout.noteLabel')}
           value={notes}
           onChangeText={(value) => {
             setNotes(value);
@@ -255,8 +254,8 @@ function CheckoutForm({ product, user, size }: { product: SavedProduct; user: Us
       {apparel && <ApparelSummary product={currentProduct} />}
       {canvas && (
         <Disclosure
-          title="Price details"
-          summary={componentCount(currentProduct.itemCount, currentProduct.category.builderType) + ' · ' +
+          title={t('orderDetails.priceDetails')}
+          summary={componentCount(t, currentProduct.itemCount, currentProduct.category.builderType) + ' · ' +
             money(currentProduct.price)}
         >
           {savedComponentLines(currentProduct).map((line) => (
@@ -264,14 +263,14 @@ function CheckoutForm({ product, user, size }: { product: SavedProduct; user: Us
               value={money(line.quantity * line.unitPrice)} />
           ))}
           {parseTextLayers(currentProduct.textLayers).map((layer) => (
-            <DetailRow key={layer.id} label={'Text “' + layer.text + '”'} value="Free" />
+            <DetailRow key={layer.id} label={t('checkout.textLine', { text: layer.text })} value={t('checkout.free')} />
           ))}
         </Disclosure>
       )}
       {!readyMade && !apparel && !canvas && (
         <Disclosure
-          title="Price details"
-          summary={currentProduct.itemCount + ' beads · ' + money(currentProduct.price)}
+          title={t('orderDetails.priceDetails')}
+          summary={componentCount(t, currentProduct.itemCount) + ' · ' + money(currentProduct.price)}
         >
           {currentProduct.items.map((item) => (
             <DetailRow
@@ -289,13 +288,12 @@ function CheckoutForm({ product, user, size }: { product: SavedProduct; user: Us
       )}
       {pending && !busy && (
         <Text style={ui.body}>
-          An order was submitted for this design. Check My Orders for its status before placing
-          another order.
+          {t('checkout.pendingNotice')}
         </Text>
       )}
       {requiresDelivery && (
         <Text style={ui.body}>
-          Complete your name, phone, country and delivery address before ordering.
+          {t('checkout.completeProfile')}
         </Text>
       )}
       {unavailable && <Text style={ui.body}>{unavailable}</Text>}
@@ -304,6 +302,7 @@ function CheckoutForm({ product, user, size }: { product: SavedProduct; user: Us
 }
 export default function CheckoutScreen() {
   const ui = useUI();
+  const { t } = useTranslation();
   const user = useAuthStore((state) => state.user);
   const checkout = useCommerceStore((state) => state.checkout);
   const userId = user?.id;
@@ -317,7 +316,7 @@ export default function CheckoutScreen() {
   }
   return (
     <Page style={{ maxWidth: 600 }}>
-      <Header title="Delivery & payment" back />
+      <Header title={t('checkout.title')} back />
       {result.loading || result.error ? (
         <CatalogState
           loading={result.loading}
@@ -327,8 +326,8 @@ export default function CheckoutScreen() {
         />
       ) : (
         <>
-          <Text style={ui.body}>Choose a saved design or a ready-made piece to get started.</Text>
-          <Button title="My Designs" onPress={() => router.push('/designs')} />
+          <Text style={ui.body}>{t('checkout.emptyHint')}</Text>
+          <Button title={t('navigation.myDesigns')} onPress={() => router.push('/designs')} />
         </>
       )}
     </Page>

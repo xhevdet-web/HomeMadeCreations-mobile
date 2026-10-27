@@ -1,4 +1,5 @@
 import { View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import type { CanvasPlacement } from '@/api/builderModels';
 import type { CatalogComponent } from '@/api/catalogModels';
 import { CatalogImage } from '@/components/products/CatalogImage';
@@ -26,7 +27,8 @@ export function CanvasItem({ placement, component, group, size, bounds, selected
   onRemove?: (id: string) => void;
 }) {
   const box = group.base * size;
-  const name = component?.name ?? 'Item';
+  const { t } = useTranslation();
+  const name = component?.name ?? t('studio.item');
   return (
     <PlacedItem
       transform={placement}

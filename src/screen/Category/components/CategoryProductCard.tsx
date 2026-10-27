@@ -5,6 +5,7 @@ import { CatalogImage } from '@/components/products/CatalogImage';
 import { useThemedStyles } from '@/hooks/useTheme';
 import { money } from '@/helper/pricing';
 import { type Theme } from '@/constants/theme';
+import { useTranslation } from 'react-i18next';
 
 /** A company product in a category grid: photo, name, colour or sizes, and price. */
 export function CategoryProductCard({ product, width, onPress }: {
@@ -13,20 +14,21 @@ export function CategoryProductCard({ product, width, onPress }: {
   onPress: () => void;
 }) {
   const styles = useThemedStyles(createStyles);
+  const { t } = useTranslation();
   const soldOut = !inStock(product);
   const sizes = parseSizes(product.sizes);
   const detail = [product.color, isSized(product) ? sizes.map((entry) => entry.size).join(' · ') : null]
     .filter(Boolean).join(' · ');
   return (
     <Pressable accessibilityRole="button"
-      accessibilityLabel={`${product.name}, ${money(product.price)}${soldOut ? ', sold out' : ''}`}
+      accessibilityLabel={t(soldOut ? 'category.soldOutLabel' : 'category.productLabel', { name: product.name, price: money(product.price) })}
       onPress={onPress}
       style={({ pressed }) => [styles.card, { width, transform: [{ scale: pressed ? 0.98 : 1 }] }]}>
       <View style={[styles.photo, { height: width }]}>
         <CatalogImage imageUrl={product.imageUrl} name={product.name} size={width * 0.86} />
         {soldOut && (
           <View style={styles.badge}>
-            <Text style={styles.badgeText}>Sold out</Text>
+            <Text style={styles.badgeText}>{t('category.soldOut')}</Text>
           </View>
         )}
       </View>

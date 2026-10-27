@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import i18n from '@/i18n';
 import type { CanvasPlacement } from '@/api/builderModels';
 import { parseTextLayers } from '@/api/builderModels';
 import type { CatalogCategory } from '@/api/catalogModels';
@@ -36,7 +37,7 @@ const round = (value: number) => Math.round(value * 10000) / 10000;
  */
 export function canvasInput(): ProductInput {
   const draft = useCanvasStore.getState();
-  if (!draft.categoryId) throw new Error('Choose a category to start designing.');
+  if (!draft.categoryId) throw new Error(i18n.t('studioMessages.chooseCategory'));
   // Text is a studio tool, never a stocked component; array order is its layer order.
   const texts = draft.texts.filter((layer) => layer.text.trim()).map((layer) => ({
       ...layer,
@@ -48,7 +49,7 @@ export function canvasInput(): ProductInput {
     }));
   return {
     categoryId: draft.categoryId,
-    name: draft.name.trim() || `My ${draft.categoryName}`,
+    name: draft.name.trim() || i18n.t('drafts.myName', { name: draft.categoryName }),
     ...(draft.base ? { baseProductId: draft.base.id } : {}),
     items: draft.placements.map((placement, position) => ({
       subCategoryId: placement.subCategoryId,
@@ -78,7 +79,7 @@ export async function saveCanvasDesign(
   createProduct: (formData: FormData) => Promise<SavedProduct>,
 ): Promise<SavedProduct> {
   const input = canvasInput();
-  if (!input.items.length) throw new Error('Add at least one item to your design.');
+  if (!input.items.length) throw new Error(i18n.t('studioMessages.addItem'));
   const signature = canvasSignature();
   const saved = useCanvasStore.getState().saved;
   if (saved?.userId === userId && saved.signature === signature) return saved.product;
@@ -96,7 +97,7 @@ export function loadCanvasDesign(product: Pick<SavedProduct, 'categoryId' | 'nam
   textLayers?: unknown;
 }, name = product.name) {
   const builderType = product.category?.builderType;
-  if (!isCanvasBuilder(builderType)) throw new Error('This design cannot be opened in the studio.');
+  if (!isCanvasBuilder(builderType)) throw new Error(i18n.t('studioMessages.cannotOpen'));
   const items = [...(product.items ?? [])].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
   const placements: CanvasPlacement[] = [];
   for (const item of items)

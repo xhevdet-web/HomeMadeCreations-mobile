@@ -1,12 +1,13 @@
+import type { AppLanguage } from '@/i18n';
 import { SUPPORT_EMAIL } from './contact';
 import type { LegalDocument } from './types';
 
 // Describes only what the app does today: no analytics, advertising IDs, location,
 // contacts or tracking. Photos are only the images a customer picks to upload. Update
 // this when the app starts collecting anything new.
-export const PRIVACY: LegalDocument = {
+const PRIVACY_EN: LegalDocument = {
   title: 'Privacy Policy',
-  lastUpdated: '2026-10-25',
+  lastUpdated: '2026-10-27',
   intro:
     'Your privacy matters to us. This policy explains what information HomeMade Creator uses, why, and the choices you have.',
   sections: [
@@ -70,7 +71,7 @@ export const PRIVACY: LegalDocument = {
       title: 'Images and file storage',
       body: [
         'The app only accesses the photos you choose to upload, for example your own artwork for a clothing design. Uploaded images and design previews are stored with our storage provider so they can be shown in the app and used to make your order.',
-        'Drafts of designs you are still working on are also kept on your device so you do not lose them.',
+        'Drafts of designs you are still working on, and app preferences such as theme and language, are also kept on your device so you do not lose them.',
       ],
     },
     {
@@ -112,3 +113,116 @@ export const PRIVACY: LegalDocument = {
     },
   ],
 };
+
+// Albanian Privacy Policy: the same sections, meaning and open points as the English text.
+const PRIVACY_SQ: LegalDocument = {
+  title: 'Politika e privatësisë',
+  lastUpdated: '2026-10-27',
+  intro:
+    'Privatësia jote është e rëndësishme për ne. Kjo politikë shpjegon cilat informacione përdor HomeMade Creator, pse i përdor dhe çfarë zgjedhjesh ke.',
+  sections: [
+    {
+      title: 'Informacionet që mbledhim',
+      body: [
+        'Mbledhim vetëm atë që na duhet për të mbajtur llogarinë tënde, për të punuar dizajnet dhe për të dërguar porositë:',
+        {
+          list: [
+            'Të dhënat e llogarisë: emri, mbiemri, emri i përdoruesit, adresa e email-it dhe numri i telefonit.',
+            'Të dhënat e dërgesës: shteti, adresa dhe kodi postar.',
+            'Të dhënat e dizajnit: dizajnet që krijon, elementet dhe opsionet që zgjedh, teksti që shton, fotografitë që ngarkon dhe pamjet e dizajnit që krijon aplikacioni.',
+            'Të dhënat e porosisë: produktet që porosit, detajet e porosisë, të dhënat e dërgesës, mënyra dhe statusi i pagesës, dhe statusi i porosisë.',
+          ],
+        },
+        'Nuk përdorim mjete analitike ose reklamuese, dhe aplikacioni nuk mbledh vendndodhjen, kontaktet ose identifikuesit reklamues.',
+      ],
+    },
+    {
+      title: 'Si i përdorim informacionet',
+      body: [
+        {
+          list: [
+            'për të krijuar dhe menaxhuar llogarinë tënde dhe për të të kyçur',
+            'për të ruajtur dizajnet që t’u kthehesh kur të duash',
+            'për të punuar, përgatitur dhe dërguar porositë',
+            'për të të treguar statusin e porosive',
+            'për t’iu përgjigjur pyetjeve kur na kontakton',
+          ],
+        },
+      ],
+    },
+    {
+      title: 'Të dhënat e llogarisë',
+      body: [
+        'Të dhënat e llogarisë përdoren për të të identifikuar dhe për të plotësuar të dhënat e dërgesës gjatë porosisë. Mund ta shohësh dhe përditësosh emrin, numrin e telefonit dhe adresën në profilin tënd.',
+        'Që të mbetesh i kyçur, aplikacioni ruan një çelës kyçjeje në hapësirën e sigurt të pajisjes. Kur çkyçesh, ai fshihet.',
+      ],
+    },
+    {
+      title: 'Dizajnet personale',
+      body: [
+        'Dizajnet që krijon ruhen në llogarinë tënde që t’i shohësh, ndryshosh dhe porosisësh.',
+        'Kur përfundon një porosi për njërin nga dizajnet e tua, dizajni mund t’u shfaqet klientëve të tjerë në aplikacion si frymëzim, së bashku me emrin dhe mbiemrin tënd.',
+        { pending: 'Duhet konfirmuar nëse dizajnet e përfunduara do të vazhdojnë t’u shfaqen klientëve të tjerë dhe nëse klientët mund të zgjedhin të mos shfaqen.' },
+      ],
+    },
+    {
+      title: 'Porositë dhe dërgesa',
+      body: [
+        'Kur bën një porosi, ruajmë një kopje të dizajnit të porositur dhe të dhënat e dërgesës bashkë me porosinë, që ta punojmë saktësisht siç u porosit dhe ta dërgojmë. Ekipi ynë i përdor këto informacione për të përgatitur dhe dërguar porosinë.',
+      ],
+    },
+    {
+      title: 'Pagesat',
+      body: [
+        'Aktualisht porositë paguhen me para në dorëzim, ndaj aplikacioni nuk mbledh dhe nuk ruan të dhëna të kartave. Regjistrojmë mënyrën e pagesës dhe nëse porosia është paguar.',
+      ],
+    },
+    {
+      title: 'Fotografitë dhe ruajtja e skedarëve',
+      body: [
+        'Aplikacioni ka qasje vetëm te fotografitë që zgjedh t’i ngarkosh, për shembull arti yt për një dizajn veshjeje. Fotografitë e ngarkuara dhe pamjet e dizajneve ruhen te ofruesi ynë i hapësirës që të shfaqen në aplikacion dhe të përdoren për të punuar porosinë.',
+        'Skicat e dizajneve në të cilat ende po punon, si dhe parapëlqimet e aplikacionit si tema dhe gjuha, ruhen edhe në pajisjen tënde që të mos humbin.',
+      ],
+    },
+    {
+      title: 'Siguria e të dhënave',
+      body: [
+        'Përdorim masa teknike dhe organizative të arsyeshme për të mbrojtur informacionet e tua, si llogari të mbrojtura me fjalëkalim, ruajtje të sigurt të kyçjes në pajisje dhe qasje të kufizuar vetëm për personat që kanë nevojë. Asnjë mënyrë ruajtjeje ose dërgimi të informacionit nuk është plotësisht e sigurt, por ne punojmë për ta mbrojtur.',
+      ],
+    },
+    {
+      title: 'Ruajtja e të dhënave',
+      body: [
+        'Të dhënat e llogarisë i ruajmë për sa kohë ekziston llogaria, dhe regjistrat e porosive për aq kohë sa duhet për t’i kryer porositë dhe për të përmbushur detyrimet ligjore.',
+        { pending: 'Afatet e sakta të ruajtjes për të dhënat e llogarisë dhe të porosive ende duhet të konfirmohen.' },
+      ],
+    },
+    {
+      title: 'Zgjedhjet dhe të drejtat e tua',
+      body: [
+        'Mund t’i shohësh dhe përditësosh të dhënat personale në profilin tënd në çdo kohë. Mund të na shkruash edhe për të kërkuar një kopje të informacioneve të tua, ose që ato të korrigjohen apo fshihen. Do të përgjigjemi brenda një kohe të arsyeshme, me përjashtim të informacioneve që duhet t’i ruajmë, për shembull për porositë.',
+        { pending: 'Të drejtat që zbatohen varen nga vendi ku vepron biznesi; ligji i zbatueshëm për mbrojtjen e të dhënave ende duhet të konfirmohet.' },
+      ],
+    },
+    {
+      title: 'Privatësia e fëmijëve',
+      body: [
+        'HomeMade Creator nuk është i destinuar për fëmijë dhe nuk mbledhim me vetëdije informacione nga fëmijët. Nëse mendon se një fëmijë na ka dhënë informacione, të lutem na kontakto dhe do t’i fshijmë.',
+        { pending: 'Mosha minimale për përdorimin e aplikacionit ende duhet të konfirmohet.' },
+      ],
+    },
+    {
+      title: 'Ndryshimet e kësaj politike',
+      body: [
+        'Mund ta përditësojmë këtë politikë kur ndryshon aplikacioni. Data në krye tregon kur është përditësuar për herë të fundit.',
+      ],
+    },
+    {
+      title: 'Na kontakto',
+      body: [`Ke pyetje për privatësinë tënde? Na shkruaj në ${SUPPORT_EMAIL}.`],
+    },
+  ],
+};
+
+/** The Privacy Policy in each app language. */
+export const PRIVACY: Record<AppLanguage, LegalDocument> = { en: PRIVACY_EN, sq: PRIVACY_SQ };

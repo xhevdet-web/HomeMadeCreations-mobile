@@ -1,3 +1,4 @@
+import i18n from '@/i18n';
 import type { User } from '../types/models';
 
 export interface Tokens {
@@ -7,7 +8,7 @@ export interface Tokens {
 }
 
 export function parseTokens(value: unknown): Tokens {
-  if (!value || typeof value !== 'object') throw new Error('Invalid sign-in response.');
+  if (!value || typeof value !== 'object') throw new Error(i18n.t('errors.invalidSignIn'));
   const data = value as Record<string, unknown>;
   // The API supplies a lifetime in seconds. Session validity is verified by /auth/me.
   const expiresAt =
@@ -22,9 +23,9 @@ export function parseTokens(value: unknown): Tokens {
     !Number.isFinite(expiresAt) ||
     expiresAt <= Date.now()
   )
-    throw new Error('Your session has expired. Please sign in again.');
+    throw new Error(i18n.t('errors.sessionExpired'));
   if (data.refreshToken !== undefined && typeof data.refreshToken !== 'string')
-    throw new Error('Invalid sign-in response.');
+    throw new Error(i18n.t('errors.invalidSignIn'));
   return {
     accessToken: data.accessToken,
     refreshToken: data.refreshToken as string | undefined,
@@ -33,12 +34,12 @@ export function parseTokens(value: unknown): Tokens {
 }
 
 export function parseUser(value: unknown): User {
-  if (!value || typeof value !== 'object') throw new Error('Invalid account response.');
+  if (!value || typeof value !== 'object') throw new Error(i18n.t('errors.invalidAccount'));
   const data = value as Record<string, unknown>;
   for (const field of ['id', 'firstName', 'lastName', 'email'])
     if (typeof data[field] !== 'string' || !data[field])
-      throw new Error('Invalid account response.');
-  if (data.isActive === false) throw new Error('Your account is inactive.');
+      throw new Error(i18n.t('errors.invalidAccount'));
+  if (data.isActive === false) throw new Error(i18n.t('errors.accountInactive'));
   // Adapt flat API address fields to the existing mobile address model.
   return {
     userName: typeof data.userName === 'string' ? data.userName : undefined,

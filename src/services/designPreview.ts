@@ -1,4 +1,5 @@
 import { Image, PixelRatio, Platform, View } from 'react-native';
+import i18n from '@/i18n';
 import { File } from 'expo-file-system';
 import { captureRef } from 'react-native-view-shot';
 import { itemById } from './catalog';
@@ -43,7 +44,7 @@ async function capturePreview(view: Parameters<typeof captureRef>[0], output: Pr
 /** Captures a design view (840×840 PNG by default) once its remote images have loaded. */
 export async function captureViewPreview(view: View | null, imageUrls: (string | null | undefined)[],
   output: PreviewFormat = PNG_PREVIEW): Promise<string> {
-  if (!view) throw new Error('The design preview is not ready. Please retry.');
+  if (!view) throw new Error(i18n.t('studioMessages.previewNotReady'));
   const urls = [...new Set(imageUrls.filter(
     (url): url is string => typeof url === 'string' && /^https?:\/\//i.test(url),
   ))];
@@ -53,7 +54,7 @@ export async function captureViewPreview(view: View | null, imageUrls: (string |
   try {
     return await capturePreview(view as unknown as Parameters<typeof captureRef>[0], output);
   } catch {
-    throw new Error('Could not capture your design preview. Your design is safe; please retry.');
+    throw new Error(i18n.t('studioMessages.captureFailed'));
   }
 }
 

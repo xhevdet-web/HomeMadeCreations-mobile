@@ -1,5 +1,6 @@
 import { useEffect, useId } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import Animated, { SharedValue, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import Svg, { Circle, Defs, G, Path, RadialGradient, Stop } from 'react-native-svg';
 import { DesignItem as DesignItemModel, JewelryType } from '@/types/models';
@@ -57,11 +58,12 @@ function PlacedBead({ entry, index, base, type, size, scale, beadRadius, selecte
       ],
     };
   });
+  const { t } = useTranslation();
   return (
     <Animated.View style={[{ position: 'absolute', left: 0, top: 0, width: box, height: box }, style]}>
       <Pressable testID={`placed-${entry.id}`}
         accessibilityRole={onSelect ? 'button' : undefined}
-        accessibilityLabel={`Select canvas position ${index + 1}, ${name}`}
+        accessibilityLabel={t('jewelry.canvasPosition', { position: index + 1, name })}
         onPress={onSelect ? () => onSelect(entry.id) : undefined}
         disabled={!onSelect}
         style={{ width: box, height: box }}>
@@ -100,6 +102,7 @@ export function JewelryCanvas({
       : withTiming(layout.beadRadius, { duration: ZOOM_MS });
   }, [layout.scale, layout.beadRadius, exportMode, scale, beadRadius]);
   const cordColor = exportMode ? '#C7773F' : theme.colors.gold;
+  const { t } = useTranslation();
   const necklace = type === 'necklace';
   const cord = cordPath(type, layout.scale);
   // The clasp sits at the top of the piece, where the curve starts.
@@ -109,7 +112,7 @@ export function JewelryCanvas({
   return (
     <View
       style={{ width: size, height: size, alignSelf: 'center' }}
-      accessibilityLabel={`${type} with ${items.length} components`}
+      accessibilityLabel={t('jewelry.canvasLabel', { piece: t(`jewelry.pieceTypes.${type}`), count: items.length })}
     >
       <Svg width="100%" height="100%" viewBox="0 0 320 320" style={{ position: 'absolute' }}
         pointerEvents="box-none">
@@ -165,7 +168,7 @@ export function JewelryCanvas({
         <View pointerEvents="none" style={{ position: 'absolute', inset: 0, alignItems: 'center',
           justifyContent: 'center' }}>
           <Text style={{ color: theme.colors.muted, fontSize: 12, textAlign: 'center' }}>
-            Add your first bead
+            {t('jewelry.firstBead')}
           </Text>
         </View>
       )}

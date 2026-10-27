@@ -3,12 +3,12 @@
 export const PASSWORD_MIN_LENGTH = 12;
 export const PASSWORD_MAX_LENGTH = 128;
 
-/** Each rule with whether `password` meets it, for showing the requirements. */
+/** Each rule (screens show it as `auth.password.ruleMin` / `ruleMax`) and whether it is met. */
 export function passwordRequirements(password: string) {
   return [
-    { label: `At least ${PASSWORD_MIN_LENGTH} characters`, met: password.length >= PASSWORD_MIN_LENGTH },
-    { label: `No more than ${PASSWORD_MAX_LENGTH} characters`, met: password.length <= PASSWORD_MAX_LENGTH },
-  ];
+    { id: 'min', count: PASSWORD_MIN_LENGTH, met: password.length >= PASSWORD_MIN_LENGTH },
+    { id: 'max', count: PASSWORD_MAX_LENGTH, met: password.length <= PASSWORD_MAX_LENGTH },
+  ] as const;
 }
 
 export function meetsPasswordPolicy(password: string) {

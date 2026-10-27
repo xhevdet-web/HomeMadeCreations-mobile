@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { EmptyState, Header, IconButton, Page } from '@/components/common/ui';
 import { CatalogState } from '@/components/products/CatalogState';
 import { Pagination } from '@/components/common/Pagination';
@@ -9,6 +10,7 @@ import type { OrderPage } from '@/api/commerceModels';
 import { OrderCard } from './components/OrderCard';
 
 export default function OrdersScreen() {
+  const { t } = useTranslation();
   const [page, setPage] = useState(1);
   const result = useApiResult<OrderPage>(useGetOrdersQuery(page));
   const orders = result.data?.data ?? [];
@@ -18,12 +20,12 @@ export default function OrdersScreen() {
   return (
     <Page style={{ gap: 16 }}>
       <Header
-        title="My Orders"
-        subtitle={total ? `${total} ${total === 1 ? 'order' : 'orders'}` : undefined}
+        title={t('orders.title')}
+        subtitle={total ? t('orders.count', { count: total }) : undefined}
         right={
           <IconButton
             name="refresh-outline"
-            label="Refresh orders"
+            label={t('orders.refresh')}
             disabled={result.loading}
             onPress={result.retry}
           />
@@ -47,9 +49,9 @@ export default function OrdersScreen() {
       ) : (
         <EmptyState
           icon="bag-handle-outline"
-          title="No orders yet"
-          description="When you order a design or a ready-made piece, you can follow it here from workshop to doorstep."
-          action="Start designing"
+          title={t('orders.emptyTitle')}
+          description={t('orders.emptyBody')}
+          action={t('orders.emptyAction')}
           onPress={() => router.push('/categories')}
         />
       )}

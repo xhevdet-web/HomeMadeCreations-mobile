@@ -1,4 +1,5 @@
 import type { CatalogComponent } from './catalogModels';
+import type { TFunction } from 'i18next';
 import type { CategorySize } from '@/types/models';
 import type { DesignSide, TextLayer } from './builderModels';
 import type { PrintAreas, SizeStock } from './apparelModels';
@@ -91,18 +92,13 @@ export interface CommunityCreation {
 export const orderStages = [
   'ORDERED', 'CREATING', 'CREATED', 'READY_FOR_COURIER', 'PICKED_UP_BY_COURIER', 'COMPLETED',
 ] as const;
-export const orderStatusLabels: Record<string, string> = {
-  ORDERED: 'Ordered',
-  CREATING: 'Being made',
-  CREATED: 'Created',
-  READY_FOR_COURIER: 'Ready for courier',
-  PICKED_UP_BY_COURIER: 'With courier',
-  COMPLETED: 'Completed',
-};
-export const orderStatusLabel = (status: string) =>
-  orderStatusLabels[status] ?? status.replaceAll('_', ' ').toLowerCase();
-export const paymentLabel = (paymentType: string) =>
-  paymentType === 'CASH_ON_DELIVERY' ? 'Cash on Delivery' : paymentType.replaceAll('_', ' ').toLowerCase();
+export type OrderStage = (typeof orderStages)[number];
+export const isOrderStage = (status: string): status is OrderStage => orderStages.includes(status as OrderStage);
+/** Customer-friendly status in the current language; an unknown backend value is shown readably. */
+export const orderStatusLabel = (t: TFunction, status: string) =>
+  isOrderStage(status) ? t(`orderStatus.${status}`) : status.replaceAll('_', ' ').toLowerCase();
+export const paymentLabel = (t: TFunction, paymentType: string) =>
+  paymentType === 'CASH_ON_DELIVERY' ? t('payment.cashOnDelivery') : paymentType.replaceAll('_', ' ').toLowerCase();
 export interface ApiOrder {
   id: string;
   userId: string;

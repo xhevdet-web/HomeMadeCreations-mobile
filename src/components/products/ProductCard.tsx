@@ -2,6 +2,7 @@ import { useTheme, useThemedStyles } from '@/hooks/useTheme';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Product } from '@/types/models';
 import { type Theme } from '@/constants/theme';
 import { CatalogImage } from './CatalogImage';
@@ -12,11 +13,12 @@ export function ProductCard({ product, width }: { product: Product; width: numbe
   const theme = useTheme();
   const ui = useUI();
   const styles = useThemedStyles(createStyles);
+  const { t } = useTranslation();
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Customize ${product.name}, starting from ${money(product.price ?? product.basePrice)}`}
+      accessibilityLabel={t('legacy.customizeFrom', { name: product.name, price: money(product.price ?? product.basePrice) })}
       onPress={() => router.push({ pathname: '/details', params: { id: product.id } })}
       style={({ pressed }) => [styles.card, { width, opacity: pressed ? 0.8 : 1 }]}
     >
@@ -35,11 +37,11 @@ export function ProductCard({ product, width }: { product: Product; width: numbe
         </View>
       </LinearGradient>
       <View style={styles.info}>
-        <Text style={styles.type}>{product.type.toUpperCase()} · YOUR OWN STORY</Text>
+        <Text style={styles.type}>{t('legacy.yourOwnStory', { type: product.type.toUpperCase() })}</Text>
         <Text style={styles.name}>{product.name}</Text>
         <View style={ui.between}>
           <View>
-            <Text style={styles.from}>Starting from</Text>
+            <Text style={styles.from}>{t('legacy.startingFrom')}</Text>
             <Text style={styles.price}>{money(product.price ?? product.basePrice)}</Text>
           </View>
           <View style={styles.arrow}>

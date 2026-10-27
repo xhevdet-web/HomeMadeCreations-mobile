@@ -18,6 +18,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { type Theme } from '@/constants/theme';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
@@ -170,13 +171,14 @@ export function Header({
   right?: ReactNode;
 }) {
   const ui = useUI();
+  const { t } = useTranslation();
 
   return (
     <View style={ui.header}>
       {back && (
         <IconButton
           name="arrow-back"
-          label="Go back"
+          label={t('common.back')}
           onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
         />
       )}

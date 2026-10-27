@@ -5,12 +5,16 @@ import { authStorage } from '../services/authStorage';
 import { authSlice, type RegistrationInput } from '@/api/endpoints/authSlice';
 import { apiStore } from '@/api/store';
 import { apiError, apiSlice } from '@/api/apiSlice';
+import i18n from '@/i18n';
+
+/** Session problems shown on the sign-in screens, as translation keys. */
+export type SessionError = 'auth.session.signInAgain' | 'auth.session.clearFailed';
 
 interface AuthState {
   user: User | null;
   status: 'checking' | 'authenticated' | 'anonymous';
   expiresAt: number | null;
-  error: string | null;
+  error: SessionError | null;
   restore: () => Promise<void>;
   signIn: (identifier: string, password: string) => Promise<void>;
   beginLogin: () => number;
@@ -28,12 +32,12 @@ function stored<T>(operation: () => Promise<T>): Promise<T> {
   return result;
 }
 async function validate(tokens: Tokens) {
-  if (tokens.expiresAt <= Date.now()) throw new Error('Session expired.');
+  if (tokens.expiresAt <= Date.now()) throw new Error(i18n.t('errors.sessionExpired'));
   const request = apiStore.dispatch(authSlice.endpoints.getMe.initiate(tokens.accessToken, { forceRefetch: true }));
   let user;
   try { user = await request.unwrap(); } catch (error) { throw apiError(error); }
   finally { request.unsubscribe(); }
-  if (tokens.expiresAt <= Date.now()) throw new Error('Session expired.');
+  if (tokens.expiresAt <= Date.now()) throw new Error(i18n.t('errors.sessionExpired'));
   return user;
 }
 
@@ -72,7 +76,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             user: null,
             status: 'anonymous',
             expiresAt: null,
-            error: 'Please sign in to continue.',
+            error: 'auth.session.signInAgain',
           });
       } finally {
         restoring = null;
@@ -124,8 +128,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await stored(authStorage.clear);
     } catch {
       set({
-        error:
-          'Could not clear the saved session. Please retry signing out before closing the app.',
+        error: 'auth.session.clearFailed',
       });
     }
   },

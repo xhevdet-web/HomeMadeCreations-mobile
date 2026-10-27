@@ -3,6 +3,7 @@ import { Icon } from '@/components/common/ui';
 import { CatalogImage } from '@/components/products/CatalogImage';
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
 import { type Theme } from '@/constants/theme';
+import { useTranslation } from 'react-i18next';
 import type { BuilderType } from '@/api/builderModels';
 import type { CatalogCategory } from '@/api/catalogModels';
 import { builderOf, IDEAS, type Idea } from '../homeContent';
@@ -25,13 +26,15 @@ export function InspirationSection({ categories, triedBuilders, onStart }: {
   onStart: (category: CatalogCategory) => void;
 }) {
   const theme = useTheme();
+  const { t } = useTranslation();
   const styles = useThemedStyles(createStyles);
   const personal = triedBuilders.size > 0;
   const ideas = IDEAS.flatMap((idea): IdeaCard[] => {
     const category = categories.find((entry) => builderOf(entry) === idea.builder);
     if (!category) return [];
     const tried = triedBuilders.has(idea.builder);
-    return [{ ...idea, category, note: !personal ? 'IDEA' : tried ? 'MAKE ANOTHER' : 'TRY SOMETHING DIFFERENT' }];
+    return [{ ...idea, category,
+      note: t(!personal ? 'home.ideaNote' : tried ? 'home.ideaNoteAnother' : 'home.ideaNoteDifferent') }];
   }).sort((a, b) => Number(triedBuilders.has(a.builder)) - Number(triedBuilders.has(b.builder)));
   if (!ideas.length) return null;
 
@@ -40,19 +43,23 @@ export function InspirationSection({ categories, triedBuilders, onStart }: {
 
   return (
     <View style={{ gap: 14 }}>
-      <SectionHeader eyebrow="NEED SOME INSPIRATION?" title="Ideas for you"
-        subtitle="Not sure where to start? Try one of these."
+      <SectionHeader eyebrow={t('home.ideasEyebrow')} title={t('home.ideasTitle')}
+        subtitle={t('home.ideasSubtitle')}
         right={(
-          <Pressable accessibilityRole="button" accessibilityLabel="Surprise me: open a random studio"
+          <Pressable accessibilityRole="button" accessibilityLabel={t('home.surpriseMeLabel')}
             onPress={surprise} hitSlop={6} style={({ pressed }) => [styles.surprise, { opacity: pressed ? 0.7 : 1 }]}>
             <Icon name="sparkles" size={13} color={theme.colors.accent} />
-            <Text style={styles.surpriseText}>Surprise me</Text>
+            <Text style={styles.surpriseText}>{t('home.surpriseMe')}</Text>
           </Pressable>
         )} />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
-        {ideas.map((idea) => (
+        {ideas.map((idea) => {
+          const title = t(`home.ideas.${idea.builder}.title`);
+          const line = t(`home.ideas.${idea.builder}.line`);
+          const action = t(`home.ideas.${idea.builder}.action`);
+          return (
           <Pressable key={idea.builder} accessibilityRole="button"
-            accessibilityLabel={`${idea.title}. ${idea.line} ${idea.action}`} onPress={() => onStart(idea.category)}
+            accessibilityLabel={`${title}. ${line} ${action}`} onPress={() => onStart(idea.category)}
             style={({ pressed }) => [styles.card, { opacity: pressed ? 0.85 : 1 }]}>
             <View style={styles.image}>
               <CatalogImage imageUrl={idea.category.imageUrl} name={idea.category.name} size={120} />
@@ -62,15 +69,16 @@ export function InspirationSection({ categories, triedBuilders, onStart }: {
             </View>
             <View style={styles.body}>
               <Text style={styles.note}>{idea.note}</Text>
-              <Text style={styles.title} numberOfLines={2}>{idea.title}</Text>
-              <Text style={styles.line} numberOfLines={2}>{idea.line}</Text>
+              <Text style={styles.title} numberOfLines={2}>{title}</Text>
+              <Text style={styles.line} numberOfLines={2}>{line}</Text>
               <View style={styles.cta}>
-                <Text style={styles.ctaText}>{idea.action}</Text>
+                <Text style={styles.ctaText}>{action}</Text>
                 <Icon name="arrow-forward" size={14} color={theme.colors.accent} />
               </View>
             </View>
           </Pressable>
-        ))}
+          );
+        })}
       </ScrollView>
     </View>
   );

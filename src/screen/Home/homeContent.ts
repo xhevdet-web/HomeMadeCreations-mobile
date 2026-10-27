@@ -4,58 +4,39 @@ import type { IconName } from '@/components/common/ui';
 
 // Home's curated discovery content. It is frontend configuration keyed by a category's
 // builderType (never its name), so new categories of a known studio appear automatically.
+// Text lives in the translations (home.createLabels, home.occasions.*, home.ideas.*).
 
 /** The studio a category opens; categories without a builderType use the jewelry studio. */
 export const builderOf = (category: { builderType?: string | null }): BuilderType =>
   parseBuilderType(category.builderType) ?? 'JEWELRY';
 
-/** Short action line under a category on Home. */
-export const CREATE_LABELS: Record<BuilderType, string> = {
-  JEWELRY: 'Design your own',
-  BOUQUET: 'Arrange your own',
-  GIFT: 'Build your own',
-  APPAREL: 'Customize yours',
-};
-
 export interface Occasion {
-  id: string;
-  title: string;
-  line: string;
+  /** Its text is home.occasions.<id>.title / .line */
+  id: 'birthday' | 'anniversary' | 'thankYou' | 'justBecause' | 'someoneSpecial';
   icon: IconName;
   /** Studios that suit the occasion, best first. */
   builders: BuilderType[];
 }
 
 export const OCCASIONS: Occasion[] = [
-  { id: 'birthday', title: 'Birthday', line: 'For their special day', icon: 'gift-outline',
-    builders: ['GIFT', 'BOUQUET', 'JEWELRY'] },
-  { id: 'anniversary', title: 'Anniversary', line: 'Make it personal', icon: 'heart-outline',
-    builders: ['BOUQUET', 'JEWELRY', 'GIFT'] },
-  { id: 'thank-you', title: 'Thank you', line: 'A small way to say thanks', icon: 'sparkles-outline',
-    builders: ['BOUQUET', 'GIFT'] },
-  { id: 'just-because', title: 'Just because', line: 'No occasion needed', icon: 'sunny-outline',
-    builders: ['JEWELRY', 'APPAREL', 'BOUQUET', 'GIFT'] },
-  { id: 'someone-special', title: 'For someone special', line: 'Create something just for them',
-    icon: 'rose-outline', builders: ['JEWELRY', 'BOUQUET', 'APPAREL'] },
+  { id: 'birthday', icon: 'gift-outline', builders: ['GIFT', 'BOUQUET', 'JEWELRY'] },
+  { id: 'anniversary', icon: 'heart-outline', builders: ['BOUQUET', 'JEWELRY', 'GIFT'] },
+  { id: 'thankYou', icon: 'sparkles-outline', builders: ['BOUQUET', 'GIFT'] },
+  { id: 'justBecause', icon: 'sunny-outline', builders: ['JEWELRY', 'APPAREL', 'BOUQUET', 'GIFT'] },
+  { id: 'someoneSpecial', icon: 'rose-outline', builders: ['JEWELRY', 'BOUQUET', 'APPAREL'] },
 ];
 
+/** One idea per studio; its text is home.ideas.<builder>.title / .line / .action */
 export interface Idea {
   builder: BuilderType;
-  title: string;
-  line: string;
-  action: string;
   icon: IconName;
 }
 
 export const IDEAS: Idea[] = [
-  { builder: 'BOUQUET', title: 'Flowers for someone special', line: 'Arrange a bouquet made by you.',
-    action: 'Start creating', icon: 'rose-outline' },
-  { builder: 'GIFT', title: 'Build the perfect gift', line: 'Choose what goes inside and make it personal.',
-    action: 'Create a gift', icon: 'gift-outline' },
-  { builder: 'APPAREL', title: 'Wear your idea', line: 'Turn something you love into a piece to wear.',
-    action: 'Customize', icon: 'shirt-outline' },
-  { builder: 'JEWELRY', title: 'Make your own jewelry', line: 'Choose every bead and detail yourself.',
-    action: 'Start designing', icon: 'diamond-outline' },
+  { builder: 'BOUQUET', icon: 'rose-outline' },
+  { builder: 'GIFT', icon: 'gift-outline' },
+  { builder: 'APPAREL', icon: 'shirt-outline' },
+  { builder: 'JEWELRY', icon: 'diamond-outline' },
 ];
 
 /** Active categories that open one of `builders`, in that order of preference. */

@@ -1,4 +1,5 @@
 import { Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { IconButton, useUI } from '@/components/common/ui';
 import { money } from '@/helper/pricing';
 import { OrderItem } from '@/types/models';
@@ -17,6 +18,7 @@ export function PriceLineRow({
   onAdd: () => void;
 }) {
   const ui = useUI();
+  const { t } = useTranslation();
   return (
     <View style={{ gap: 8 }}>
       <View style={ui.between}>
@@ -24,18 +26,18 @@ export function PriceLineRow({
         <Text style={ui.label}>{money(line.quantity * line.unitPrice)}</Text>
       </View>
       <View style={ui.between}>
-        <Text style={ui.caption}>{money(line.unitPrice)} each</Text>
+        <Text style={ui.caption}>{t('jewelry.each', { price: money(line.unitPrice) })}</Text>
         <View style={ui.row}>
           <IconButton
             name="remove"
-            label={'Remove one ' + line.name}
+            label={t('jewelry.removeOne', { name: line.name })}
             disabled={disabled}
             onPress={onRemove}
           />
           <Text style={ui.label}>{line.quantity}</Text>
           <IconButton
             name="add"
-            label={'Add one ' + line.name}
+            label={t('jewelry.addOne', { name: line.name })}
             disabled={disabled || addDisabled}
             onPress={onAdd}
           />

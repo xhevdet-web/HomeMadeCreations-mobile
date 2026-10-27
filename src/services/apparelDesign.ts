@@ -1,4 +1,6 @@
 import type { ApparelPlacement, DesignSide } from '@/api/builderModels';
+import i18n from '@/i18n';
+import type { TFunction } from 'i18next';
 import { DESIGN_SIDES, parseApparelTexts } from '@/api/builderModels';
 import type { BaseProduct, ProductInput, SavedProduct } from '@/api/commerceModels';
 import { productFormData } from '@/api/endpoints/productSlice';
@@ -15,7 +17,7 @@ export function pieceColor(base?: Pick<BaseProduct, 'colorHex'> | null) {
 /** The draft as a CUSTOMER product made on its base product, in the chosen size. */
 export function apparelInput(categoryId: string): ProductInput {
   const draft = useApparelStore.getState();
-  if (!draft.baseProductId) throw new Error('Choose the piece you want to design.');
+  if (!draft.baseProductId) throw new Error(i18n.t('apparel.choosePieceError'));
   // Customer artwork is uploaded alongside; each own design points at its file.
   let uploads = 0;
   // Printed text keeps its side; it is never priced.
@@ -31,7 +33,7 @@ export function apparelInput(categoryId: string): ProductInput {
     categoryId,
     baseProductId: draft.baseProductId,
     ...(draft.size ? { selectedSizeId: draft.size } : {}),
-    name: draft.name.trim() || 'My design',
+    name: draft.name.trim() || i18n.t('drafts.myDesign'),
     // One ProductItem per placed design keeps pricing (quantity × unitPrice) unchanged.
     items: draft.placements.map((placement, position) => ({
       subCategoryId: placement.subCategoryId,
@@ -122,9 +124,9 @@ export function isApparelProduct(product: { category?: { builderType?: string | 
 }
 
 /** Summary line parts for an apparel design, e.g. ['2 designs', 'Black', 'L']. */
-export function apparelMeta(product: Pick<SavedProduct, 'itemCount' | 'baseProduct' | 'selectedSize'>) {
+export function apparelMeta(t: TFunction, product: Pick<SavedProduct, 'itemCount' | 'baseProduct' | 'selectedSize'>) {
   return [
-    `${product.itemCount} ${product.itemCount === 1 ? 'design' : 'designs'}`,
+    t('counts.design', { count: product.itemCount }),
     ...(product.baseProduct?.color ? [product.baseProduct.color] : []),
     ...(product.selectedSize?.name ? [product.selectedSize.name] : []),
   ];

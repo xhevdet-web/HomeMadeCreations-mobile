@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import i18n from '@/i18n';
 import { persist } from 'zustand/middleware';
 import type { CanvasPlacement, TextLayer } from '@/api/builderModels';
 import type { SavedProduct } from '@/api/commerceModels';
@@ -92,7 +93,7 @@ export const useCanvasStore = create<CanvasState>()(
             set({ builderType: draft.builderType, categoryName: draft.categoryName, base: draft.base });
             return;
           }
-          set({ ...empty, ...draft, name: `My ${draft.categoryName}`, ...fresh, saved: null });
+          set({ ...empty, ...draft, name: i18n.t('drafts.myName', { name: draft.categoryName }), ...fresh, saved: null });
         },
         load: (draft) => set({
           ...draft,

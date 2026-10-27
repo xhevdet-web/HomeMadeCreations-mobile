@@ -1,7 +1,7 @@
 import { type ComponentRef, useRef, useState } from 'react';
 import { Keyboard, StyleSheet, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
-import { apiError } from '@/api/apiSlice';
+import { useTranslation } from 'react-i18next';
 import { useChangePasswordMutation } from '@/api/endpoints/authSlice';
 import { PasswordInput } from '@/components/common/PasswordInput';
 import { Button, Header, Icon, Page, useUI } from '@/components/common/ui';
@@ -10,7 +10,7 @@ import { passwordRequirements } from '@/helper/passwordPolicy';
 import { useFeedbackState } from '@/hooks/useFeedbackState';
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
 import { toast } from '@/store/toastStore';
-import { type PasswordChange, validatePasswordChange } from '@/screen/Auth/authForm';
+import { passwordChangeErrorMessage, type PasswordChange, validatePasswordChange } from '@/screen/Auth/authForm';
 import { PasswordMatch, PasswordStrength } from '@/screen/Auth/components/PasswordChecks';
 
 const empty: PasswordChange = { currentPassword: '', newPassword: '', confirmPassword: '' };
@@ -18,6 +18,7 @@ const empty: PasswordChange = { currentPassword: '', newPassword: '', confirmPas
 export default function ChangePasswordScreen() {
   const ui = useUI();
   const theme = useTheme();
+  const { t } = useTranslation();
   const styles = useThemedStyles(createStyles);
   const [form, setForm] = useState<PasswordChange>(empty);
   const [error, setError] = useFeedbackState();
@@ -44,10 +45,9 @@ export default function ChangePasswordScreen() {
       setForm(empty);
       setDone(true);
       // Replaces any earlier error toast.
-      toast.success('Password updated.');
+      toast.success(t('auth.changePassword.updatedToast'));
     } catch (failure) {
-      const failed = apiError(failure);
-      setError(failed.status === 401 ? 'Your session has expired. Please sign in again.' : failed.message);
+      setError(passwordChangeErrorMessage(failure));
     } finally {
       sending.current = false;
     }
@@ -56,58 +56,62 @@ export default function ChangePasswordScreen() {
   if (done)
     return (
       <Page style={{ gap: 22 }}>
-        <Header title="Change password" back />
+        <Header title={t('auth.changePassword.title')} back />
         <View style={[ui.card, { alignItems: 'center', paddingVertical: 32 }]} accessibilityLiveRegion="polite">
           <View style={styles.successIcon}>
             <Icon name="checkmark" size={30} color={theme.colors.success} />
           </View>
-          <Text style={ui.sectionTitle} accessibilityRole="header">Password updated</Text>
+          <Text style={ui.sectionTitle} accessibilityRole="header">{t('auth.changePassword.updated')}</Text>
           <Text style={[ui.body, { textAlign: 'center' }]}>
-            Your password has been changed successfully. Use your new password the next time you sign in.
+            {t('auth.changePassword.updatedBody')}
           </Text>
         </View>
-        <Button title="Done" icon="checkmark" onPress={() => (router.canGoBack() ? router.back() : router.replace('/profile'))} />
+        <Button title={t('common.done')} icon="checkmark" onPress={() => (router.canGoBack() ? router.back() : router.replace('/profile'))} />
       </Page>
     );
 
   const requirements = passwordRequirements(form.newPassword);
   return (
     <Page style={{ gap: 22 }}>
-      <Header title="Change password" back />
+      <Header title={t('auth.changePassword.title')} back />
       <View style={{ gap: 8 }}>
-        <Text style={ui.title}>Change your password</Text>
-        <Text style={ui.body}>Choose a strong password that you haven’t used before.</Text>
+        <Text style={ui.title}>{t('auth.changePassword.heading')}</Text>
+        <Text style={ui.body}>{t('auth.changePassword.intro')}</Text>
       </View>
 
       <View style={[ui.card, { gap: 18 }]}>
-        <PasswordInput label="Current password" value={form.currentPassword}
+        <PasswordInput label={t('auth.changePassword.current')} value={form.currentPassword}
           onChangeText={update('currentPassword')} autoComplete="current-password" textContentType="password"
           returnKeyType="next" submitBehavior="submit" onSubmitEditing={() => newRef.current?.focus()}
           editable={!isLoading} />
 
         <View style={{ gap: 10 }}>
-          <PasswordInput ref={newRef} label="New password" value={form.newPassword}
+          <PasswordInput ref={newRef} label={t('auth.changePassword.new')} value={form.newPassword}
             onChangeText={update('newPassword')} autoComplete="new-password" textContentType="newPassword"
             returnKeyType="next" submitBehavior="submit" onSubmitEditing={() => confirmRef.current?.focus()}
             editable={!isLoading} />
           <PasswordStrength password={form.newPassword} />
-          <View style={{ gap: 6 }} accessibilityLabel="Password requirements">
-            <Text style={ui.caption}>Your password must have:</Text>
-            {requirements.map((rule) => (
-              <View key={rule.label} style={styles.rule}
-                accessibilityLabel={`${rule.label}, ${rule.met && form.newPassword ? 'met' : 'not met yet'}`}>
+          <View style={{ gap: 6 }}>
+            <Text style={ui.caption}>{t('auth.changePassword.requirements')}</Text>
+            {requirements.map((rule) => {
+              const label = t(rule.id === 'min' ? 'auth.password.ruleMin' : 'auth.password.ruleMax', { count: rule.count });
+              const met = rule.met && !!form.newPassword;
+              return (
+              <View key={rule.id} style={styles.rule}
+                accessibilityLabel={t(met ? 'auth.changePassword.ruleMet' : 'auth.changePassword.ruleNotMet', { rule: label })}>
                 <Icon name={rule.met && form.newPassword ? 'checkmark-circle' : 'ellipse-outline'} size={14}
                   color={rule.met && form.newPassword ? theme.colors.success : theme.colors.muted} />
                 <Text style={[ui.caption, rule.met && form.newPassword && { color: theme.colors.success }]}>
-                  {rule.label}
+                  {label}
                 </Text>
               </View>
-            ))}
+              );
+            })}
           </View>
         </View>
 
         <View style={{ gap: 10 }}>
-          <PasswordInput ref={confirmRef} label="Confirm new password" value={form.confirmPassword}
+          <PasswordInput ref={confirmRef} label={t('auth.changePassword.confirm')} value={form.confirmPassword}
             onChangeText={update('confirmPassword')} autoComplete="new-password" textContentType="newPassword"
             returnKeyType="done" onSubmitEditing={() => void submit()} editable={!isLoading} />
           <PasswordMatch password={form.newPassword} confirm={form.confirmPassword} />
@@ -115,10 +119,10 @@ export default function ChangePasswordScreen() {
       </View>
 
       {error ? <Text accessibilityRole="alert" style={ui.error}>{error}</Text> : null}
-      <Button title="Update password" icon="lock-closed-outline" loading={isLoading} disabled={isLoading}
+      <Button title={t('auth.changePassword.submit')} icon="lock-closed-outline" loading={isLoading} disabled={isLoading}
         onPress={() => void submit()} />
       <Text style={[ui.caption, { textAlign: 'center' }]}>
-        You’ll stay signed in on this device after changing your password.
+        {t('auth.changePassword.staySignedIn')}
       </Text>
     </Page>
   );

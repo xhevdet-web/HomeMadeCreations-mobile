@@ -2,12 +2,13 @@ import { Text, View } from 'react-native';
 import { Button, useUI } from '@/components/common/ui';
 import { useTheme } from '@/hooks/useTheme';
 import { money } from '@/helper/pricing';
+import { useTranslation } from 'react-i18next';
 
 export function ActionFooter({
   title,
   onPress,
   amount,
-  amountLabel = 'Total',
+  amountLabel,
   caption,
   disabled,
   loading,
@@ -22,6 +23,7 @@ export function ActionFooter({
 }) {
   const ui = useUI();
   const theme = useTheme();
+  const { t } = useTranslation();
   return (
     <View
       testID="flow-action-footer"
@@ -43,7 +45,7 @@ export function ActionFooter({
       >
         {amount !== undefined && (
           <View style={ui.between}>
-            <Text style={ui.caption}>{amountLabel}</Text>
+            <Text style={ui.caption}>{amountLabel ?? t('common.total')}</Text>
             <Text style={{ fontSize: 23, color: theme.colors.text, fontWeight: '600' }}>
               {money(amount)}
             </Text>

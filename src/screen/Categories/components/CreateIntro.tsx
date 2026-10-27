@@ -2,19 +2,21 @@ import { StyleSheet, Text, View } from 'react-native';
 import { useUI } from '@/components/common/ui';
 import { useThemedStyles } from '@/hooks/useTheme';
 import { type Theme } from '@/constants/theme';
+import { useTranslation } from 'react-i18next';
 
-const steps = ['Category', 'Explore', 'Create'];
 
 export function CreateIntro() {
   const ui = useUI();
   const styles = useThemedStyles(createStyles);
+  const { t } = useTranslation();
+  const steps = [t('categories.stepCategory'), t('categories.stepExplore'), t('categories.stepCreate')];
   return (
     <View style={{ gap: 14, marginBottom: 6 }}>
       <View style={{ gap: 4 }}>
-        <Text style={styles.title}>What would you like to create?</Text>
-        <Text style={ui.body}>Pick a category to explore its pieces, or create your own design.</Text>
+        <Text style={styles.title}>{t('categories.introTitle')}</Text>
+        <Text style={ui.body}>{t('categories.introBody')}</Text>
       </View>
-      <View style={styles.steps} accessibilityLabel="Step 1 of 3: choose a category">
+      <View style={styles.steps} accessibilityLabel={t('categories.stepLabel')}>
         {steps.map((step, index) => (
           <View key={step} style={styles.step}>
             <View style={[styles.dot, index === 0 && styles.dotActive]}>

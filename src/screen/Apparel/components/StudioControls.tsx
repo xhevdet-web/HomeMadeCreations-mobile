@@ -4,6 +4,7 @@ import { DESIGN_SIDES } from '@/api/builderModels';
 import { IconButton, IconName } from '@/components/common/ui';
 import { useThemedStyles } from '@/hooks/useTheme';
 import { type Theme } from '@/constants/theme';
+import { useTranslation } from 'react-i18next';
 
 export function SideSwitch({ side, counts, onChange }: {
   side: DesignSide;
@@ -11,16 +12,17 @@ export function SideSwitch({ side, counts, onChange }: {
   onChange: (side: DesignSide) => void;
 }) {
   const styles = useThemedStyles(createStyles);
+  const { t } = useTranslation();
   return (
     <View style={styles.switch} accessibilityRole="tablist">
       {DESIGN_SIDES.map((value) => {
         const active = value === side;
         return (
           <Pressable key={value} accessibilityRole="tab" accessibilityState={{ selected: active }}
-            accessibilityLabel={`${value === 'FRONT' ? 'Front' : 'Back'}, ${counts[value]} designs`}
+            accessibilityLabel={t('apparel.sideLabel', { side: t(value === 'FRONT' ? 'apparel.front' : 'apparel.back'), designs: t('counts.design', { count: counts[value] }) })}
             onPress={() => onChange(value)} style={[styles.segment, active && styles.segmentActive]}>
             <Text style={[styles.segmentText, active && styles.segmentTextActive]}>
-              {value === 'FRONT' ? 'Front' : 'Back'}
+              {t(value === 'FRONT' ? 'apparel.front' : 'apparel.back')}
             </Text>
             {counts[value] > 0 && (
               <View style={[styles.badge, active && styles.badgeActive]}>
@@ -52,17 +54,18 @@ export function DesignToolbar({ name, onSmaller, onLarger, onRotateLeft, onRotat
   onDone: () => void;
 }) {
   const styles = useThemedStyles(createStyles);
+  const { t } = useTranslation();
   return (
     <View style={styles.toolbar}>
       <Text style={styles.toolbarName} numberOfLines={1}>{name}</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tools}>
-        <ToolButton icon="remove" label={`Make ${name} smaller`} onPress={onSmaller} />
-        <ToolButton icon="add" label={`Make ${name} larger`} onPress={onLarger} />
-        <ToolButton icon="refresh-outline" label={`Rotate ${name} left`} onPress={onRotateLeft} />
-        <ToolButton icon="reload-outline" label={`Rotate ${name} right`} onPress={onRotateRight} />
-        <ToolButton icon="locate-outline" label={`Centre ${name}`} onPress={onCenter} />
-        <ToolButton icon="trash-outline" label={`Remove ${name}`} onPress={onRemove} />
-        <ToolButton icon="checkmark" label="Done editing" onPress={onDone} />
+        <ToolButton icon="remove" label={t('studio.smaller', { name })} onPress={onSmaller} />
+        <ToolButton icon="add" label={t('studio.larger', { name })} onPress={onLarger} />
+        <ToolButton icon="refresh-outline" label={t('studio.rotateLeft', { name })} onPress={onRotateLeft} />
+        <ToolButton icon="reload-outline" label={t('studio.rotateRight', { name })} onPress={onRotateRight} />
+        <ToolButton icon="locate-outline" label={t('apparel.centre', { name })} onPress={onCenter} />
+        <ToolButton icon="trash-outline" label={t('studio.removeName', { name })} onPress={onRemove} />
+        <ToolButton icon="checkmark" label={t('studio.doneEditing')} onPress={onDone} />
       </ScrollView>
     </View>
   );

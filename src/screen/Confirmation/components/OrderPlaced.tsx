@@ -4,10 +4,12 @@ import { DetailRow, ProductOverview } from '@/components/checkout/ProductOvervie
 import { useTheme } from '@/hooks/useTheme';
 import { money } from '@/helper/pricing';
 import type { ApiOrder } from '@/api/commerceModels';
+import { useTranslation } from 'react-i18next';
 
 export function OrderPlaced({ order }: { order: ApiOrder }) {
   const ui = useUI();
   const theme = useTheme();
+  const { t } = useTranslation();
   const paid = order.paymentStatus === 'PAID';
   const cashOnDelivery = order.paymentType === 'CASH_ON_DELIVERY';
   return (
@@ -29,20 +31,20 @@ export function OrderPlaced({ order }: { order: ApiOrder }) {
           accessibilityRole="header"
           style={[ui.title, { textAlign: 'center', fontSize: 32, lineHeight: 39 }]}
         >
-          {order.firstName ? 'Thank you, ' + order.firstName + '.' : 'Thank you for your order.'}
+          {order.firstName ? t('confirmation.thankYouName', { name: order.firstName }) : t('confirmation.thankYou')}
         </Text>
-        <Text style={[ui.body, { textAlign: 'center' }]}>Your order has been placed.</Text>
+        <Text style={[ui.body, { textAlign: 'center' }]}>{t('confirmation.placed')}</Text>
       </View>
       <ProductOverview product={order.product} />
       <View style={ui.card}>
-        <DetailRow label="Order number" value={order.orderNumber} />
+        <DetailRow label={t('confirmation.orderNumber')} value={order.orderNumber} />
         <DetailRow
-          label={paid ? 'Paid' : cashOnDelivery ? 'Due on delivery' : 'Order total'}
+          label={paid ? t('orderDetails.paid') : cashOnDelivery ? t('orderDetails.dueOnDelivery') : t('confirmation.orderTotal')}
           value={money(order.totalPrice)}
         />
         <Text style={ui.caption}>
-          {cashOnDelivery && !paid ? 'Pay cash when your order arrives. ' : ''}You can follow its
-          progress in My Orders.
+          {[cashOnDelivery && !paid ? t('confirmation.payCash') : '', t('confirmation.followProgress')]
+            .filter(Boolean).join(' ')}
         </Text>
       </View>
     </>

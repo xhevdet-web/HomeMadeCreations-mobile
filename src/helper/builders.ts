@@ -1,11 +1,12 @@
-const NOUNS: Record<string, [string, string]> = {
-  BOUQUET: ['flower', 'flowers'],
-  GIFT: ['item', 'items'],
-  APPAREL: ['design', 'designs'],
-};
+import type { TFunction } from 'i18next';
 
-/** "8 beads", "5 flowers", "3 items": what a design's components are called. */
-export function componentCount(count: number, builderType?: string | null) {
-  const [one, many] = NOUNS[builderType ?? ''] ?? ['bead', 'beads'];
-  return `${count} ${count === 1 ? one : many}`;
+const NOUNS = { BOUQUET: 'flower', GIFT: 'item', APPAREL: 'design' } as const;
+
+/**
+ * "8 beads", "5 flowers", "3 items": what a design's components are called. Takes the
+ * caller's `t` so the text follows the current language when the screen re-renders.
+ */
+export function componentCount(t: TFunction, count: number, builderType?: string | null) {
+  const noun = NOUNS[builderType as keyof typeof NOUNS] ?? 'bead';
+  return t(`counts.${noun}`, { count });
 }

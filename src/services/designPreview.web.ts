@@ -1,4 +1,5 @@
 import { View } from 'react-native';
+import i18n from '@/i18n';
 import html2canvas from 'html2canvas';
 import { DesignItem } from '@/types/models';
 
@@ -9,7 +10,7 @@ const PNG_PREVIEW: PreviewFormat = { format: 'png', pixels: 840 };
 /** Captures a design view (840×840 PNG by default) once its images have decoded. */
 export async function captureViewPreview(view: View | null, _imageUrls: (string | null | undefined)[],
   output: PreviewFormat = PNG_PREVIEW): Promise<string> {
-  if (!view) throw new Error('The design preview is not ready. Please retry.');
+  if (!view) throw new Error(i18n.t('studioMessages.previewNotReady'));
   try {
     const element = view as unknown as HTMLElement;
     await Promise.all(Array.from(element.querySelectorAll('img')).map(image =>
@@ -28,7 +29,7 @@ export async function captureViewPreview(view: View | null, _imageUrls: (string 
     context.drawImage(canvas, 0, 0, output.pixels, output.pixels);
     return output.format === 'jpg' ? result.toDataURL('image/jpeg', 0.85) : result.toDataURL('image/png');
   } catch {
-    throw new Error('Could not capture your design preview. Your design is safe; please retry.');
+    throw new Error(i18n.t('studioMessages.captureFailed'));
   }
 }
 

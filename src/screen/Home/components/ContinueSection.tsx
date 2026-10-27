@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Icon, IconName, useUI } from '@/components/common/ui';
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
 import { type Theme } from '@/constants/theme';
+import { useTranslation } from 'react-i18next';
 
 export interface ContinueItem {
   key: string;
@@ -15,10 +16,11 @@ export interface ContinueItem {
 /** Work in progress; the whole section is left out when there is none. */
 export function ContinueSection({ items }: { items: ContinueItem[] }) {
   const ui = useUI();
+  const { t } = useTranslation();
   if (!items.length) return null;
   return (
     <View style={{ gap: 10 }}>
-      <Text style={ui.eyebrow}>PICK UP WHERE YOU LEFT OFF</Text>
+      <Text style={ui.eyebrow}>{t('home.continueTitle')}</Text>
       {items.map((item) => <ContinueCard key={item.key} item={item} />)}
     </View>
   );
@@ -27,8 +29,9 @@ export function ContinueSection({ items }: { items: ContinueItem[] }) {
 function ContinueCard({ item }: { item: ContinueItem }) {
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
+  const { t } = useTranslation();
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={`Continue ${item.title}, ${item.detail}`}
+    <Pressable accessibilityRole="button" accessibilityLabel={t('home.continueLabel', { title: item.title, detail: item.detail })}
       onPress={item.onPress} style={({ pressed }) => [styles.card, { opacity: pressed ? 0.8 : 1 }]}>
       <View style={styles.icon}>
         <Icon name={item.icon} size={20} color={theme.colors.accent} />

@@ -7,17 +7,19 @@ import { CatalogImage } from '@/components/products/CatalogImage';
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
 import { money } from '@/helper/pricing';
 import { type Theme } from '@/constants/theme';
+import { useTranslation } from 'react-i18next';
 import { ApiOrder, orderStages, orderStatusLabel, paymentLabel } from '@/api/commerceModels';
 import { CategorySize } from '@/types/models';
-import { OrderTimeline, stageDescriptions } from './OrderTimeline';
+import { OrderTimeline, stageDescription } from './OrderTimeline';
+import { dateLocale } from '@/i18n';
 import { ApparelSummary } from '@/components/apparel/ApparelSummary';
 import { apparelMeta, isApparelProduct } from '@/services/apparelDesign';
 
-function orderDate(value: string) {
+function orderDate(value: string, language: string) {
   const date = new Date(value);
   return Number.isNaN(date.getTime())
     ? ''
-    : date.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
+    : date.toLocaleDateString(dateLocale(language), { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 // ProductItems store consecutive runs; show one line per bead type.
@@ -47,8 +49,9 @@ export function OrderTracking({ order }: { order: ApiOrder }) {
   const theme = useTheme();
   const c = theme.colors;
   const styles = useThemedStyles(createStyles);
+  const { t, i18n } = useTranslation();
   const current = orderStages.findIndex((stage) => stage === order.status);
-  const status = orderStatusLabel(order.status);
+  const status = orderStatusLabel(t, order.status);
   const completed = order.status === 'COMPLETED';
   const paid = order.paymentStatus === 'PAID';
   const cashOnDelivery = order.paymentType === 'CASH_ON_DELIVERY';
@@ -56,7 +59,7 @@ export function OrderTracking({ order }: { order: ApiOrder }) {
   const readyMade = order.product.origin === 'COMPANY';
   const apparel = !readyMade && isApparelProduct(order.product);
   const lines = readyMade || apparel ? [] : beadLines(order);
-  const date = orderDate(order.createdAt);
+  const date = orderDate(order.createdAt, i18n.language);
   const address = [order.address, [order.postalCode, order.country].filter(Boolean).join(' ')]
     .filter(Boolean).join(', ');
 
@@ -72,10 +75,10 @@ export function OrderTracking({ order }: { order: ApiOrder }) {
             <Text style={styles.name} numberOfLines={2}>{order.product.name}</Text>
             <Text style={styles.meta} numberOfLines={1}>
               {readyMade
-                ? 'Ready-made jewelry'
+                ? t('orderDetails.readyMade')
                 : apparel
-                  ? apparelMeta(order.product).join(' · ')
-                  : [componentCount(order.product.itemCount, order.product.category?.builderType),
+                  ? apparelMeta(t, order.product).join(' · ')
+                  : [componentCount(t, order.product.itemCount, order.product.category?.builderType),
                     size && `${size.name} · ${size.measurement} ${size.unit}`]
                     .filter(Boolean).join(' · ')}
             </Text>
@@ -86,7 +89,7 @@ export function OrderTracking({ order }: { order: ApiOrder }) {
           </View>
         </View>
         <View style={styles.statusBox}>
-          <Text style={styles.headline}>{stageDescriptions[order.status] ?? 'We’re taking care of your order.'}</Text>
+          <Text style={styles.headline}>{stageDescription(t, order.status) ?? t('orderDetails.takingCare')}</Text>
           {current >= 0 && (
             <View style={styles.progress}>
               {orderStages.map((stage, index) => (
@@ -95,14 +98,15 @@ export function OrderTracking({ order }: { order: ApiOrder }) {
             </View>
           )}
           <View style={styles.between}>
-            <Text style={styles.meta}>Status: {status}</Text>
+            <Text style={styles.meta}>{t('orderDetails.status', { status })}</Text>
             {current >= 0 && (
-              <Text style={styles.meta}>Step {current + 1} of {orderStages.length}</Text>
+              <Text style={styles.meta}>{t('orders.stepOf', { step: current + 1, total: orderStages.length })}</Text>
             )}
           </View>
         </View>
         <Text style={styles.meta}>
-          Order {order.orderNumber}{date ? ` · Placed ${date}` : ''}
+          {date ? t('orderDetails.orderPlacedOn', { number: order.orderNumber, date })
+            : t('orderDetails.orderNumber', { number: order.orderNumber })}
         </Text>
       </View>
 
@@ -111,7 +115,7 @@ export function OrderTracking({ order }: { order: ApiOrder }) {
       {apparel && <ApparelSummary product={order.product} />}
 
       <View style={styles.card}>
-        <Text style={styles.title}>Delivery</Text>
+        <Text style={styles.title}>{t('orderDetails.delivery')}</Text>
         <InfoRow icon="person-outline" text={`${order.firstName} ${order.lastName}`.trim()} strong />
         {!!address && <InfoRow icon="location-outline" text={address} />}
         {!!order.phone && <InfoRow icon="call-outline" text={order.phone} />}
@@ -119,17 +123,17 @@ export function OrderTracking({ order }: { order: ApiOrder }) {
 
       <View style={styles.card}>
         <View style={styles.between}>
-          <Text style={styles.title}>Payment</Text>
+          <Text style={styles.title}>{t('orderDetails.payment')}</Text>
           <View style={[styles.pill, paid && styles.pillDone]}>
             <Text style={[styles.pillText, paid && { color: c.success }]}>
-              {paid ? 'Paid' : cashOnDelivery ? 'Due on delivery' : 'Unpaid'}
+              {paid ? t('orderDetails.paid') : cashOnDelivery ? t('orderDetails.dueOnDelivery') : t('orderDetails.unpaid')}
             </Text>
           </View>
         </View>
         <View style={styles.between}>
           <Text style={styles.meta}>
-            {paymentLabel(order.paymentType)}
-            {!paid && cashOnDelivery ? ' · Pay when your order arrives' : ''}
+            {paymentLabel(t, order.paymentType)}
+            {!paid && cashOnDelivery ? ` · ${t('orderDetails.payWhenArrives')}` : ''}
           </Text>
           <Text style={styles.total}>{money(order.totalPrice)}</Text>
         </View>
@@ -137,15 +141,15 @@ export function OrderTracking({ order }: { order: ApiOrder }) {
 
       {!!order.customerNotes && (
         <View style={styles.card}>
-          <Text style={styles.title}>Your note</Text>
+          <Text style={styles.title}>{t('orderDetails.yourNote')}</Text>
           <Text style={styles.infoText}>{order.customerNotes}</Text>
         </View>
       )}
 
       {lines.length > 0 && (
         <Disclosure title={order.product.category?.builderType && order.product.category.builderType !== 'JEWELRY'
-          ? 'Price details' : 'Beads & price details'}
-          summary={`${componentCount(order.product.itemCount, order.product.category?.builderType)} · ${money(order.totalPrice)}`}>
+          ? t('orderDetails.priceDetails') : t('orderDetails.beadsPriceDetails')}
+          summary={`${componentCount(t, order.product.itemCount, order.product.category?.builderType)} · ${money(order.totalPrice)}`}>
           {lines.map((line) => (
             <DetailRow
               key={line.name + line.unitPrice}
@@ -154,7 +158,7 @@ export function OrderTracking({ order }: { order: ApiOrder }) {
             />
           ))}
           <View style={styles.divider} />
-          <DetailRow label="Total" value={money(order.totalPrice)} />
+          <DetailRow label={t('common.total')} value={money(order.totalPrice)} />
         </Disclosure>
       )}
     </>

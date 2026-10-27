@@ -1,9 +1,11 @@
 import { Platform, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import type { TextFont, TextLayer as TextLayerModel, TextWeight } from '@/api/builderModels';
 import { PlacedItem, type Frame, type Transform } from '@/components/studio/PlacedItem';
 import { clampInside, TEXT_BOX, type Bounds } from '@/helper/canvasStudio';
 
-export const TEXT_COLORS = [
+/** Colour names are translation keys (textTool.colors.<name>). */
+export const TEXT_COLORS: { name: 'Navy' | 'Rose' | 'Gold' | 'Black' | 'White'; value: string }[] = [
   { name: 'Navy', value: '#2D3250' },
   { name: 'Rose', value: '#C2577A' },
   { name: 'Gold', value: '#A67C2E' },
@@ -11,9 +13,7 @@ export const TEXT_COLORS = [
   { name: 'White', value: '#FFFFFF' },
 ];
 
-export const FONT_LABELS: Record<TextFont, string> = { SERIF: 'Classic', SANS: 'Modern', SCRIPT: 'Script' };
-
-export const WEIGHT_LABELS: Record<TextWeight, string> = { LIGHT: 'Light', REGULAR: 'Regular', BOLD: 'Bold' };
+// Font, weight and colour names are translated: textTool.fonts / .weights / .colors.
 
 export function fontFamily(font: TextFont | undefined, weight: TextWeight = 'REGULAR') {
   if (font === 'SANS') {
@@ -64,6 +64,7 @@ export function TextLayer({ layer, size, bounds, frame, selected, editable, zInd
   // The box as shares of the area it moves in, for keeping all of it inside.
   const box = { width: width / area.width, height: height / area.height };
   const script = layer.font === 'SCRIPT';
+  const { t } = useTranslation();
   return (
     <PlacedItem
       transform={layer}
@@ -71,7 +72,7 @@ export function TextLayer({ layer, size, bounds, frame, selected, editable, zInd
       width={width}
       height={height}
       clamp={(next) => clampInside(next, box, frame ? WHOLE : bounds)}
-      label={`Text “${layer.text}”`}
+      label={t('textTool.layerLabel', { text: layer.text })}
       name="text"
       selected={selected}
       editable={editable}
