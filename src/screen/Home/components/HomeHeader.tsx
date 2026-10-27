@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { useCallback, useEffect } from 'react';
+import { AppState, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon, type IconName } from '@/components/common/ui';
@@ -11,6 +12,8 @@ import { money } from '@/helper/pricing';
 import { type ApiOrder, orderStages, orderStatusLabel } from '@/api/commerceModels';
 import { stageDescription } from '@/screen/Confirmation/components/OrderTimeline';
 import { useThemeStore } from '@/store/themeStore';
+import { useAuthStore } from '@/store/authStore';
+import { useGetUnreadNotificationCountQuery } from '@/api/endpoints/notificationSlice';
 
 /**
  * The header's own palette per mode. Dark: the brand's navy with apricot on top. Light: a
@@ -44,13 +47,24 @@ const actions: {
   { icon: 'help-buoy-outline', label: 'home.actionHelp', onPress: () => router.push('/help') },
 ];
 
-function HeaderButton({ icon, label, onPress }: { icon: IconName; label: string; onPress: () => void }) {
+function HeaderButton({ icon, label, onPress, badge = 0 }: {
+  icon: IconName;
+  label: string;
+  onPress: () => void;
+  /** Unread count; 1–9 shown as is, more as "9+" so the badge never outgrows the icon. */
+  badge?: number;
+}) {
   const styles = useThemedStyles(createStyles);
   const palette = paletteOf(useTheme());
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} hitSlop={4}
       style={({ pressed }) => [styles.headerButton, { opacity: pressed ? 0.7 : 1 }]}>
       <Icon name={icon} size={19} color={palette.text} />
+      {badge > 0 && (
+        <View style={styles.badge} accessibilityElementsHidden>
+          <Text style={styles.badgeText}>{badge > 9 ? '9+' : badge}</Text>
+        </View>
+      )}
     </Pressable>
   );
 }
@@ -68,7 +82,19 @@ export function HomeHeader({ search, onSearch, activeOrder }: {
   const { t } = useTranslation();
   const toggleTheme = useThemeStore((state) => state.toggle);
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
+  // The bell is shown only while in-app notifications are on.
+  const notificationsOn = useAuthStore((state) => !!state.user && state.user.notificationsEnabled !== false);
+  const unread = useGetUnreadNotificationCountQuery(undefined, { skip: !notificationsOn });
+  const unreadCount = notificationsOn ? unread.data ?? 0 : 0;
+  const { refetch } = unread;
+  // No live connection: the count is refreshed whenever Home is shown or the app returns
+  // to the foreground (and at once after reading in the notification centre).
+  useFocusEffect(useCallback(() => { if (notificationsOn) void refetch(); }, [notificationsOn, refetch]));
+  useEffect(() => {
+    if (!notificationsOn) return;
+    const subscription = AppState.addEventListener('change', (state) => { if (state === 'active') void refetch(); });
+    return () => subscription.remove();
+  }, [notificationsOn, refetch]);
   const step = activeOrder ? orderStages.findIndex((stage) => stage === activeOrder.status) : -1;
   const styles = useThemedStyles(createStyles);
   const palette = paletteOf(theme);
@@ -81,8 +107,10 @@ export function HomeHeader({ search, onSearch, activeOrder }: {
           <View style={{ flex: 1 }} accessibilityRole="header">
             <Logo tone={palette.logo} markSize={34} textSize={22} />
           </View>
-          {width >= 380 && (
-            <HeaderButton icon="heart-outline" label={t('home.savedDesigns')} onPress={() => router.push('/designs')} />
+          {notificationsOn && (
+            <HeaderButton icon={unreadCount ? 'notifications' : 'notifications-outline'}
+              label={unreadCount ? t('notifications.openWithCount', { count: unreadCount }) : t('notifications.open')}
+              badge={unreadCount} onPress={() => router.push('/notifications')} />
           )}
           <HeaderButton icon="bag-handle-outline" label={t('home.openBag')} onPress={() => router.push('/checkout')} />
           <HeaderButton icon={theme.mode === 'dark' ? 'sunny-outline' : 'moon-outline'}
@@ -156,6 +184,13 @@ const createStyles = (theme: Theme) => {
       width: 40, height: 40, borderRadius: 20, backgroundColor: p.glass,
       alignItems: 'center', justifyContent: 'center',
     },
+    badge: {
+      position: 'absolute', top: -2, right: -2, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4,
+      alignItems: 'center', justifyContent: 'center', backgroundColor: p.accent,
+      // A ring in the header's own colour keeps the badge readable over the button.
+      borderWidth: 2, borderColor: p.gradient[0],
+    },
+    badgeText: { color: p.onAccent, fontSize: 10, fontWeight: '700' },
     search: {
       flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 48, paddingHorizontal: 15,
       borderRadius: 14, backgroundColor: lightTheme.colors.surface, borderWidth: 1, borderColor: p.searchBorder,

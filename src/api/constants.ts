@@ -6,3 +6,4 @@ export const ORDER_URL = '/orders';
 export const USER_URL = '/users';
 export const CONTACT_URL = '/contact';
 export const GIFT_PACKAGING_URL = '/gift-packaging';
+export const NOTIFICATION_URL = '/notifications';

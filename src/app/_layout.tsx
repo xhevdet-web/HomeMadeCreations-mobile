@@ -77,6 +77,8 @@ export default function RootLayout() {
               <Stack.Screen name="preview" />
               <Stack.Screen name="checkout" />
               <Stack.Screen name="confirmation" />
+              {/* The notification centre slides up over the app (full-height sheet on iOS). */}
+              <Stack.Screen name="notifications" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
               <Stack.Screen name="account" />
               <Stack.Screen name="change-password" />
               <Stack.Screen name="language" />

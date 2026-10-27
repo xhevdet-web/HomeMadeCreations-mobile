@@ -8,6 +8,7 @@ import { toast } from '@/store/toastStore';
 import { useTheme } from '@/hooks/useTheme';
 import { useTranslation } from 'react-i18next';
 import { useLanguageStore } from '@/store/languageStore';
+import { useUpdateProfileMutation } from '@/api/endpoints/userSlice';
 import { ProfileForm } from './components/ProfileForm';
 import { ProfileHeader } from './components/ProfileHeader';
 import { SettingsRow, SettingsSection } from './components/Settings';
@@ -28,8 +29,15 @@ export default function ProfileScreen() {
   const { t } = useTranslation();
   const language = useLanguageStore((state) => state.language);
   const user = useAuthStore((state) => state.user);
-  // Notifications have no backend support yet, so the row stays marked Soon.
-  const comingSoon = (feature: string) => toast.info(t('profile.comingSoon', { feature }));
+  const [updateProfile, saving] = useUpdateProfileMutation();
+  // Saved on the account, so the choice follows the customer to every device.
+  async function setNotifications(notificationsEnabled: boolean) {
+    try {
+      useAuthStore.getState().update(await updateProfile({ notificationsEnabled }).unwrap());
+    } catch {
+      toast.error(t('notifications.settingFailed'));
+    }
+  }
   const toggleTheme = useThemeStore((state) => state.toggle);
   const { next } = useLocalSearchParams<{ next?: string }>();
   const editDetails = () => router.push('/account');
@@ -130,8 +138,11 @@ export default function ProfileScreen() {
         <SettingsRow
           icon="notifications-outline"
           title={t('profile.notifications')}
-          soon
-          onPress={() => comingSoon(t('profile.notifications'))}
+          subtitle={t('notifications.settingSubtitle')}
+          toggle={{
+            value: user?.notificationsEnabled !== false,
+            onChange: (value) => { if (!saving.isLoading) void setNotifications(value); },
+          }}
         />
         <SettingsRow
           icon="language-outline"

@@ -43,6 +43,7 @@ export function parseUser(value: unknown): User {
   // Adapt flat API address fields to the existing mobile address model.
   return {
     userName: typeof data.userName === 'string' ? data.userName : undefined,
+    notificationsEnabled: data.notificationsEnabled !== false,
     phone: typeof data.phone === 'string' ? data.phone : undefined,
     id: data.id as string,
     firstName: data.firstName as string,

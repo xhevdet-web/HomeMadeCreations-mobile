@@ -83,6 +83,8 @@ export interface Address {
 }
 export interface User {
   userName?: string;
+  /** In-app order notifications (bell and notification centre); on unless turned off. */
+  notificationsEnabled?: boolean;
   phone?: string;
   id: string;
   firstName: string;
