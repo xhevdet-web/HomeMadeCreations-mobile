@@ -8,19 +8,23 @@ import { itemById } from '@/services/catalog';
 import { type Theme } from '@/constants/theme';
 import { DesignItem as DesignEntry } from '@/types/models';
 
-export function BeadSequence({ items, selectedId, onSelect }: {
+/** The placed pieces in order; `vertical` stacks them in a column (beside the studio). */
+export function BeadSequence({ items, selectedId, onSelect, vertical = false }: {
   items: DesignEntry[];
   selectedId: string | null;
   onSelect: (id: string | null) => void;
+  vertical?: boolean;
 }) {
   const theme = useTheme();
   const { t } = useTranslation();
   const styles = useThemedStyles(createStyles);
   return (
     <ScrollView
-      horizontal
+      horizontal={!vertical}
       showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ gap: 6, paddingVertical: 2 }}
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={vertical ? { gap: 6, paddingHorizontal: 2, alignItems: 'center' }
+        : { gap: 6, paddingVertical: 2 }}
     >
       {items.map((entry, index) => (
         <Pressable

@@ -43,9 +43,10 @@ const createStyles = (theme: Theme) => {
     bottom: {
       borderTopWidth: 1,
       borderTopColor: theme.colors.border,
-      padding: 18,
+      paddingHorizontal: 18,
+      paddingVertical: 10,
       backgroundColor: theme.colors.bottomBar,
     },
-    total: { color: theme.colors.text, fontSize: 26, fontWeight: '600', marginTop: 3 },
+    total: { color: theme.colors.text, fontSize: 20, fontWeight: '600', marginTop: 1 },
   });
 };

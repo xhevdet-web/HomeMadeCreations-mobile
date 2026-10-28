@@ -26,6 +26,7 @@ import { ReorderGestureLayer } from './components/ReorderGestureLayer';
 import { StageOverlay } from './components/StageOverlay';
 import { BeadSequence, SelectionToolbar } from './components/BeadSequence';
 import { DesignerFooter } from './components/DesignerFooter';
+import { FadingHint } from './components/FadingHint';
 import { MeasurementBar } from './components/MeasurementBar';
 import {
   lengthLayout, canFit, cm, fitProblem, isComplete, isMeasuredSize, lengthOf, selectedLengthMm, sizeLabel,
@@ -36,6 +37,9 @@ import { StageBackground } from '@/components/common/StageBackground';
 type Rect = { x: number; y: number; width: number; height: number };
 
 const STAGE_MARGIN = 16;
+// The placed-beads column beside the studio, and the gap before it.
+const SEQUENCE_WIDTH = 46;
+const SEQUENCE_GAP = 8;
 
 export default function DesignerScreen() {
   const theme = useTheme();
@@ -89,7 +93,12 @@ export default function DesignerScreen() {
   }));
   const { width, height } = useWindowDimensions();
   // A square stage that uses the full width but leaves room for the bead picker.
-  const stageSize = Math.min(Math.min(width, 760) - STAGE_MARGIN * 2, height * 0.46, 460);
+  // The placed-beads column appears beside the stage once there is a bead; until then the
+  // stage uses the full width.
+  const showSequence = design.items.length > 0;
+  const stageSize = Math.min(
+    Math.min(width, 760) - STAGE_MARGIN * 2 - (showSequence ? SEQUENCE_WIDTH + SEQUENCE_GAP : 0),
+    height * 0.4, 440);
   const jewelrySize = stageSize;
   const product = productById[design.productId];
   // A design reopened from before bracelets were sized by length chooses its length again.
@@ -261,9 +270,11 @@ export default function DesignerScreen() {
           <MeasurementBar piece={product.type} usedMm={usedMm} selectedMm={selectedMm} onChangeLength={changeLength} />
         )}
         </View>
+        <View style={styles.stageRow}>
         <View ref={canvasRef} collapsable={false}
           style={[styles.stage, { width: stageSize, height: stageSize }, draggingItem && styles.dragTarget]}>
-          <StageBackground />
+          {/* Keyed by size: the SVG background is redrawn when the stage grows or shrinks. */}
+          <StageBackground key={stageSize} />
           <View pointerEvents="box-none" style={styles.jewelryLayer}>
             <ReorderGestureLayer enabled={design.items.length > 0}
               onStart={startReorder} onMove={moveReorder} onEnd={finishReorder}>
@@ -319,6 +330,15 @@ export default function DesignerScreen() {
             canClear={design.items.length > 0}
           />
         </View>
+        {/* The placed beads, in order, in a column just outside the studio on its right. */}
+        {showSequence && (
+          <View style={{ width: SEQUENCE_WIDTH, height: stageSize, paddingTop: 52, paddingBottom: 60 }}>
+            <View style={styles.sequence}>
+              <BeadSequence vertical items={design.items} selectedId={design.selectedId} onSelect={design.select} />
+            </View>
+          </View>
+        )}
+        </View>
         <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.editorContent}
           keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         {design.selectedId ? (
@@ -331,11 +351,7 @@ export default function DesignerScreen() {
             onClose={() => design.select(null)}
           />
         ) : (
-          <View style={styles.hint}>
-            <Icon name={full || complete ? 'checkmark-circle-outline' : 'sparkles-outline'} size={16}
-              color={theme.colors.accent} />
-            <Text style={[ui.caption, { flex: 1 }]}>{hint}</Text>
-          </View>
+          <FadingHint text={hint} icon={full || complete ? 'checkmark-circle-outline' : 'sparkles-outline'} />
         )}
         {needsLength && (
           <View style={styles.hint}>
@@ -347,9 +363,6 @@ export default function DesignerScreen() {
               </Text>
             </Pressable>
           </View>
-        )}
-        {!!design.items.length && (
-          <BeadSequence items={design.items} selectedId={design.selectedId} onSelect={design.select} />
         )}
         {message ? <Notice text={message} /> : null}
         <View style={styles.divider} />
@@ -418,6 +431,12 @@ const createStyles = (theme: Theme) => {
       backgroundColor: c.soft,
     },
     divider: { height: 1, backgroundColor: c.border, marginVertical: 2 },
+    stageRow: { flexDirection: 'row', alignSelf: 'center', gap: SEQUENCE_GAP },
+    // Level with the space between the stage's top labels and bottom buttons.
+    sequence: {
+      flex: 1, paddingVertical: 6,
+      borderRadius: 14, backgroundColor: c.badge, borderWidth: 1, borderColor: c.border,
+    },
     quickAdd: {
       position: 'absolute', top: '50%', marginTop: -18,
       width: 36, height: 36, borderRadius: 18,
