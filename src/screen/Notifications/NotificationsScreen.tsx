@@ -74,6 +74,11 @@ export default function NotificationsScreen() {
         <ScrollView contentContainerStyle={styles.content}
           refreshControl={<RefreshControl refreshing={query.isFetching && !result.loading} onRefresh={result.retry}
             tintColor={theme.colors.accent} />}>
+          {/* The backend deletes read notifications 48 hours after they were read. */}
+          <View style={styles.retention}>
+            <Icon name="time-outline" size={16} color={theme.colors.muted} />
+            <Text style={[ui.caption, { flex: 1 }]}>{t('notifications.retention')}</Text>
+          </View>
           {!notifications.length ? (
             <View style={styles.empty}>
               <View style={styles.emptyIcon}>
@@ -115,6 +120,10 @@ export default function NotificationsScreen() {
 const createStyles = (theme: Theme) => {
   const c = theme.colors;
   return StyleSheet.create({
+    retention: {
+      flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 9,
+      borderRadius: 12, borderWidth: 1, borderColor: c.border, backgroundColor: c.surface,
+    },
     header: {
       flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 18, paddingVertical: 10,
       borderBottomWidth: 1, borderBottomColor: c.border,

@@ -697,6 +697,7 @@ export const translationEN = {
     unread: 'Unread',
     emptyTitle: 'No notifications yet',
     emptyBody: 'Updates about your orders will appear here.',
+    retention: 'Read notifications are removed automatically 48 hours after you open them.',
     justNow: 'Just now',
     minutesAgo: '{{count}} min ago',
     hoursAgo_one: '{{count}} hour ago',

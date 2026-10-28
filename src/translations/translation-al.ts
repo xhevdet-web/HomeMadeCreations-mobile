@@ -701,6 +701,7 @@ export const translationAL: Translation<TranslationShape> = {
     unread: 'E palexuar',
     emptyTitle: 'Ende nuk ka njoftime',
     emptyBody: 'Përditësimet për porositë e tua do të shfaqen këtu.',
+    retention: 'Njoftimet e lexuara fshihen automatikisht 48 orë pasi i hap.',
     justNow: 'Tani',
     minutesAgo: 'para {{count}} min',
     hoursAgo_one: 'para {{count}} ore',
