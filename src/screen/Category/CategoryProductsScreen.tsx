@@ -86,7 +86,6 @@ export default function CategoryProductsScreen() {
 
       <CommunityCreations
         title={t('community.byOthers', { category: data.name })}
-        intro={t('category.byOthersIntro', { name: data.name })}
         creations={creations.data ?? []}
         loading={creations.loading}
         error={creations.error}

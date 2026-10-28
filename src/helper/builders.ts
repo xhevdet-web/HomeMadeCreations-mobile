@@ -1,6 +1,6 @@
 import type { TFunction } from 'i18next';
 
-const NOUNS = { BOUQUET: 'flower', GIFT: 'item', APPAREL: 'design' } as const;
+const NOUNS = { BOUQUET: 'flower', GIFT: 'item', APPAREL: 'design', CASE: 'design' } as const;
 
 /**
  * "8 beads", "5 flowers", "3 items": what a design's components are called. Takes the

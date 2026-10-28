@@ -14,6 +14,7 @@ import type { SavedProduct } from '@/api/commerceModels';
 import { editSavedDesign } from '@/services/savedDesign';
 import { isApparelProduct, loadApparelDesign } from '@/services/apparelDesign';
 import { isCanvasProduct, loadCanvasDesign } from '@/services/canvasDesign';
+import { isCaseProduct, loadCaseDesign } from '@/services/caseDesign';
 import { DesignCard } from './components/DesignCard';
 
 export default function DesignsScreen() {
@@ -31,6 +32,13 @@ export default function DesignsScreen() {
     setEditingId(product.id);
     setError('');
     try {
+      if (isCaseProduct(product)) {
+        // Cases reopen on their phone model with the image and its placement restored.
+        loadCaseDesign(product);
+        toast.info(t('cases.opened'));
+        router.push('/case-studio');
+        return;
+      }
       if (isApparelProduct(product)) {
         loadApparelDesign(product);
         toast.info(t('designs.openedApparel'));

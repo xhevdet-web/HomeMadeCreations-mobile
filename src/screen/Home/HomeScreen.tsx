@@ -26,7 +26,7 @@ import { openCategory, startDesign } from '@/services/categoryFlow';
 import { canvasSignature } from '@/services/canvasDesign';
 import { apparelSignature } from '@/services/apparelDesign';
 import { designPrice, money } from '@/helper/pricing';
-import { builderOf, takeTurns } from './homeContent';
+import { builderOf } from './homeContent';
 import { HomeHeader } from './components/HomeHeader';
 import { ContinueSection, type ContinueItem } from './components/ContinueSection';
 import { HomeHero } from './components/HomeHero';
@@ -34,11 +34,9 @@ import { CategoryRail } from './components/CategoryRail';
 import { OccasionSection } from './components/OccasionSection';
 import { InspirationSection } from './components/InspirationSection';
 import { CommunityCreations } from './components/ForYou';
-import { ReadyMadeSection } from './components/ReadyMadeSection';
 import { HomeSearchResults } from './components/HomeSearchResults';
 import { WhyHomeMade } from './components/Highlights';
 
-const READY_MADE_LIMIT = 10;
 
 /** True when a studio draft differs from the product last saved from it (or was never saved). */
 function unsaved(signature: () => string, saved: { signature: string } | null) {
@@ -95,9 +93,6 @@ export default function HomeScreen() {
   const categories = categoriesResult.data ?? [];
   const inStockProducts = useMemo(
     () => (readyMadeResult.data ?? []).filter(inStock), [readyMadeResult.data]);
-  // Taking turns between categories keeps one category from filling the rail.
-  const readyMade = useMemo(
-    () => takeTurns(inStockProducts, (product) => product.categoryId, READY_MADE_LIMIT), [inStockProducts]);
   const triedBuilders = useMemo(() => new Set<BuilderType>((designs ?? [])
     .filter((design) => design.origin !== 'COMPANY' && design.category)
     .map((design) => builderOf(design.category!))), [designs]);
@@ -150,12 +145,11 @@ export default function HomeScreen() {
                 onOpen={openCategory} onSeeAll={browseCategories} />
               <OccasionSection categories={categories} onOpen={openCategory} />
               <InspirationSection categories={categories} triedBuilders={triedBuilders} onStart={startDesign} />
+              <WhyHomeMade />
               {/* Optional: hidden when empty or unavailable rather than showing an error. */}
               {!creations.error && (
                 <CommunityCreations
-                  eyebrow={t('home.communityEyebrow')}
                   title={t('home.communityTitle')}
-                  intro={t('home.communityIntro')}
                   creations={creations.data ?? []}
                   loading={creations.loading || !authenticated || unauthorized}
                   error=""
@@ -165,9 +159,6 @@ export default function HomeScreen() {
                     router.push({ pathname: '/creation', params: { id: creation.completedOrderId } })}
                 />
               )}
-              <ReadyMadeSection products={readyMade} loading={readyMadeResult.loading}
-                error={!!readyMadeResult.error} onRetry={readyMadeResult.retry} onSeeAll={browseCategories} />
-              <WhyHomeMade />
             </>
           )}
         </View>

@@ -14,7 +14,12 @@ export function openCategory(category: Pick<CatalogCategory, 'id'>) {
 // JEWELRY (and legacy categories without a builderType): Choose Size → Jewelry Studio.
 // BOUQUET / GIFT: Choose your base product → free Bouquet or Gift Studio.
 // APPAREL: Choose your base product and size → Apparel Studio.
+// CASE: Choose your phone → Case Studio.
 export function startDesign(category: CatalogCategory) {
+  if (category.builderType === 'CASE') {
+    router.push({ pathname: '/case-model', params: { categoryId: category.id } });
+    return;
+  }
   if (category.builderType === 'APPAREL') {
     router.push({ pathname: '/apparel-base', params: { categoryId: category.id } });
     return;

@@ -92,8 +92,9 @@ export default function TabsLayout() {
       })}
     >
       <Tabs.Screen name="index" options={{ title: t('navigation.home') }} />
-      <Tabs.Screen name="create" options={{ title: t('navigation.create') }} />
       <Tabs.Screen name="designs" options={{ title: t('navigation.myDesigns') }} />
+      {/* The raised Create button sits in the middle of the five tabs. */}
+      <Tabs.Screen name="create" options={{ title: t('navigation.create') }} />
       <Tabs.Screen name="orders" options={{ title: t('navigation.orders') }} />
       <Tabs.Screen name="profile" options={{ title: t('navigation.profile') }} />
     </Tabs>

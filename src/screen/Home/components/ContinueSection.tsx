@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Icon, IconName, useUI } from '@/components/common/ui';
+import { Icon, IconName } from '@/components/common/ui';
+import { SectionHeader } from './SectionHeader';
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
 import { type Theme } from '@/constants/theme';
 import { useTranslation } from 'react-i18next';
@@ -15,12 +16,11 @@ export interface ContinueItem {
 
 /** Work in progress; the whole section is left out when there is none. */
 export function ContinueSection({ items }: { items: ContinueItem[] }) {
-  const ui = useUI();
   const { t } = useTranslation();
   if (!items.length) return null;
   return (
     <View style={{ gap: 10 }}>
-      <Text style={ui.eyebrow}>{t('home.continueTitle')}</Text>
+      <SectionHeader title={t('home.continueTitle')} />
       {items.map((item) => <ContinueCard key={item.key} item={item} />)}
     </View>
   );

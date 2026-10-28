@@ -85,6 +85,8 @@ export default function RootLayout() {
               <Stack.Screen name="creation" />
               <Stack.Screen name="apparel-base" />
               <Stack.Screen name="apparel-studio" />
+              <Stack.Screen name="case-model" />
+              <Stack.Screen name="case-studio" />
               <Stack.Screen name="design-base" />
               <Stack.Screen name="studio" />
               <Stack.Screen name="studio-preview" />

@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { Icon, IconName, useUI } from '@/components/common/ui';
+import { Icon, IconName } from '@/components/common/ui';
+import { SectionHeader } from './SectionHeader';
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
 import { type Theme } from '@/constants/theme';
 import { useTranslation } from 'react-i18next';
@@ -12,13 +13,12 @@ const promises = [
 ] as const satisfies readonly { icon: IconName; title: string; detail: string }[];
 
 export function WhyHomeMade() {
-  const ui = useUI();
   const theme = useTheme();
   const { t } = useTranslation();
   const styles = useThemedStyles(createStyles);
   return (
     <View style={{ gap: 10 }}>
-      <Text style={ui.eyebrow}>{t('home.whyEyebrow')}</Text>
+      <SectionHeader title={t('home.whyEyebrow')} />
       <View style={styles.trust}>
         {promises.map((item) => (
           <View key={item.title} style={styles.trustItem}>

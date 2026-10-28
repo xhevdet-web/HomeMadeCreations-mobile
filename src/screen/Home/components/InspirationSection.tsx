@@ -43,8 +43,7 @@ export function InspirationSection({ categories, triedBuilders, onStart }: {
 
   return (
     <View style={{ gap: 14 }}>
-      <SectionHeader eyebrow={t('home.ideasEyebrow')} title={t('home.ideasTitle')}
-        subtitle={t('home.ideasSubtitle')}
+      <SectionHeader title={t('home.ideasTitle')}
         right={(
           <Pressable accessibilityRole="button" accessibilityLabel={t('home.surpriseMeLabel')}
             onPress={surprise} hitSlop={6} style={({ pressed }) => [styles.surprise, { opacity: pressed ? 0.7 : 1 }]}>

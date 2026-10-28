@@ -7,11 +7,12 @@ import { useTranslation } from 'react-i18next';
 
 // Each Creative Studio's icon; its text is category.studioText.<builderType>. Decided by
 // builderType, never the category name.
-const STUDIOS: Record<'JEWELRY' | 'BOUQUET' | 'GIFT' | 'APPAREL', { icon: IconName }> = {
+const STUDIOS: Record<'JEWELRY' | 'BOUQUET' | 'GIFT' | 'APPAREL' | 'CASE', { icon: IconName }> = {
   JEWELRY: { icon: 'diamond-outline' },
   BOUQUET: { icon: 'flower-outline' },
   GIFT: { icon: 'gift-outline' },
   APPAREL: { icon: 'shirt-outline' },
+  CASE: { icon: 'phone-portrait-outline' },
 };
 
 /** The prominent entry to the category's Creative Studio, shown before its products. */

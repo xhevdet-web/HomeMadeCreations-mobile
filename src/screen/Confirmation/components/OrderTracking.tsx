@@ -14,6 +14,7 @@ import { OrderTimeline, stageDescription } from './OrderTimeline';
 import { dateLocale } from '@/i18n';
 import { ApparelSummary } from '@/components/apparel/ApparelSummary';
 import { apparelMeta, isApparelProduct } from '@/services/apparelDesign';
+import { caseMeta, isCaseProduct } from '@/services/caseDesign';
 import { sizeLabel } from '@/helper/jewelry';
 
 function orderDate(value: string, language: string) {
@@ -59,7 +60,8 @@ export function OrderTracking({ order }: { order: ApiOrder }) {
   const size = (order.product as { selectedSize?: CategorySize | null }).selectedSize;
   const readyMade = order.product.origin === 'COMPANY';
   const apparel = !readyMade && isApparelProduct(order.product);
-  const lines = readyMade || apparel ? [] : beadLines(order);
+  const phoneCase = !readyMade && isCaseProduct(order.product);
+  const lines = readyMade || apparel || phoneCase ? [] : beadLines(order);
   const date = orderDate(order.createdAt, i18n.language);
   const address = [order.address, [order.postalCode, order.country].filter(Boolean).join(' ')]
     .filter(Boolean).join(', ');
@@ -79,7 +81,9 @@ export function OrderTracking({ order }: { order: ApiOrder }) {
                 ? t('orderDetails.readyMade')
                 : apparel
                   ? apparelMeta(t, order.product).join(' · ')
-                  : [componentCount(t, order.product.itemCount, order.product.category?.builderType),
+                  : phoneCase
+                    ? caseMeta(t, order.product).join(' · ')
+                    : [componentCount(t, order.product.itemCount, order.product.category?.builderType),
                     size && sizeLabel(size)]
                     .filter(Boolean).join(' · ')}
             </Text>

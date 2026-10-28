@@ -29,6 +29,8 @@ import { useApparelStore } from '@/store/apparelStore';
 import { isApparelProduct, loadApparelDesign } from '@/services/apparelDesign';
 import { isCanvasProduct, loadCanvasDesign, savedComponentLines } from '@/services/canvasDesign';
 import { useCanvasStore } from '@/store/canvasStore';
+import { useCaseStore } from '@/store/caseStore';
+import { caseMeta, isCaseProduct, loadCaseDesign } from '@/services/caseDesign';
 import { parseTextLayers } from '@/api/builderModels';
 import { componentCount } from '@/helper/builders';
 import { ApparelSummary } from '@/components/apparel/ApparelSummary';
@@ -39,6 +41,7 @@ function CheckoutForm({ product, user, size }: { product: SavedProduct; user: Us
   const readyMade = isCompanyProduct(product);
   const apparel = !readyMade && isApparelProduct(product);
   const canvas = !readyMade && isCanvasProduct(product);
+  const phoneCase = !readyMade && isCaseProduct(product);
   const [currentProduct, setCurrentProduct] = useState(product);
   const missingDelivery = ![
     user.firstName,
@@ -92,6 +95,13 @@ function CheckoutForm({ product, user, size }: { product: SavedProduct; user: Us
       const apparelDraft = useApparelStore.getState();
       if (apparel && apparelDraft.saved?.product.id === product.id && apparelDraft.categoryId)
         apparelDraft.start(apparelDraft.categoryId, t('drafts.myName', { name: product.category.name }));
+      const caseDraft = useCaseStore.getState();
+      if (phoneCase && caseDraft.saved?.product.id === product.id && caseDraft.categoryId) {
+        // Ordered: the next case starts on the same phone, without the last image.
+        caseDraft.load({ categoryId: caseDraft.categoryId, modelId: caseDraft.modelId, artwork: null,
+          photo: caseDraft.photo, name: t('drafts.myName', { name: product.category.name }) });
+        caseDraft.markSaved(null);
+      }
       const canvasDraft = useCanvasStore.getState();
       if (canvas && canvasDraft.saved?.product.id === product.id && canvasDraft.categoryId) {
         // Ordered: the studio starts fresh for the next bouquet or gift.
@@ -156,6 +166,12 @@ function CheckoutForm({ product, user, size }: { product: SavedProduct; user: Us
         // Reopen the Apparel Studio with every placement, side, base and size restored.
         if (useApparelStore.getState().saved?.product.id !== product.id) loadApparelDesign(product);
         router.dismissTo('/apparel-studio');
+        return;
+      }
+      if (phoneCase) {
+        // Reopen the Case Studio on the same phone, with the image and its placement.
+        if (useCaseStore.getState().saved?.product.id !== product.id) loadCaseDesign(product);
+        router.dismissTo('/case-studio');
         return;
       }
       if (canvas) {
@@ -268,7 +284,23 @@ function CheckoutForm({ product, user, size }: { product: SavedProduct; user: Us
           ))}
         </Disclosure>
       )}
-      {!readyMade && !apparel && !canvas && (
+      {phoneCase && (
+        <Disclosure
+          title={t('orderDetails.priceDetails')}
+          summary={caseMeta(t, currentProduct).join(' · ') + ' · ' + money(currentProduct.price)}
+        >
+          {!!currentProduct.baseProduct && (
+            <DetailRow label={t('cases.studio.caseLine', { name: currentProduct.baseProduct.name })}
+              value={money(currentProduct.basePrice ?? 0)} />
+          )}
+          {currentProduct.items.map((item) => (
+            <DetailRow key={item.id}
+              label={item.customImageUrl ? t('cases.ownPhoto') : item.subCategory.name}
+              value={money(item.unitPrice)} />
+          ))}
+        </Disclosure>
+      )}
+      {!readyMade && !apparel && !canvas && !phoneCase && (
         <Disclosure
           title={t('orderDetails.priceDetails')}
           summary={componentCount(t, currentProduct.itemCount) + ' · ' + money(currentProduct.price)}

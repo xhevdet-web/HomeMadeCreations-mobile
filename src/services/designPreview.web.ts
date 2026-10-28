@@ -22,11 +22,12 @@ export async function captureViewPreview(view: View | null, _imageUrls: (string 
       scale: output.pixels / element.getBoundingClientRect().width,
     });
     const result = document.createElement('canvas');
+    const height = Math.round(output.pixels * (output.aspect ?? 1));
     result.width = output.pixels;
-    result.height = output.pixels;
+    result.height = height;
     const context = result.getContext('2d');
     if (!context) throw new Error('Preview canvas unavailable');
-    context.drawImage(canvas, 0, 0, output.pixels, output.pixels);
+    context.drawImage(canvas, 0, 0, output.pixels, height);
     return output.format === 'jpg' ? result.toDataURL('image/jpeg', 0.85) : result.toDataURL('image/png');
   } catch {
     throw new Error(i18n.t('studioMessages.captureFailed'));

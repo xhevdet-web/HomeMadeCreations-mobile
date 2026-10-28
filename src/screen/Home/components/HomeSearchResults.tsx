@@ -40,7 +40,7 @@ export function HomeSearchResults({ query, categories, products, onOpenCategory 
     <View style={{ gap: 24 }}>
       {matchingCategories.length > 0 && (
         <View style={{ gap: 10 }}>
-          <SectionHeader eyebrow={t('home.searchCreateEyebrow')} title={t('home.searchCategories')} />
+          <SectionHeader title={t('home.searchCategories')} />
           {matchingCategories.map((category) => (
             <Pressable key={category.id} accessibilityRole="button"
               accessibilityLabel={`${category.name}: ${t(`home.createLabels.${builderOf(category)}`)}`}
@@ -60,7 +60,7 @@ export function HomeSearchResults({ query, categories, products, onOpenCategory 
       )}
       {matchingProducts.length > 0 && (
         <View style={{ gap: 14 }}>
-          <SectionHeader eyebrow={t('home.readyMadeEyebrow')} title={t('counts.product', { count: matchingProducts.length })} />
+          <SectionHeader title={t('counts.product', { count: matchingProducts.length })} />
           <FlatList horizontal data={matchingProducts} keyExtractor={(product) => product.id}
             showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled"
             ItemSeparatorComponent={() => <View style={{ width: 12 }} />}

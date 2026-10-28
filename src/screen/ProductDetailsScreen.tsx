@@ -46,8 +46,9 @@ export default function ProductDetailsScreen() {
   const sizes = parseSizes(product.sizes);
   const unavailable = companyUnavailable(t, product, size);
   const apparel = product.category?.builderType === 'APPAREL';
-  // Apparel, bouquets and gifts can be customised starting from this exact product.
-  const customizable = apparel || isCanvasBuilder(product.category?.builderType);
+  const phoneCase = product.category?.builderType === 'CASE';
+  // Apparel, bouquets, gifts and phone cases can be customised starting from this exact product.
+  const customizable = apparel || phoneCase || isCanvasBuilder(product.category?.builderType);
   const photos = [
     { label: t('productDetails.front'), url: product.imageUrl },
     ...(product.backImageUrl ? [{ label: t('productDetails.back'), url: product.backImageUrl }] : []),
@@ -78,7 +79,8 @@ export default function ProductDetailsScreen() {
               {customizable && (
                 <View style={{ flex: 1 }}>
                   <Button title={t('productDetails.customize')} icon="color-palette-outline" secondary
-                    onPress={() => router.push({ pathname: apparel ? '/apparel-base' : '/design-base',
+                    onPress={() => router.push({
+                      pathname: apparel ? '/apparel-base' : phoneCase ? '/case-model' : '/design-base',
                       params: { categoryId: product.categoryId, baseProductId: product.id } })} />
                 </View>
               )}

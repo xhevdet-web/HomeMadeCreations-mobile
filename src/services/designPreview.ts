@@ -13,7 +13,13 @@ const MAX_PREVIEW_BYTES = 4.5 * 1024 * 1024;
  * suits designs captured with their own backdrop (bouquets, gifts) and is several times
  * smaller: typically a few hundred KB instead of megabytes.
  */
-export type PreviewFormat = { format: 'png' | 'jpg'; pixels: number };
+export type PreviewFormat = {
+  format: 'png' | 'jpg';
+  /** Width in pixels. */
+  pixels: number;
+  /** Height divided by width; square (1) by default. Phone cases are tall. */
+  aspect?: number;
+};
 const PNG_PREVIEW: PreviewFormat = { format: 'png', pixels: 840 };
 
 /**
@@ -30,7 +36,7 @@ async function capturePreview(view: Parameters<typeof captureRef>[0], output: Pr
       quality: output.format === 'jpg' ? 0.85 : 1,
       result: Platform.OS === 'web' ? 'data-uri' : 'tmpfile',
       width: side,
-      height: side,
+      height: side * (output.aspect ?? 1),
     });
     if (!uri) throw new Error('Empty capture');
     if (Platform.OS === 'web') return uri;

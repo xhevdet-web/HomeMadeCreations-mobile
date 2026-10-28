@@ -5,11 +5,9 @@ import { useTheme, useThemedStyles } from '@/hooks/useTheme';
 import { type Theme } from '@/constants/theme';
 import { useTranslation } from 'react-i18next';
 
-/** Compact heading shared by every Home section: eyebrow, serif title, optional action. */
-export function SectionHeader({ eyebrow, title, subtitle, action, onAction, right }: {
-  eyebrow: string;
+/** Compact heading shared by every Home section: one medium serif title, optional action. */
+export function SectionHeader({ title, action, onAction, right }: {
   title: string;
-  subtitle?: string;
   action?: string;
   onAction?: () => void;
   /** Replaces the text action, e.g. a "Surprise me" pill. */
@@ -19,12 +17,8 @@ export function SectionHeader({ eyebrow, title, subtitle, action, onAction, righ
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
   return (
-    <View style={{ gap: 4 }}>
-      <View style={ui.between}>
-        <View style={{ flex: 1 }}>
-          <Text style={[ui.eyebrow, { marginBottom: 4 }]}>{eyebrow}</Text>
-          <Text style={styles.title} accessibilityRole="header">{title}</Text>
-        </View>
+    <View style={ui.between}>
+      <Text style={styles.title} accessibilityRole="header">{title}</Text>
         {right ?? (action && onAction ? (
           <Pressable accessibilityRole="button" accessibilityLabel={`${action}: ${title}`} onPress={onAction}
             hitSlop={10} style={styles.action}>
@@ -32,8 +26,6 @@ export function SectionHeader({ eyebrow, title, subtitle, action, onAction, righ
             <Icon name="arrow-forward" size={13} color={theme.colors.accent} />
           </Pressable>
         ) : null)}
-      </View>
-      {!!subtitle && <Text style={ui.caption}>{subtitle}</Text>}
     </View>
   );
 }
@@ -58,7 +50,7 @@ export function SectionRetry({ message, onRetry }: { message: string; onRetry: (
 const createStyles = (theme: Theme) => {
   const c = theme.colors;
   return StyleSheet.create({
-    title: { color: c.text, fontFamily: theme.fonts.editorial, fontSize: 22 },
+    title: { flex: 1, color: c.text, fontFamily: theme.fonts.editorial, fontSize: 18, lineHeight: 24 },
     action: { flexDirection: 'row', alignItems: 'center', gap: 4 },
     retry: {
       flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, borderRadius: 16,

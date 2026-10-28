@@ -37,24 +37,10 @@ export const IDEAS: Idea[] = [
   { builder: 'GIFT', icon: 'gift-outline' },
   { builder: 'APPAREL', icon: 'shirt-outline' },
   { builder: 'JEWELRY', icon: 'diamond-outline' },
+  { builder: 'CASE', icon: 'phone-portrait-outline' },
 ];
 
 /** Active categories that open one of `builders`, in that order of preference. */
 export function categoriesFor(categories: CatalogCategory[], builders: BuilderType[]) {
   return builders.flatMap((builder) => categories.filter((category) => builderOf(category) === builder));
-}
-
-/**
- * Up to `limit` items taking turns between groups (e.g. categories), so one large group
- * cannot fill the whole rail. Order inside each group is kept.
- */
-export function takeTurns<T>(items: T[], groupOf: (item: T) => string, limit: number): T[] {
-  const groups = new Map<string, T[]>();
-  for (const item of items) groups.set(groupOf(item), [...(groups.get(groupOf(item)) ?? []), item]);
-  const queues = [...groups.values()];
-  const picked: T[] = [];
-  for (let round = 0; picked.length < limit && queues.some((queue) => queue.length > round); round++)
-    for (const queue of queues)
-      if (queue[round] !== undefined && picked.length < limit) picked.push(queue[round]);
-  return picked;
 }

@@ -14,6 +14,7 @@ import { stageDescription } from '@/screen/Confirmation/components/OrderTimeline
 import { useThemeStore } from '@/store/themeStore';
 import { useAuthStore } from '@/store/authStore';
 import { useGetUnreadNotificationCountQuery } from '@/api/endpoints/notificationSlice';
+import { HeaderGlow } from './HeaderGlow';
 
 /**
  * The header's own palette per mode. Dark: the brand's navy with apricot on top. Light: a
@@ -102,6 +103,7 @@ export function HomeHeader({ search, onSearch, activeOrder }: {
   return (
     <LinearGradient colors={palette.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
       style={[styles.header, { paddingTop: insets.top + 14 }]}>
+      <HeaderGlow />
       <View style={styles.inner}>
         <View style={styles.topRow}>
           <View style={{ flex: 1 }} accessibilityRole="header">
@@ -177,7 +179,10 @@ export function HomeHeader({ search, onSearch, activeOrder }: {
 const createStyles = (theme: Theme) => {
   const p = paletteOf(theme);
   return StyleSheet.create({
-    header: { borderBottomLeftRadius: 28, borderBottomRightRadius: 28, paddingHorizontal: 22, paddingBottom: 20 },
+    header: {
+      borderBottomLeftRadius: 28, borderBottomRightRadius: 28, paddingHorizontal: 22, paddingBottom: 20,
+      overflow: 'hidden',
+    },
     inner: { width: '100%', maxWidth: 760, alignSelf: 'center', gap: 18 },
     topRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     headerButton: {

@@ -57,16 +57,14 @@ function CreationSkeleton() {
 }
 
 export function CommunityCreations({ creations, loading, error, onRetry, onOpen,
-  eyebrow, title, intro,
+  title,
   hideWhenEmpty = false }: {
   creations: CommunityCreation[];
   onOpen: (creation: CommunityCreation) => void;
   loading: boolean;
   error: string;
   onRetry: () => void;
-  eyebrow?: string;
   title?: string;
-  intro?: string;
   /** Leave the section out entirely when there is nothing to show yet. */
   hideWhenEmpty?: boolean;
 }) {
@@ -76,8 +74,7 @@ export function CommunityCreations({ creations, loading, error, onRetry, onOpen,
   if (hideWhenEmpty && !loading && !error && !creations.length) return null;
   return (
     <View style={{ gap: 14 }}>
-      <SectionHeader eyebrow={eyebrow ?? t('community.eyebrow')} title={title ?? t('community.title')}
-        subtitle={intro ?? t('community.intro')} />
+      <SectionHeader title={title ?? t('community.title')} />
       {loading ? (
         <ScrollView horizontal scrollEnabled={false} contentContainerStyle={{ gap: 12 }}>
           {[0, 1, 2].map((index) => <CreationSkeleton key={index} />)}

@@ -19,6 +19,9 @@ export interface BaseProduct {
   printAreas?: PrintAreas | null;
   sizes?: SizeStock[] | null;
   isActive?: boolean;
+  /** Phone case models: the brand and the overlay drawn above the artwork. */
+  deviceBrand?: string | null;
+  overlayImageUrl?: string | null;
 }
 
 export interface SavedProduct {
@@ -34,6 +37,10 @@ export interface SavedProduct {
   /** COMPANY apparel: back canvas image. */
   backImageUrl?: string | null;
   printAreas?: PrintAreas | null;
+  /** COMPANY phone case models: the brand, catalog order and overlay above the artwork. */
+  deviceBrand?: string | null;
+  sortOrder?: number;
+  overlayImageUrl?: string | null;
   designPreviewUrl?: string | null;
   /** Back preview for two-sided designs (APPAREL). */
   backDesignPreviewUrl?: string | null;

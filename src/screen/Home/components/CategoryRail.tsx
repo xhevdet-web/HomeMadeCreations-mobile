@@ -23,7 +23,7 @@ export function CategoryRail({ categories, loading, error, onRetry, onOpen, onSe
   if (!loading && !error && !categories.length) return null;
   return (
     <View style={{ gap: 14 }}>
-      <SectionHeader eyebrow={t('home.startEyebrow')} title={t('home.startTitle')}
+      <SectionHeader title={t('home.startTitle')}
         action={t('common.seeAll')} onAction={onSeeAll} />
       {error ? <SectionRetry message={t('home.loadCategoriesFailed')} onRetry={onRetry} /> : loading ? (
         <View style={{ flexDirection: 'row', gap: 12 }}>

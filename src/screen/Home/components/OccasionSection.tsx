@@ -30,7 +30,7 @@ export function OccasionSection({ categories, onOpen }: {
 
   return (
     <View style={{ gap: 14 }}>
-      <SectionHeader eyebrow={t('home.occasionEyebrow')} title={t('home.occasionTitle')} />
+      <SectionHeader title={t('home.occasionTitle')} />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
         {occasions.map((occasion) => {
           const active = occasion.id === selectedId;

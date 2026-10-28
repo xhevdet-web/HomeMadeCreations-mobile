@@ -1,6 +1,6 @@
 // Category builders decide which studio a category opens. Never infer a builder from a
 // category name; categories without a builderType keep the original jewelry studio.
-export const BUILDER_TYPES = ['JEWELRY', 'BOUQUET', 'GIFT', 'APPAREL'] as const;
+export const BUILDER_TYPES = ['JEWELRY', 'BOUQUET', 'GIFT', 'APPAREL', 'CASE'] as const;
 export type BuilderType = (typeof BUILDER_TYPES)[number];
 
 export const DESIGN_SIDES = ['FRONT', 'BACK'] as const;

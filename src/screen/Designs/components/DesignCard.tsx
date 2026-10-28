@@ -8,6 +8,7 @@ import { type Theme } from '@/constants/theme';
 import { useTranslation } from 'react-i18next';
 import type { SavedProduct } from '@/api/commerceModels';
 import { apparelImage, apparelMeta, isApparelProduct } from '@/services/apparelDesign';
+import { caseMeta, isCaseProduct } from '@/services/caseDesign';
 import { sizeLabel } from '@/helper/jewelry';
 
 const VISIBLE_MATERIALS = 3;
@@ -51,7 +52,9 @@ export function DesignCard({
   const apparel = !readyMade && isApparelProduct(product);
   const meta = (apparel
     ? apparelMeta(t, product)
-    : [
+    : !readyMade && isCaseProduct(product)
+      ? caseMeta(t, product)
+      : [
       readyMade ? t('designs.readyMade') : componentCount(t, product.itemCount, product.category?.builderType),
       size ? sizeLabel(size) : product.category?.name,
     ]).filter(Boolean).join(' · ');

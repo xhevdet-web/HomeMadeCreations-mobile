@@ -7,6 +7,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useTranslation } from 'react-i18next';
 import { OrderedProduct, SavedProduct } from '@/api/commerceModels';
 import { apparelImage, apparelMeta, isApparelProduct } from '@/services/apparelDesign';
+import { caseMeta, isCaseProduct } from '@/services/caseDesign';
 import { sizeLabel } from '@/helper/jewelry';
 
 export function ProductOverview({
@@ -47,6 +48,8 @@ export function ProductOverview({
               ? [product.color, t('productOverview.readyToOrder')].filter(Boolean).join(' · ')
               : isApparelProduct(product)
                 ? apparelMeta(t, product).join(' · ')
+                : isCaseProduct(product)
+                  ? caseMeta(t, product).join(' · ')
                 : `${componentCount(t, product.itemCount, product.category?.builderType)} · ${t('productOverview.customDesign')}`}
           </Text>
           {size && <Text style={ui.caption}>{size}</Text>}
