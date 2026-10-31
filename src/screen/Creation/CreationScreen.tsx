@@ -16,6 +16,7 @@ import { useFeedbackState } from '@/hooks/useFeedbackState';
 import { copyCreation } from '@/services/savedDesign';
 import { isApparelProduct, loadApparelDesign } from '@/services/apparelDesign';
 import { isCanvasProduct, loadCanvasDesign } from '@/services/canvasDesign';
+import { isStickerProduct, loadStickerDesign } from '@/services/stickerDesign';
 import { CreationBeads, CreationHero, CreationPromise, type CreationLine } from './components/CreationDetails';
 
 export default function CreationScreen() {
@@ -33,9 +34,11 @@ export default function CreationScreen() {
   const [opening, setOpening] = useState<'order' | 'customize' | null>(null);
   const [error, setError] = useFeedbackState();
 
+  // Sticker sets are priced per sticker by their size, not by their components.
+  const stickers = !!creation && isStickerProduct(creation.product);
   // One line per bead, priced and stock-checked against today's catalog.
   const lines: CreationLine[] = [];
-  for (const item of creation?.product.items ?? []) {
+  for (const item of stickers ? [] : creation?.product.items ?? []) {
     const line = lines.find((entry) => entry.id === item.subCategoryId);
     if (line) { line.quantity += item.quantity; continue; }
     const current = components?.find((component) => component.id === item.subCategoryId);
@@ -53,14 +56,22 @@ export default function CreationScreen() {
     if (current && current.stock < line.quantity) line.available = false;
   }
   const unavailable = lines.filter((line) => !line.available);
-  const total = lines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
-  const pricesChanged = !!creation && !!components && total !== creation.product.price;
+  const total = stickers ? creation.product.price
+    : lines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
+  const pricesChanged = !stickers && !!creation && !!components && total !== creation.product.price;
 
   async function open(mode: 'order' | 'customize') {
     if (!creation || !user || opening) return;
     setOpening(mode);
     setError('');
     try {
+      if (stickers) {
+        // A sticker set opens as the buyer's own copy, saved when they continue.
+        loadStickerDesign(creation.product, t('drafts.myName', { name: creation.product.name }));
+        toast.info(t('stickers.opened'));
+        router.push(mode === 'order' ? '/sticker-preview' : '/sticker-studio');
+        return;
+      }
       if (isApparelProduct(creation.product)) {
         // Apparel copies open in the Apparel Studio, where they are saved as the buyer's own.
         loadApparelDesign(creation.product, t('drafts.myName', { name: creation.product.name }));

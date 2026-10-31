@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { OrderedProduct, SavedProduct } from '@/api/commerceModels';
 import { apparelImage, apparelMeta, isApparelProduct } from '@/services/apparelDesign';
 import { caseMeta, isCaseProduct } from '@/services/caseDesign';
+import { isStickerProduct, stickerMeta } from '@/services/stickerDesign';
 import { sizeLabel } from '@/helper/jewelry';
 
 export function ProductOverview({
@@ -23,7 +24,8 @@ export function ProductOverview({
   const ui = useUI();
   const theme = useTheme();
   const { t } = useTranslation();
-  const saved = product.selectedSize;
+  // A sticker set's size is part of its summary line.
+  const saved = isStickerProduct(product) ? null : product.selectedSize;
   const size = chosenSize
     ? t('productOverview.size', { size: chosenSize })
     : saved
@@ -50,6 +52,8 @@ export function ProductOverview({
                 ? apparelMeta(t, product).join(' · ')
                 : isCaseProduct(product)
                   ? caseMeta(t, product).join(' · ')
+                : isStickerProduct(product)
+                  ? stickerMeta(t, product).join(' · ')
                 : `${componentCount(t, product.itemCount, product.category?.builderType)} · ${t('productOverview.customDesign')}`}
           </Text>
           {size && <Text style={ui.caption}>{size}</Text>}

@@ -15,6 +15,7 @@ import { editSavedDesign } from '@/services/savedDesign';
 import { isApparelProduct, loadApparelDesign } from '@/services/apparelDesign';
 import { isCanvasProduct, loadCanvasDesign } from '@/services/canvasDesign';
 import { isCaseProduct, loadCaseDesign } from '@/services/caseDesign';
+import { isStickerProduct, loadStickerDesign } from '@/services/stickerDesign';
 import { DesignCard } from './components/DesignCard';
 
 export default function DesignsScreen() {
@@ -37,6 +38,13 @@ export default function DesignsScreen() {
         loadCaseDesign(product);
         toast.info(t('cases.opened'));
         router.push('/case-studio');
+        return;
+      }
+      if (isStickerProduct(product)) {
+        // Sticker sets reopen with their size, every design, placement and quantity.
+        loadStickerDesign(product);
+        toast.info(t('stickers.opened'));
+        router.push('/sticker-studio');
         return;
       }
       if (isApparelProduct(product)) {

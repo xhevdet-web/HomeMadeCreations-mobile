@@ -14,6 +14,7 @@ import { OrderTimeline, stageDescription } from './OrderTimeline';
 import { dateLocale } from '@/i18n';
 import { ApparelSummary } from '@/components/apparel/ApparelSummary';
 import { apparelMeta, isApparelProduct } from '@/services/apparelDesign';
+import { isStickerProduct, stickerMeta } from '@/services/stickerDesign';
 import { caseMeta, isCaseProduct } from '@/services/caseDesign';
 import { sizeLabel } from '@/helper/jewelry';
 
@@ -61,7 +62,8 @@ export function OrderTracking({ order }: { order: ApiOrder }) {
   const readyMade = order.product.origin === 'COMPANY';
   const apparel = !readyMade && isApparelProduct(order.product);
   const phoneCase = !readyMade && isCaseProduct(order.product);
-  const lines = readyMade || apparel || phoneCase ? [] : beadLines(order);
+  const stickers = !readyMade && isStickerProduct(order.product);
+  const lines = readyMade || apparel || phoneCase || stickers ? [] : beadLines(order);
   const date = orderDate(order.createdAt, i18n.language);
   const address = [order.address, [order.postalCode, order.country].filter(Boolean).join(' ')]
     .filter(Boolean).join(', ');
@@ -78,11 +80,14 @@ export function OrderTracking({ order }: { order: ApiOrder }) {
             <Text style={styles.name} numberOfLines={2}>{order.product.name}</Text>
             <Text style={styles.meta} numberOfLines={1}>
               {readyMade
-                ? t('orderDetails.readyMade')
+                ? [t('orderDetails.readyMade'), (order.quantity ?? 1) > 1 ? `× ${order.quantity}` : null]
+                  .filter(Boolean).join(' · ')
                 : apparel
                   ? apparelMeta(t, order.product).join(' · ')
                   : phoneCase
                     ? caseMeta(t, order.product).join(' · ')
+                    : stickers
+                      ? stickerMeta(t, order.product).join(' · ')
                     : [componentCount(t, order.product.itemCount, order.product.category?.builderType),
                     size && sizeLabel(size)]
                     .filter(Boolean).join(' · ')}

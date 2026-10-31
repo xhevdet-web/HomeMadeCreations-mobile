@@ -13,12 +13,14 @@ export const orderSlice = apiSlice.injectEndpoints({
       providesTags: ['Order'],
     }),
     /** `size` is required for a company product sold in sizes; designs keep their own. */
-    createOrder: builder.mutation<ApiOrder, { productId: string; notes: string; size?: string | null }>({
-      query: ({ productId, notes, size }) => ({
+    createOrder: builder.mutation<ApiOrder, { productId: string; notes: string; size?: string | null;
+      quantity?: number }>({
+      query: ({ productId, notes, size, quantity }) => ({
         url: ORDER_URL,
         method: 'POST',
         auth: true,
         body: { productId, paymentType: 'CASH_ON_DELIVERY', ...(size ? { size } : {}),
+          ...(quantity ? { quantity } : {}),
           ...(notes.trim() ? { customerNotes: notes.trim() } : {}) },
       }),
       invalidatesTags: ['Order', 'Product', 'SubCategory'],

@@ -7,20 +7,26 @@ import { CatalogCategory } from '@/api/catalogModels';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { isMeasuredSize } from '@/helper/jewelry';
+import { parseStickerSize } from '@/helper/stickers';
 
 function sizeRange(t: TFunction, category: CatalogCategory) {
   // Garments have their own colours and sizes, chosen on the next screen.
   if (category.builderType === 'APPAREL') return t('categories.designYourOwn');
   const sizes = category.sizes ?? [];
   if (!sizes.length) return t('categories.freeDesign');
-  // Bracelet sizes are length ranges in mm; older sizes carry one measurement each.
+  // Bracelet sizes are length ranges in mm; sticker sizes are a width and height in mm;
+  // older sizes carry one measurement each.
   const measured = sizes.filter(isMeasuredSize);
+  const stickers = category.builderType === 'STICKER'
+    ? sizes.flatMap((size) => parseStickerSize(size) ?? []) : [];
   const values = measured.length
     ? measured.flatMap((size) => [size.minMeasurementMm / 10, size.maxMeasurementMm / 10])
-    : sizes.map((size) => size.measurement ?? 0);
+    : stickers.length
+      ? stickers.flatMap((size) => [size.widthMm / 10, size.heightMm / 10])
+      : sizes.map((size) => size.measurement ?? 0);
   const min = Math.min(...values);
   const max = Math.max(...values);
-  const unit = measured.length ? 'cm' : sizes[0].unit;
+  const unit = measured.length || stickers.length ? 'cm' : sizes[0].unit;
   const range = min === max ? `${min} ${unit}` : `${min}–${max} ${unit}`;
   return t('categories.sizes', { count: sizes.length, range });
 }

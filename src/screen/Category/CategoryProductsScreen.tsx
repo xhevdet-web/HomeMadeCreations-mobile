@@ -52,7 +52,11 @@ export default function CategoryProductsScreen() {
       <View style={{ gap: 6 }}>
         <Text style={ui.eyebrow}>{t('category.eyebrow')}</Text>
         <Text style={styles.title}>{data.name}</Text>
-        <Text style={ui.body}>{data.description || t('category.defaultDescription')}</Text>
+        {/* Stickers open on their own headline; other studios keep the category's text. */}
+        {data.builderType === 'STICKER' && <Text style={styles.tagline}>{t('stickers.tagline')}</Text>}
+        <Text style={ui.body}>
+          {data.description || t(data.builderType === 'STICKER' ? 'stickers.intro' : 'category.defaultDescription')}
+        </Text>
       </View>
 
       <CreateOwnCard category={data} onPress={() => startDesign(data)} />
@@ -102,6 +106,7 @@ const createStyles = (theme: Theme) => {
   const c = theme.colors;
   return StyleSheet.create({
     title: { color: c.text, fontFamily: theme.fonts.editorial, fontSize: 34, lineHeight: 40 },
+    tagline: { color: c.accent, fontFamily: theme.fonts.editorial, fontSize: 20, lineHeight: 26 },
     heading: { color: c.text, fontFamily: theme.fonts.editorial, fontSize: 22 },
     grid: { flexDirection: 'row', flexWrap: 'wrap', gap: GAP },
   });

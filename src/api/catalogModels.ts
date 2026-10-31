@@ -5,6 +5,7 @@ import type { CategorySize } from '@/types/models';
 import { parseBuilderConfig, parseBuilderType, type BuilderConfig, type BuilderType } from './builderModels';
 import { isSized, sizeStock } from './apparelModels';
 import { isMeasuredSize } from '@/helper/jewelry';
+import { parseStickerSize } from '@/helper/stickers';
 export interface CatalogCategory {
   sizes?: CategorySize[] | null;
   /** Which studio opens this category; null keeps the original jewelry studio. */
@@ -61,6 +62,8 @@ export function parseCategorySize(value: unknown): CategorySize {
   if (!size || typeof size.id !== 'string' || !size.id.trim() ||
       typeof size.name !== 'string' || !size.name.trim())
     throw new Error(i18n.t('designErrors.invalidCatalog'));
+  const sticker = parseStickerSize(size);
+  if (sticker) return sticker;
   if (isMeasuredSize(size))
     return { id: size.id, name: size.name, minMeasurementMm: size.minMeasurementMm,
       maxMeasurementMm: size.maxMeasurementMm, defaultMeasurementMm: size.defaultMeasurementMm,

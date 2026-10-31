@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { setStatusBarStyle } from 'expo-status-bar';
@@ -12,15 +12,12 @@ import { useCanvasStore } from '@/store/canvasStore';
 import { useApparelStore } from '@/store/apparelStore';
 import { useGetOrdersQuery } from '@/api/endpoints/orderSlice';
 import { useGetAllCategoriesQuery } from '@/api/endpoints/categorySlice';
-import {
-  useGetCreationsFromOthersQuery, useGetProductsQuery, useGetUserProductsQuery,
-} from '@/api/endpoints/productSlice';
-import { apiError } from '@/api/apiSlice';
+import { useGetProductsQuery, useGetUserProductsQuery } from '@/api/endpoints/productSlice';
 import { useApiResult } from '@/api/useApiResult';
 import { inStock } from '@/api/apparelModels';
 import type { BuilderType } from '@/api/builderModels';
 import type { CatalogCategory } from '@/api/catalogModels';
-import type { CommunityCreation, SavedProduct } from '@/api/commerceModels';
+import type { SavedProduct } from '@/api/commerceModels';
 import { productById } from '@/services/catalog';
 import { openCategory, startDesign } from '@/services/categoryFlow';
 import { canvasSignature } from '@/services/canvasDesign';
@@ -33,7 +30,7 @@ import { HomeHero } from './components/HomeHero';
 import { CategoryRail } from './components/CategoryRail';
 import { OccasionSection } from './components/OccasionSection';
 import { InspirationSection } from './components/InspirationSection';
-import { CommunityCreations } from './components/ForYou';
+import { CommunityCreationsSection } from './components/CommunityCreations/CommunityCreationsSection';
 import { HomeSearchResults } from './components/HomeSearchResults';
 import { WhyHomeMade } from './components/Highlights';
 
@@ -58,7 +55,6 @@ export default function HomeScreen() {
   const { t } = useTranslation();
   const [search, setSearch] = useState('');
   const user = useAuthStore((state) => state.user);
-  const authenticated = useAuthStore((state) => state.status === 'authenticated');
   const jewelry = useDesignStore();
   const canvas = useCanvasStore();
   const apparel = useApparelStore();
@@ -67,21 +63,6 @@ export default function HomeScreen() {
   const categoriesResult = useApiResult<CatalogCategory[]>(useGetAllCategoriesQuery());
   const { data: designs } = useGetUserProductsQuery(user?.id ?? '', { skip: !user });
   const readyMadeResult = useApiResult<SavedProduct[]>(useGetProductsQuery({ origin: 'COMPANY' }));
-  // Community creations need a valid session; request them once it has been restored.
-  const creationsQuery = useGetCreationsFromOthersQuery(undefined, { skip: !authenticated });
-  const creations = useApiResult<CommunityCreation[]>(creationsQuery);
-  const { error: creationsError, refetch: refetchCreations } = creationsQuery;
-  const unauthorized = !!creationsError && apiError(creationsError).status === 401;
-  const restoringSession = useRef(false);
-  useEffect(() => {
-    // A 401 means the token was rejected: re-validate the session once. An invalid
-    // session signs out, and the protected navigator then opens Login.
-    if (!unauthorized || restoringSession.current) return;
-    restoringSession.current = true;
-    void useAuthStore.getState().restore().then(() => {
-      if (useAuthStore.getState().status === 'authenticated') void refetchCreations();
-    });
-  }, [unauthorized, refetchCreations]);
 
   // The header sits under the status bar: light icons on its navy (dark mode), dark icons on
   // its cream (light mode).
@@ -146,19 +127,8 @@ export default function HomeScreen() {
               <OccasionSection categories={categories} onOpen={openCategory} />
               <InspirationSection categories={categories} triedBuilders={triedBuilders} onStart={startDesign} />
               <WhyHomeMade />
-              {/* Optional: hidden when empty or unavailable rather than showing an error. */}
-              {!creations.error && (
-                <CommunityCreations
-                  title={t('home.communityTitle')}
-                  creations={creations.data ?? []}
-                  loading={creations.loading || !authenticated || unauthorized}
-                  error=""
-                  onRetry={creations.retry}
-                  hideWhenEmpty
-                  onOpen={(creation) =>
-                    router.push({ pathname: '/creation', params: { id: creation.completedOrderId } })}
-                />
-              )}
+              {/* Owns its data and filter state; hidden when empty or unavailable. */}
+              <CommunityCreationsSection />
             </>
           )}
         </View>

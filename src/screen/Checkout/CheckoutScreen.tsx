@@ -31,17 +31,22 @@ import { isCanvasProduct, loadCanvasDesign, savedComponentLines } from '@/servic
 import { useCanvasStore } from '@/store/canvasStore';
 import { useCaseStore } from '@/store/caseStore';
 import { caseMeta, isCaseProduct, loadCaseDesign } from '@/services/caseDesign';
+import { isStickerProduct, loadStickerDesign, stickerMeta } from '@/services/stickerDesign';
+import { useStickerStore } from '@/store/stickerStore';
 import { parseTextLayers } from '@/api/builderModels';
 import { componentCount } from '@/helper/builders';
 import { ApparelSummary } from '@/components/apparel/ApparelSummary';
 
-function CheckoutForm({ product, user, size }: { product: SavedProduct; user: User; size?: string | null }) {
+function CheckoutForm({ product, user, size, quantity }: {
+  product: SavedProduct; user: User; size?: string | null; quantity?: number;
+}) {
   const ui = useUI();
   const { t } = useTranslation();
   const readyMade = isCompanyProduct(product);
   const apparel = !readyMade && isApparelProduct(product);
   const canvas = !readyMade && isCanvasProduct(product);
   const phoneCase = !readyMade && isCaseProduct(product);
+  const stickers = !readyMade && isStickerProduct(product);
   const [currentProduct, setCurrentProduct] = useState(product);
   const missingDelivery = ![
     user.firstName,
@@ -87,7 +92,8 @@ function CheckoutForm({ product, user, size }: { product: SavedProduct; user: Us
     try {
       useCommerceStore.getState().setPending(key, true);
       sent = true;
-      const order = await createOrder({ productId: product.id, notes, size: readyMade ? size : null }).unwrap();
+      const order = await createOrder({ productId: product.id, notes, size: readyMade ? size : null,
+        quantity: readyMade ? quantity : undefined }).unwrap();
       useCommerceStore.getState().rememberOrder(order);
       // Only clear the matching local draft after the backend confirms the Order.
       // An unrelated draft may also be open, so leave that one alone.
@@ -102,6 +108,10 @@ function CheckoutForm({ product, user, size }: { product: SavedProduct; user: Us
           photo: caseDraft.photo, name: t('drafts.myName', { name: product.category.name }) });
         caseDraft.markSaved(null);
       }
+      const stickerDraft = useStickerStore.getState();
+      if (stickers && stickerDraft.saved?.product.id === product.id)
+        // Ordered: the next set opens empty, in the shape and size chosen last.
+        stickerDraft.startOver(t('stickers.defaultName'));
       const canvasDraft = useCanvasStore.getState();
       if (canvas && canvasDraft.saved?.product.id === product.id && canvasDraft.categoryId) {
         // Ordered: the studio starts fresh for the next bouquet or gift.
@@ -168,6 +178,12 @@ function CheckoutForm({ product, user, size }: { product: SavedProduct; user: Us
         router.dismissTo('/apparel-studio');
         return;
       }
+      if (stickers) {
+        // Reopen the sticker set with every design, placement and quantity.
+        if (useStickerStore.getState().saved?.product.id !== product.id) loadStickerDesign(product);
+        router.dismissTo('/sticker-studio');
+        return;
+      }
       if (phoneCase) {
         // Reopen the Case Studio on the same phone, with the image and its placement.
         if (useCaseStore.getState().saved?.product.id !== product.id) loadCaseDesign(product);
@@ -205,7 +221,7 @@ function CheckoutForm({ product, user, size }: { product: SavedProduct; user: Us
       style={{ maxWidth: 600, gap: 20 }}
       footer={
         <ActionFooter
-          amount={currentProduct.price}
+          amount={currentProduct.price * (readyMade && quantity ? quantity : 1)}
           amountLabel={t('checkout.totalDue')}
           title={
             pending && !busy
@@ -233,6 +249,11 @@ function CheckoutForm({ product, user, size }: { product: SavedProduct; user: Us
     >
       <Header title={t('checkout.title')} back />
       {!readyMade && <FlowStep step={2} />}
+      {readyMade && !!quantity && quantity > 1 && (
+        <Text style={ui.body}>
+          {t('stickers.readyMade.quantityLine', { count: quantity, price: money(currentProduct.price) })}
+        </Text>
+      )}
       <ProductOverview
         product={currentProduct}
         size={readyMade ? size : null}
@@ -300,7 +321,18 @@ function CheckoutForm({ product, user, size }: { product: SavedProduct; user: Us
           ))}
         </Disclosure>
       )}
-      {!readyMade && !apparel && !canvas && !phoneCase && (
+      {stickers && (
+        <Disclosure
+          title={t('orderDetails.priceDetails')}
+          summary={stickerMeta(t, currentProduct).join(' · ') + ' · ' + money(currentProduct.price)}
+        >
+          {[...currentProduct.items].sort((a, b) => (a.position ?? 0) - (b.position ?? 0)).map((item, index) => (
+            <DetailRow key={item.id} label={t('stickers.checkoutLine', { number: index + 1, count: item.quantity })}
+              value={money(item.quantity * item.unitPrice)} />
+          ))}
+        </Disclosure>
+      )}
+      {!readyMade && !apparel && !canvas && !phoneCase && !stickers && (
         <Disclosure
           title={t('orderDetails.priceDetails')}
           summary={componentCount(t, currentProduct.itemCount) + ' · ' + money(currentProduct.price)}
@@ -345,7 +377,7 @@ export default function CheckoutScreen() {
     ? result.data.isActive === true : result.data.createdById === userId);
   if (result.data && validProduct && user && !result.loading && !result.error) {
     return <CheckoutForm key={result.data.id + user.id} product={result.data} user={user}
-      size={checkout?.size} />;
+      size={checkout?.size} quantity={checkout?.quantity} />;
   }
   return (
     <Page style={{ maxWidth: 600 }}>

@@ -14,6 +14,11 @@ export interface CategorySize {
   measurement?: number;
   unit?: string;
   maxItems?: number;
+  /** Stickers: the shape, whole-millimetre size and price per printed sticker in cents. */
+  shape?: string;
+  widthMm?: number;
+  heightMm?: number;
+  price?: number;
 }
 export type ItemType = 'bead' | 'charm' | 'letter' | 'spacer';
 export interface Product {

@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import type { SavedProduct } from '@/api/commerceModels';
 import { apparelImage, apparelMeta, isApparelProduct } from '@/services/apparelDesign';
 import { caseMeta, isCaseProduct } from '@/services/caseDesign';
+import { isStickerProduct, stickerMeta } from '@/services/stickerDesign';
 import { sizeLabel } from '@/helper/jewelry';
 
 const VISIBLE_MATERIALS = 3;
@@ -47,13 +48,17 @@ export function DesignCard({
   const styles = useThemedStyles(createStyles);
   const { t } = useTranslation();
   const readyMade = product.origin === 'COMPANY';
-  const lines = readyMade ? [] : materials(product);
+  const stickers = !readyMade && isStickerProduct(product);
+  // A sticker set is its designs, not a list of materials.
+  const lines = readyMade || stickers ? [] : materials(product);
   const size = product.selectedSize;
   const apparel = !readyMade && isApparelProduct(product);
   const meta = (apparel
     ? apparelMeta(t, product)
     : !readyMade && isCaseProduct(product)
       ? caseMeta(t, product)
+      : stickers
+        ? stickerMeta(t, product)
       : [
       readyMade ? t('designs.readyMade') : componentCount(t, product.itemCount, product.category?.builderType),
       size ? sizeLabel(size) : product.category?.name,

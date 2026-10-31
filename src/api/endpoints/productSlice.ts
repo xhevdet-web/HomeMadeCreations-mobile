@@ -4,7 +4,9 @@ import { fetch } from 'expo/fetch';
 import { apiSlice, ApiError } from '../apiSlice';
 import { PRODUCT_URL, USER_URL } from '../constants';
 import { parseProduct } from '@/api/catalogModels';
-import type { CommunityCreation, ProductInput, ProductOrigin, SavedProduct } from '@/api/commerceModels';
+import type {
+  CommunityCreation, CommunityGallery, ProductInput, ProductOrigin, SavedProduct,
+} from '@/api/commerceModels';
 import { useCatalogStore } from '@/store/catalogStore';
 
 async function appendPreview(data: FormData, field: string, previewUri: string, name?: string) {
@@ -109,6 +111,27 @@ export const productSlice = apiSlice.injectEndpoints({
       },
       providesTags: ['Product'],
     }),
+    /**
+     * Home's community gallery: the categories with creations from others and the latest
+     * five of one category (the first when none is given, or when the given one is empty).
+     */
+    getCommunityGallery: builder.query<CommunityGallery, string | void>({
+      query: (categoryId) => ({
+        url: `${PRODUCT_URL}/creations/community`,
+        auth: true,
+        params: { categoryId: categoryId || undefined },
+      }),
+      transformResponse: (value: Partial<CommunityGallery> | null) => {
+        if (!Array.isArray(value?.categories) || !Array.isArray(value?.creations))
+          throw new Error('The server returned an invalid community gallery.');
+        return {
+          categories: value.categories,
+          categoryId: typeof value.categoryId === 'string' ? value.categoryId : null,
+          creations: value.creations,
+        };
+      },
+      providesTags: ['Product', 'Order'],
+    }),
     createProduct: builder.mutation<SavedProduct, FormData>({
       query: (body) => ({ url: PRODUCT_URL, method: 'POST', body, auth: true }),
       invalidatesTags: ['Product'],
@@ -116,4 +139,4 @@ export const productSlice = apiSlice.injectEndpoints({
   }),
 });
 
-export const { useGetAllProductsQuery, useGetProductByIdQuery, useGetOwnedProductByIdQuery, useLazyGetOwnedProductByIdQuery, useGetCanvasProductByIdQuery, useGetProductsQuery, useGetUserProductsQuery, useGetCreationsFromOthersQuery, useCreateProductMutation } = productSlice;
+export const { useGetAllProductsQuery, useGetProductByIdQuery, useGetOwnedProductByIdQuery, useLazyGetOwnedProductByIdQuery, useGetCanvasProductByIdQuery, useGetProductsQuery, useGetUserProductsQuery, useGetCreationsFromOthersQuery, useGetCommunityGalleryQuery, useCreateProductMutation } = productSlice;

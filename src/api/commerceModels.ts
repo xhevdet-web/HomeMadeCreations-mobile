@@ -89,6 +89,29 @@ export type OrderedProduct = Pick<
   | 'origin' | 'backDesignPreviewUrl' | 'category' | 'basePrice' | 'baseProduct' | 'selectedSize'
   | 'color' | 'colorHex' | 'textLayers' | 'packagingPrice' | 'giftPackaging' | 'giftPackagingColor'
 >;
+// The Home community gallery. The backend decides everything from the session: only
+// completed orders of other customers, only categories that have some, newest first.
+export interface CommunityGalleryCategory {
+  id: string;
+  name: string;
+}
+/** A picture card: no customer, order or price data is ever included. */
+export interface CommunityGalleryCreation {
+  /** The completed order behind the card; opens the same creation in its detail screen. */
+  id: string;
+  productId: string;
+  name: string;
+  categoryId: string;
+  categoryName: string;
+  designPreviewUrl: string | null;
+  completedAt: string;
+}
+export interface CommunityGallery {
+  categories: CommunityGalleryCategory[];
+  /** The category the creations belong to; null when there is nothing to show. */
+  categoryId: string | null;
+  creations: CommunityGalleryCreation[];
+}
 // A finished piece by another customer, shown for inspiration. The backend excludes the
 // current user's products and ready-made products, and never exposes customer details.
 export interface CommunityCreation {
@@ -122,6 +145,8 @@ export interface ApiOrder {
   status: string;
   paymentType: string;
   paymentStatus: string;
+  /** How many were ordered: more than one only for ready-made stickers. */
+  quantity?: number;
   totalPrice: number;
   firstName: string;
   lastName: string;

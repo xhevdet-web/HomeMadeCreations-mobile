@@ -38,6 +38,7 @@ export const IDEAS: Idea[] = [
   { builder: 'APPAREL', icon: 'shirt-outline' },
   { builder: 'JEWELRY', icon: 'diamond-outline' },
   { builder: 'CASE', icon: 'phone-portrait-outline' },
+  { builder: 'STICKER', icon: 'happy-outline' },
 ];
 
 /** Active categories that open one of `builders`, in that order of preference. */

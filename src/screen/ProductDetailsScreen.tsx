@@ -19,6 +19,8 @@ import { type Theme } from '@/constants/theme';
 import type { SavedProduct } from '@/api/commerceModels';
 import { isCanvasBuilder } from '@/helper/canvasStudio';
 import { SizePicker } from './Apparel/components/BasePicker';
+import { MAX_STICKERS_PER_DESIGN, MIN_STICKERS_PER_ORDER } from '@/helper/stickers';
+import { StickerQuantitySelector } from './Stickers/components/StickerQuantitySelector';
 
 /** A company product: its photos, colour and sizes, ordered as it is or customised. */
 export default function ProductDetailsScreen() {
@@ -31,6 +33,7 @@ export default function ProductDetailsScreen() {
   const result = useApiResult<SavedProduct>(useGetProductByIdQuery(id ?? '', { skip: !id }));
   const [size, setSize] = useState<string | null>(null);
   const [photo, setPhoto] = useState(0);
+  const [quantity, setQuantity] = useState(MIN_STICKERS_PER_ORDER);
   const product = result.data;
 
   if (result.loading || result.error || !product || !isCompanyProduct(product))
@@ -44,7 +47,14 @@ export default function ProductDetailsScreen() {
     );
 
   const sizes = parseSizes(product.sizes);
-  const unavailable = companyUnavailable(t, product, size);
+  // Ready-made stickers are sold from five at a time, up to what is in stock.
+  const sticker = product.category?.builderType === 'STICKER' && !sizes.length;
+  const stock = product.stock ?? 0;
+  const maxQuantity = Math.min(stock, MAX_STICKERS_PER_DESIGN);
+  const unavailable = companyUnavailable(t, product, size)
+    ?? (sticker && stock < MIN_STICKERS_PER_ORDER
+      ? t('stickers.readyMade.notEnough', { count: MIN_STICKERS_PER_ORDER }) : null);
+  const pieces = sticker ? Math.min(Math.max(quantity, MIN_STICKERS_PER_ORDER), Math.max(maxQuantity, 1)) : 1;
   const apparel = product.category?.builderType === 'APPAREL';
   const phoneCase = product.category?.builderType === 'CASE';
   // Apparel, bouquets, gifts and phone cases can be customised starting from this exact product.
@@ -59,7 +69,7 @@ export default function ProductDetailsScreen() {
   function order() {
     if (!user) { toast.info(t('productDetails.loginToOrder')); router.push('/login'); return; }
     if (!product || unavailable) return;
-    useCommerceStore.getState().setCheckout(user.id, product, size);
+    useCommerceStore.getState().setCheckout(user.id, product, size, sticker ? pieces : undefined);
     router.push('/checkout');
   }
 
@@ -73,7 +83,7 @@ export default function ProductDetailsScreen() {
               <Text style={ui.caption} numberOfLines={1}>
                 {unavailable ?? [product.color, size].filter(Boolean).join(' · ')}
               </Text>
-              <Text style={styles.total}>{money(product.price)}</Text>
+              <Text style={styles.total}>{money(product.price * pieces)}</Text>
             </View>
             <View style={styles.actions}>
               {customizable && (
@@ -121,6 +131,19 @@ export default function ProductDetailsScreen() {
           </View>
         )}
       </View>
+
+      {sticker && !unavailable && (
+        <View style={styles.section}>
+          <View style={ui.between}>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={styles.label}>{t('stickers.preview.quantities')}</Text>
+              <Text style={ui.caption}>{t('stickers.readyMade.minimum', { count: MIN_STICKERS_PER_ORDER })}</Text>
+            </View>
+            <StickerQuantitySelector quantity={pieces} label={product.name} min={MIN_STICKERS_PER_ORDER}
+              max={maxQuantity} onChange={setQuantity} />
+          </View>
+        </View>
+      )}
 
       {sizes.length > 0 ? (
         <View style={styles.section}>
