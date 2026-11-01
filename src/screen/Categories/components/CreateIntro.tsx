@@ -1,21 +1,15 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { useUI } from '@/components/common/ui';
 import { useThemedStyles } from '@/hooks/useTheme';
 import { type Theme } from '@/constants/theme';
 import { useTranslation } from 'react-i18next';
 
-
-export function CreateIntro() {
-  const ui = useUI();
+/** Where this screen sits in the flow (step 1 of 3), plus how many categories are shown. */
+export function CreateIntro({ count }: { count: number }) {
   const styles = useThemedStyles(createStyles);
   const { t } = useTranslation();
   const steps = [t('categories.stepCategory'), t('categories.stepExplore'), t('categories.stepCreate')];
   return (
-    <View style={{ gap: 14, marginBottom: 6 }}>
-      <View style={{ gap: 4 }}>
-        <Text style={styles.title}>{t('categories.introTitle')}</Text>
-        <Text style={ui.body}>{t('categories.introBody')}</Text>
-      </View>
+    <View style={{ gap: 12, marginBottom: 4 }}>
       <View style={styles.steps} accessibilityLabel={t('categories.stepLabel')}>
         {steps.map((step, index) => (
           <View key={step} style={styles.step}>
@@ -27,6 +21,7 @@ export function CreateIntro() {
           </View>
         ))}
       </View>
+      {count > 0 && <Text style={styles.count}>{t('categories.count', { count })}</Text>}
     </View>
   );
 }
@@ -34,7 +29,6 @@ export function CreateIntro() {
 const createStyles = (theme: Theme) => {
   const c = theme.colors;
   return StyleSheet.create({
-    title: { color: c.text, fontFamily: theme.fonts.editorial, fontSize: 26, lineHeight: 32 },
     steps: { flexDirection: 'row', alignItems: 'center' },
     step: { flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 },
     dot: {
@@ -52,5 +46,6 @@ const createStyles = (theme: Theme) => {
     stepText: { color: c.muted, fontSize: 11 },
     stepTextActive: { color: c.text, fontWeight: '600' },
     connector: { flex: 1, height: 1, backgroundColor: c.border, marginHorizontal: 4 },
+    count: { color: c.muted, fontSize: 12, fontWeight: '600', letterSpacing: 0.4, textTransform: 'uppercase' },
   });
 };

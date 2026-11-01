@@ -88,11 +88,10 @@ test('search, filters, and empty states work on a narrow screen', async ({ page 
   await expect(page.getByRole('button', { name: /Customize Classic Bracelet/ })).toHaveCount(0);
   await page.goto('/designer');
   await expect(page.getByRole('button', { name: 'Preview', exact: true })).toBeDisabled();
-  await page.getByRole('button', { name: 'Toggle bead filters' }).click();
-  await page.getByRole('button', { name: 'Pink', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Add Pink Glass, €0.30' })).toBeVisible();
+  await page.getByRole('button', { name: 'Show Pearl', exact: true }).click();
+  await expect(page.getByRole('button', { name: /^Add Ivory Pearl/ })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Add Honey Amber, €0.35' })).toHaveCount(0);
-  await page.getByText('Reset filters', { exact: true }).click();
+  await page.getByRole('button', { name: 'Show all materials' }).click();
   await page.getByRole('button', { name: 'Letters', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Add Letter Z, €0.80' })).toBeVisible();
   await page.goto('/checkout');

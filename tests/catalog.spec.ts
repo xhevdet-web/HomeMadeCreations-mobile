@@ -81,7 +81,7 @@ test('catalog filters, sorts, falls back for images and caps bead quantities', a
   await expect(page.getByText('Hidden category', { exact: true })).toHaveCount(0);
   await createOwn(page, 'Bracelets');
   await expect(page).toHaveURL(/\/designer\?/);
-  await expect(page.getByText('Choose your details')).toBeVisible();
+  await expect(page.getByText('Tap to add, or hold and drag onto your piece')).toBeVisible();
   await expect(page.getByText('\u20ac1.50 per bead').first()).toBeVisible();
   await expect(page.getByText('Color: Gold').first()).toBeVisible();
   await expect(page.getByText('Type: Glass')).toHaveCount(0);

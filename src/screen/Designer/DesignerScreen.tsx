@@ -2,7 +2,7 @@ import { toast } from '@/store/toastStore';
 import { useFeedbackState } from '@/hooks/useFeedbackState';
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
 import { useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
@@ -26,7 +26,6 @@ import { ReorderGestureLayer } from './components/ReorderGestureLayer';
 import { StageOverlay } from './components/StageOverlay';
 import { BeadSequence, SelectionToolbar } from './components/BeadSequence';
 import { DesignerFooter } from './components/DesignerFooter';
-import { FadingHint } from './components/FadingHint';
 import { MeasurementBar } from './components/MeasurementBar';
 import {
   lengthLayout, canFit, cm, fitProblem, isComplete, isMeasuredSize, lengthOf, selectedLengthMm, sizeLabel,
@@ -243,13 +242,6 @@ export default function DesignerScreen() {
     }
     finally { savingRef.current = false; setSaving(false); }
   }
-  const hint = design.selectedId
-    ? t('jewelry.hintSelected')
-    : full || complete
-      ? complete ? t(`${product.type}.measurement.complete`) : t('jewelry.hintFull')
-      : design.items.length
-        ? t('jewelry.hintReposition')
-        : t('jewelry.hintStart');
   return (
     <View ref={screenRef} collapsable={false} style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Page scroll={false} style={{ padding: 0, gap: 0 }}>
@@ -339,9 +331,9 @@ export default function DesignerScreen() {
           </View>
         )}
         </View>
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.editorContent}
-          keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-        {design.selectedId ? (
+        {/* Fixed below the stage: the picker inside scrolls its materials and pieces separately. */}
+        <View style={styles.editorContent}>
+        {design.selectedId && (
           <SelectionToolbar
             name={itemById[design.items[selectedIndex].itemId].name}
             canMoveLeft={selectedIndex > 0}
@@ -350,8 +342,6 @@ export default function DesignerScreen() {
             onRemove={design.removeItem}
             onClose={() => design.select(null)}
           />
-        ) : (
-          <FadingHint text={hint} icon={full || complete ? 'checkmark-circle-outline' : 'sparkles-outline'} />
         )}
         {needsLength && (
           <View style={styles.hint}>
@@ -365,7 +355,6 @@ export default function DesignerScreen() {
           </View>
         )}
         {message ? <Notice text={message} /> : null}
-        <View style={styles.divider} />
         <DetailPicker
           key={product.categoryId ?? 'local'}
           categoryId={product.categoryId ?? ''}
@@ -386,7 +375,7 @@ export default function DesignerScreen() {
           onDragMove={moveDrag}
           onDragEnd={finishDrag}
         />
-        </ScrollView>
+        </View>
       </Page>
       {draggingItem && (
         <Animated.View pointerEvents="none" testID="drag-preview" style={[styles.dragPreview, dragStyle]}>
@@ -409,7 +398,7 @@ const createStyles = (theme: Theme) => {
   const c = theme.colors;
   return StyleSheet.create({
     headerWrap: { paddingHorizontal: 22, paddingVertical: 8, gap: 4 },
-    editorContent: { paddingHorizontal: 22, paddingTop: 14, paddingBottom: 32, gap: 12 },
+    editorContent: { flex: 1, paddingHorizontal: 22, paddingTop: 14, gap: 12 },
     stage: {
       position: 'relative',
       alignSelf: 'center',
@@ -430,7 +419,6 @@ const createStyles = (theme: Theme) => {
       paddingHorizontal: 12, paddingVertical: 9, borderRadius: 12,
       backgroundColor: c.soft,
     },
-    divider: { height: 1, backgroundColor: c.border, marginVertical: 2 },
     stageRow: { flexDirection: 'row', alignSelf: 'center', gap: SEQUENCE_GAP },
     // Level with the space between the stage's top labels and bottom buttons.
     sequence: {

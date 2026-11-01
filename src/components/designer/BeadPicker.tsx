@@ -1,6 +1,6 @@
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
 import { memo, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { items as localItems } from '@/services/catalog';
 import { CustomizationItem, ItemType } from '@/types/models';
@@ -18,12 +18,11 @@ const categories: Record<'All' | 'Beads' | 'Charms' | 'Letters' | 'Spacers', Ite
   Spacers: 'spacer',
 };
 type Category = keyof typeof categories;
-// Filters store ANY or a catalog value; only the "any" labels are translated.
+// The material filter stores ANY or a catalog value.
 const ANY = '';
 export function BeadPicker({
   onPick,
   initialCategory = 'All',
-  expanded = false,
   replacing,
   disabled = false,
   onDragStart,
@@ -38,13 +37,11 @@ export function BeadPicker({
   onPick: (item: CustomizationItem) => void;
   replacing: boolean;
   initialCategory?: string;
-  expanded?: boolean;
   disabled?: boolean;
   onDragStart?: (item: CustomizationItem, x: number, y: number) => void;
   onDragMove?: (x: number, y: number) => void;
   onDragEnd?: (item: CustomizationItem, x: number, y: number, canceled: boolean) => void;
 }) {
-  const theme = useTheme();
   const ui = useUI();
   const styles = useThemedStyles(createStyles);
   const { width } = useWindowDimensions();
@@ -52,155 +49,93 @@ export function BeadPicker({
 
   const { t } = useTranslation();
   const [category, setCategory] = useState<Category>(initialCategory in categories ? initialCategory as Category : 'All');
-  const [filterOpen, setFilterOpen] = useState(expanded);
-  const [color, setColor] = useState(ANY);
   const [material, setMaterial] = useState(ANY);
-  const [shape, setShape] = useState(ANY);
-  const [cheap, setCheap] = useState(false);
-  const [search, setSearch] = useState('');
+  const materials = useMemo(
+    () => [...new Set(items.map((item) => item.material).filter((value): value is string => !!value))]
+      .sort((a, b) => a.localeCompare(b)),
+    [items],
+  );
+  // One material means nothing to choose: the grid takes the full width.
+  const sidebar = materials.length > 1;
   const visible = useMemo(
     () =>
       items.filter(
         (item) =>
           (!categories[category] || item.type === categories[category]) &&
-          (color === ANY || item.color === color) &&
-          (material === ANY || item.material === material) &&
-          (shape === ANY || item.shape === shape) &&
-          (!cheap || item.price <= 50) &&
-          item.name.toLowerCase().includes(search.toLowerCase()),
+          (material === ANY || item.material === material),
       ),
-    [items, category, color, material, shape, cheap, search],
+    [items, category, material],
   );
-  const activeCount = [color !== ANY, material !== ANY, shape !== ANY, cheap].filter(Boolean).length;
-  const reset = () => {
-    setColor(ANY);
-    setMaterial(ANY);
-    setShape(ANY);
-    setCheap(false);
-    setSearch('');
+  const columns = sidebar ? (width < 360 ? 2 : 3) : (width < 360 ? 3 : 4);
+  const materialOption = (value: string, label: string, accessibilityLabel: string) => {
+    const active = material === value;
+    return (
+      <Pressable key={value || 'all'} accessibilityRole="button" accessibilityLabel={accessibilityLabel}
+        accessibilityState={{ selected: active }} onPress={() => setMaterial(value)}
+        style={({ pressed }) => [styles.material, active && styles.materialActive, { opacity: pressed ? 0.7 : 1 }]}>
+        <Text numberOfLines={2} style={[styles.materialText, active && styles.materialTextActive]}>{label}</Text>
+      </Pressable>
+    );
   };
-  // A chip row of one "any" label plus catalog values; picking the label clears the filter.
-  const filterChips = (label: string, anyLabel: string, values: string[], value: string,
-    onChange: (next: string) => void) => (
-    <View style={{ gap: 6 }}>
-      <Text style={styles.filterLabel}>{label}</Text>
-      <Chips options={[anyLabel, ...values]} value={value === ANY ? anyLabel : value}
-        onChange={(next) => onChange(next === anyLabel ? ANY : next)} />
-    </View>
-  );
-  const valuesOf = (key: 'color' | 'material' | 'shape') =>
-    [...new Set(items.map((item) => item[key]).filter((value): value is string => !!value))];
-  const priceLabels = [t('jewelry.anyPrice'), t('jewelry.upToPrice', { price: money(50) })];
   return (
-    <View style={{ gap: 12 }}>
-      <View style={{ gap: 2 }}>
-        <View style={ui.between}>
-          <Text style={styles.title}>{t('jewelry.chooseDetails')}</Text>
-          <Text style={styles.results}>{t('counts.piece', { count: visible.length })}</Text>
-        </View>
-        <Text style={styles.hint}>
-          {disabled
-            ? t('jewelry.pickerFull')
-            : replacing
-              ? t('jewelry.pickerReplace')
-              : t('jewelry.pickerAdd')}
-        </Text>
-      </View>
-      <View style={styles.toolbar}>
-        <View style={styles.search}>
-          <Icon name="search-outline" size={16} color={theme.colors.muted} />
-          <TextInput
-            accessibilityLabel={t('jewelry.searchLabel')}
-            placeholder={t('jewelry.searchPlaceholder')}
-            placeholderTextColor={theme.colors.muted}
-            value={search}
-            onChangeText={setSearch}
-            returnKeyType="search"
-            autoCorrect={false}
-            style={styles.searchInput}
-          />
-          {!!search && (
-            <Pressable accessibilityRole="button" accessibilityLabel={t('home.clearSearch')}
-              onPress={() => setSearch('')} hitSlop={10}>
-              <Icon name="close-circle" size={16} color={theme.colors.muted} />
-            </Pressable>
-          )}
-        </View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t('jewelry.toggleFilters')}
-          accessibilityState={{ expanded: filterOpen }}
-          onPress={() => setFilterOpen(!filterOpen)}
-          style={[styles.filterButton, (filterOpen || activeCount > 0) && styles.filterButtonActive]}
-        >
-          <Icon name="options-outline" size={18}
-            color={activeCount > 0 || filterOpen ? theme.colors.accent : theme.colors.text} />
-          <Text style={[styles.filterText, (activeCount > 0 || filterOpen) && { color: theme.colors.accent }]}>
-            {t('jewelry.filters')}
-          </Text>
-          {activeCount > 0 && (
-            <View style={styles.filterBadge}>
-              <Text style={styles.filterBadgeText}>{activeCount}</Text>
-            </View>
-          )}
-        </Pressable>
-      </View>
+    <View style={{ flex: 1, gap: 12 }}>
+      <Text style={styles.hint}>
+        {disabled
+          ? t('jewelry.pickerFull')
+          : replacing
+            ? t('jewelry.pickerReplace')
+            : t('jewelry.pickerAdd')}
+      </Text>
       {!sourceItems && (
         <Chips options={(Object.keys(categories) as Category[]).map((key) => t(`jewelry.categories.${key}`))}
           value={t(`jewelry.categories.${category}`)}
           onChange={(label) => setCategory((Object.keys(categories) as Category[])
             .find((key) => t(`jewelry.categories.${key}`) === label) ?? 'All')} />
       )}
-      {filterOpen && (
-        <View style={styles.filters}>
-          {valuesOf('color').length > 1 &&
-            filterChips(t('jewelry.filterColor'), t('jewelry.anyColor'), valuesOf('color'), color, setColor)}
-          {valuesOf('material').length > 1 &&
-            filterChips(t('jewelry.filterMaterial'), t('jewelry.anyMaterial'), valuesOf('material'), material, setMaterial)}
-          {valuesOf('shape').length > 1 &&
-            filterChips(t('jewelry.filterShape'), t('jewelry.anyShape'), valuesOf('shape'), shape, setShape)}
-          <View style={{ gap: 6 }}>
-            <Text style={styles.filterLabel}>{t('jewelry.filterPrice')}</Text>
-            <Chips options={priceLabels} value={priceLabels[cheap ? 1 : 0]}
-              onChange={(label) => setCheap(label === priceLabels[1])} />
+      {/* The material list and the grid scroll on their own, so long lists of either stay reachable. */}
+      <View style={styles.body}>
+        {sidebar && (
+          <ScrollView style={styles.sidebar} contentContainerStyle={styles.sidebarContent}
+            accessibilityLabel={t('jewelry.materialsLabel')} showsVerticalScrollIndicator={false} nestedScrollEnabled>
+            {materialOption(ANY, t('jewelry.allMaterials'), t('jewelry.allMaterialsLabel'))}
+            {materials.map((value) => materialOption(value, value, t('jewelry.materialLabel', { material: value })))}
+          </ScrollView>
+        )}
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 16 }}
+          showsVerticalScrollIndicator={false} nestedScrollEnabled>
+          <View style={styles.grid}>
+            {visible.map((item) => (
+              <DraggableBead key={item.id} item={item} replacing={replacing} disabled={disabled}
+                fit={fitOf?.(item) ?? null}
+                columns={columns} onPick={onPick} onDragStart={onDragStart}
+                onDragMove={onDragMove} onDragEnd={onDragEnd} />
+            ))}
           </View>
-          {(activeCount > 0 || !!search) && (
-            <Pressable accessibilityRole="button" onPress={reset} hitSlop={8} style={{ alignSelf: 'flex-start' }}>
-              <Text style={ui.textLink}>{t('jewelry.resetFilters')}</Text>
-            </Pressable>
+          {!visible.length && (
+            <View style={{ alignItems: 'center', gap: 8, padding: 20 }}>
+              <Text style={[ui.body, { textAlign: 'center' }]}>{t('jewelry.noMatch')}</Text>
+              {material !== ANY && (
+                <Pressable accessibilityRole="button" onPress={() => setMaterial(ANY)} hitSlop={8}>
+                  <Text style={ui.textLink}>{t('jewelry.resetFilters')}</Text>
+                </Pressable>
+              )}
+            </View>
           )}
-        </View>
-      )}
-      <View style={styles.grid}>
-        {visible.map((item) => (
-          <DraggableBead key={item.id} item={item} replacing={replacing} disabled={disabled}
-            fit={fitOf?.(item) ?? null}
-            narrow={width < 360} onPick={onPick} onDragStart={onDragStart}
-            onDragMove={onDragMove} onDragEnd={onDragEnd} />
-        ))}
+        </ScrollView>
       </View>
-      {!visible.length && (
-        <View style={{ alignItems: 'center', gap: 8, padding: 20 }}>
-          <Text style={[ui.body, { textAlign: 'center' }]}>{t('jewelry.noMatch')}</Text>
-          {(activeCount > 0 || !!search) && (
-            <Pressable accessibilityRole="button" onPress={reset} hitSlop={8}>
-              <Text style={ui.textLink}>{t('jewelry.resetFilters')}</Text>
-            </Pressable>
-          )}
-        </View>
-      )}
     </View>
   );
 }
 
-const DraggableBead = memo(function DraggableBead({ item, replacing, disabled, fit, narrow, onPick, onDragStart,
+const DraggableBead = memo(function DraggableBead({ item, replacing, disabled, fit, columns, onPick, onDragStart,
   onDragMove, onDragEnd }: {
   item: CustomizationItem;
   replacing: boolean;
   disabled: boolean;
   /** Why it doesn't fit the bracelet, shown apart from stock problems. */
   fit: string | null;
-  narrow: boolean;
+  /** Tiles per row; the grid is narrower beside the material list. */
+  columns: number;
   onPick: (item: CustomizationItem) => void;
   onDragStart?: (item: CustomizationItem, x: number, y: number) => void;
   onDragMove?: (x: number, y: number) => void;
@@ -237,7 +172,7 @@ const DraggableBead = memo(function DraggableBead({ item, replacing, disabled, f
         style={({ pressed }) => [
           styles.item,
           item.categoryId && styles.tile,
-          narrow && styles.itemNarrow,
+          { width: `${Math.floor(100 / columns) - 2}%`, maxWidth: `${100 / columns}%` },
           quantity > 0 && { borderColor: theme.colors.accent },
           { opacity: unavailable ? 0.45 : pressed ? 0.6 : 1 },
         ]}
@@ -247,7 +182,7 @@ const DraggableBead = memo(function DraggableBead({ item, replacing, disabled, f
             <Text style={styles.countText}>×{quantity}</Text>
           </View>
         )}
-        <DesignItem item={item} size={item.categoryId ? 36 : 48} />
+        <DesignItem item={item} size={item.categoryId ? (columns <= 3 ? 44 : 36) : 48} />
         <Text numberOfLines={1} style={[styles.name, item.categoryId && styles.tileName]}>
           {item.name}
         </Text>
@@ -273,35 +208,19 @@ const DraggableBead = memo(function DraggableBead({ item, replacing, disabled, f
 const createStyles = (theme: Theme) => {
   return StyleSheet.create({
     grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    title: { color: theme.colors.text, fontSize: 16, fontWeight: '600' },
-    results: { color: theme.colors.muted, fontSize: 12 },
     hint: { color: theme.colors.muted, fontSize: 12, lineHeight: 17 },
-    toolbar: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    search: {
-      flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, height: 40, paddingHorizontal: 12,
-      borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface,
+    body: { flex: 1, flexDirection: 'row', gap: 10 },
+    sidebar: { width: 96, flexGrow: 0 },
+    sidebarContent: { gap: 8, paddingBottom: 16 },
+    material: {
+      minHeight: 40, paddingHorizontal: 8, paddingVertical: 8, borderRadius: 999, alignItems: 'center',
+      justifyContent: 'center', borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface,
     },
-    searchInput: { flex: 1, height: 38, fontSize: 13, color: theme.colors.text, paddingVertical: 0 },
-    filterButton: {
-      flexDirection: 'row', alignItems: 'center', gap: 6, height: 40, paddingHorizontal: 12, borderRadius: 12,
-      borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface,
-    },
-    filterButtonActive: { borderColor: theme.colors.accent },
-    filterText: { color: theme.colors.text, fontSize: 13, fontWeight: '600' },
-    filterBadge: {
-      minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, alignItems: 'center', justifyContent: 'center',
-      backgroundColor: theme.colors.accent,
-    },
-    filterBadgeText: { color: theme.colors.onPrimary, fontSize: 10, fontWeight: '700' },
-    filters: {
-      gap: 12, padding: 12, borderRadius: 14, borderWidth: 1, borderColor: theme.colors.border,
-      backgroundColor: theme.colors.surface,
-    },
-    filterLabel: { color: theme.colors.muted, fontSize: 11, fontWeight: '600', letterSpacing: 0.4 },
+    materialActive: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
+    materialText: { color: theme.colors.text, fontSize: 12, fontWeight: '600', textAlign: 'center' },
+    materialTextActive: { color: theme.colors.onPrimary, fontWeight: '700' },
     item: {
-      width: '23%',
       flexGrow: 1,
-      maxWidth: '25%',
       backgroundColor: theme.colors.surface,
       borderWidth: 1,
       borderColor: theme.colors.border,
@@ -310,8 +229,7 @@ const createStyles = (theme: Theme) => {
       alignItems: 'center',
       gap: 6,
     },
-    itemNarrow: { width: '30%', maxWidth: '33%' },
-    tile: { width: '23%', maxWidth: '25%', paddingVertical: 8, paddingHorizontal: 4, gap: 2, borderRadius: 12 },
+    tile: { paddingVertical: 8, paddingHorizontal: 4, gap: 2, borderRadius: 12 },
     tileName: { fontSize: 11, fontWeight: '600', marginTop: 2 },
     tilePrice: { fontSize: 11, color: theme.colors.gold, fontWeight: '700' },
     stock: { fontSize: 9, color: theme.colors.muted, textAlign: 'center' },

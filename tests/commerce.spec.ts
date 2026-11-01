@@ -268,7 +268,7 @@ async function fixture(
   await page.getByRole('button', { name: 'Create your own', exact: true }).click();
   await page.getByRole('button', { name: 'Browse Bracelets' }).click();
   if (sizes?.length) await expect(page.getByText('Choose Size', { exact: true })).toBeVisible();
-  else await expect(page.getByText('Choose your details')).toBeVisible();
+  else await expect(page.getByText('Tap to add, or hold and drag onto your piece')).toBeVisible();
   return {
     category,
     components,
