@@ -10,6 +10,8 @@ import type { SavedProduct } from '@/api/commerceModels';
 import { apparelImage, apparelMeta, isApparelProduct } from '@/services/apparelDesign';
 import { caseMeta, isCaseProduct } from '@/services/caseDesign';
 import { isStickerProduct, stickerMeta } from '@/services/stickerDesign';
+import { mugMeta } from '@/services/mugDesign';
+import { isMugProduct } from '@/helper/mugs';
 import { sizeLabel } from '@/helper/jewelry';
 
 const VISIBLE_MATERIALS = 3;
@@ -49,8 +51,9 @@ export function DesignCard({
   const { t } = useTranslation();
   const readyMade = product.origin === 'COMPANY';
   const stickers = !readyMade && isStickerProduct(product);
-  // A sticker set is its designs, not a list of materials.
-  const lines = readyMade || stickers ? [] : materials(product);
+  const mug = !readyMade && isMugProduct(product);
+  // A sticker set or a mug is its designs, not a list of materials.
+  const lines = readyMade || stickers || mug ? [] : materials(product);
   const size = product.selectedSize;
   const apparel = !readyMade && isApparelProduct(product);
   const meta = (apparel
@@ -59,6 +62,8 @@ export function DesignCard({
       ? caseMeta(t, product)
       : stickers
         ? stickerMeta(t, product)
+      : mug
+        ? mugMeta(t, product)
       : [
       readyMade ? t('designs.readyMade') : componentCount(t, product.itemCount, product.category?.builderType),
       size ? sizeLabel(size) : product.category?.name,

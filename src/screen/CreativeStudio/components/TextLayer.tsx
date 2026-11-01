@@ -43,14 +43,17 @@ const WHOLE: Bounds = { left: 0, top: 0, right: 1, bottom: 1 };
 /**
  * Personalised text, moved, resized and rotated like any item. On a canvas (gift, bouquet)
  * x/y are fractions of the canvas and `bounds` keeps it on the gift bag; with a `frame`
- * (a garment's print area, in pixels) x/y are within that area and it stays inside it.
+ * (a garment's print area, in pixels) x/y are within that area and it stays inside it, or
+ * inside `bounds` of it when given (a mug's safe area).
  */
-export function TextLayer({ layer, size, bounds, frame, selected, editable, zIndex, onSelect, onChange,
-  onRemove }: {
+export function TextLayer({ layer, size, bounds, frame, boxShare = AREA_TEXT_WIDTH, selected, editable, zIndex,
+  onSelect, onChange, onRemove }: {
   layer: TextLayerModel;
   size: number;
   bounds: Bounds | null;
   frame?: Frame;
+  /** With a `frame`: the text box's width at scale 1, as a share of the frame's width. */
+  boxShare?: number;
   selected: boolean;
   editable: boolean;
   zIndex: number;
@@ -59,7 +62,7 @@ export function TextLayer({ layer, size, bounds, frame, selected, editable, zInd
   onRemove?: (id: string) => void;
 }) {
   const area = frame ?? { left: 0, top: 0, width: size, height: size };
-  const width = frame ? AREA_TEXT_WIDTH * frame.width : TEXT_BOX.width * size;
+  const width = frame ? boxShare * frame.width : TEXT_BOX.width * size;
   const height = width * (TEXT_BOX.height / TEXT_BOX.width);
   // The box as shares of the area it moves in, for keeping all of it inside.
   const box = { width: width / area.width, height: height / area.height };
@@ -71,7 +74,7 @@ export function TextLayer({ layer, size, bounds, frame, selected, editable, zInd
       frame={area}
       width={width}
       height={height}
-      clamp={(next) => clampInside(next, box, frame ? WHOLE : bounds)}
+      clamp={(next) => clampInside(next, box, frame ? bounds ?? WHOLE : bounds)}
       label={t('textTool.layerLabel', { text: layer.text })}
       name="text"
       selected={selected}

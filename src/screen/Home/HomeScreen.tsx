@@ -23,6 +23,7 @@ import { openCategory, startDesign } from '@/services/categoryFlow';
 import { canvasSignature } from '@/services/canvasDesign';
 import { apparelSignature } from '@/services/apparelDesign';
 import { designPrice, money } from '@/helper/pricing';
+import { mugPrintArea } from '@/helper/mugs';
 import { builderOf } from './homeContent';
 import { HomeHeader } from './components/HomeHeader';
 import { ContinueSection, type ContinueItem } from './components/ContinueSection';
@@ -73,7 +74,9 @@ export default function HomeScreen() {
 
   const categories = categoriesResult.data ?? [];
   const inStockProducts = useMemo(
-    () => (readyMadeResult.data ?? []).filter(inStock), [readyMadeResult.data]);
+    // The blank mug is the Mug Studio's base, not a ready-made mug.
+    () => (readyMadeResult.data ?? []).filter((product) => inStock(product) && !mugPrintArea(product)),
+    [readyMadeResult.data]);
   const triedBuilders = useMemo(() => new Set<BuilderType>((designs ?? [])
     .filter((design) => design.origin !== 'COMPANY' && design.category)
     .map((design) => builderOf(design.category!))), [designs]);

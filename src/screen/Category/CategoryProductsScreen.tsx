@@ -12,6 +12,7 @@ import { CommunityCreations } from '@/screen/Home/components/ForYou';
 import { useThemedStyles } from '@/hooks/useTheme';
 import { type Theme } from '@/constants/theme';
 import { startDesign } from '@/services/categoryFlow';
+import { mugPrintArea } from '@/helper/mugs';
 import { CreateOwnCard } from './components/CreateOwnCard';
 import { CategoryProductCard, CategoryProductSkeleton } from './components/CategoryProductCard';
 
@@ -35,6 +36,7 @@ export default function CategoryProductsScreen() {
   const creations = useApiResult<CommunityCreation[]>(
     useGetCreationsFromOthersQuery({ categoryId }, { skip: !categoryId }));
   const data = category.data;
+  const readyMade = (products.data ?? []).filter((product) => !(data?.builderType === 'MUG' && mugPrintArea(product)));
   const tileWidth = (Math.min(width, 760) - 44 - GAP) / 2;
 
   if (!data)
@@ -54,8 +56,10 @@ export default function CategoryProductsScreen() {
         <Text style={styles.title}>{data.name}</Text>
         {/* Stickers open on their own headline; other studios keep the category's text. */}
         {data.builderType === 'STICKER' && <Text style={styles.tagline}>{t('stickers.tagline')}</Text>}
+        {data.builderType === 'MUG' && <Text style={styles.tagline}>{t('mugs.tagline')}</Text>}
         <Text style={ui.body}>
-          {data.description || t(data.builderType === 'STICKER' ? 'stickers.intro' : 'category.defaultDescription')}
+          {data.description || t(data.builderType === 'STICKER' ? 'stickers.intro'
+            : data.builderType === 'MUG' ? 'mugs.intro' : 'category.defaultDescription')}
         </Text>
       </View>
 
@@ -64,9 +68,9 @@ export default function CategoryProductsScreen() {
       <View style={{ gap: 14 }}>
         <View style={ui.between}>
           <Text style={styles.heading}>{t('category.explore', { name: data.name })}</Text>
-          {!!products.data?.length && (
+          {!!readyMade.length && (
             <Text style={ui.caption}>
-              {t('counts.product', { count: products.data.length })}
+              {t('counts.product', { count: readyMade.length })}
             </Text>
           )}
         </View>
@@ -76,11 +80,11 @@ export default function CategoryProductsScreen() {
           </View>
         ) : products.error ? (
           <CatalogState loading={false} error={products.error} retry={products.retry} empty="" />
-        ) : !products.data?.length ? (
+        ) : !readyMade.length ? (
           <Text style={ui.body}>{t('category.noReadyMade', { name: data.name })}</Text>
         ) : (
           <View style={styles.grid}>
-            {products.data.map((product) => (
+            {readyMade.map((product) => (
               <CategoryProductCard key={product.id} product={product} width={tileWidth}
                 onPress={() => router.push({ pathname: '/details', params: { id: product.id, purchase: 'ready-made' } })} />
             ))}

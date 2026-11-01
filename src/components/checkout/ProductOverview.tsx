@@ -9,6 +9,8 @@ import { OrderedProduct, SavedProduct } from '@/api/commerceModels';
 import { apparelImage, apparelMeta, isApparelProduct } from '@/services/apparelDesign';
 import { caseMeta, isCaseProduct } from '@/services/caseDesign';
 import { isStickerProduct, stickerMeta } from '@/services/stickerDesign';
+import { mugMeta } from '@/services/mugDesign';
+import { isMugProduct } from '@/helper/mugs';
 import { sizeLabel } from '@/helper/jewelry';
 
 export function ProductOverview({
@@ -54,6 +56,8 @@ export function ProductOverview({
                   ? caseMeta(t, product).join(' · ')
                 : isStickerProduct(product)
                   ? stickerMeta(t, product).join(' · ')
+                : isMugProduct(product)
+                  ? mugMeta(t, product).join(' · ')
                 : `${componentCount(t, product.itemCount, product.category?.builderType)} · ${t('productOverview.customDesign')}`}
           </Text>
           {size && <Text style={ui.caption}>{size}</Text>}

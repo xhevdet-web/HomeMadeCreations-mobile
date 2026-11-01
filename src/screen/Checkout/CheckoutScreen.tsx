@@ -33,6 +33,9 @@ import { useCaseStore } from '@/store/caseStore';
 import { caseMeta, isCaseProduct, loadCaseDesign } from '@/services/caseDesign';
 import { isStickerProduct, loadStickerDesign, stickerMeta } from '@/services/stickerDesign';
 import { useStickerStore } from '@/store/stickerStore';
+import { useMugStore } from '@/store/mugStore';
+import { loadMugDesign, mugMeta } from '@/services/mugDesign';
+import { isMugProduct } from '@/helper/mugs';
 import { parseTextLayers } from '@/api/builderModels';
 import { componentCount } from '@/helper/builders';
 import { ApparelSummary } from '@/components/apparel/ApparelSummary';
@@ -47,6 +50,9 @@ function CheckoutForm({ product, user, size, quantity }: {
   const canvas = !readyMade && isCanvasProduct(product);
   const phoneCase = !readyMade && isCaseProduct(product);
   const stickers = !readyMade && isStickerProduct(product);
+  const mug = !readyMade && isMugProduct(product);
+  // How many identical pieces: ready-made stickers and mugs, or copies of a mug design.
+  const pieces = quantity ?? 1;
   const [currentProduct, setCurrentProduct] = useState(product);
   const missingDelivery = ![
     user.firstName,
@@ -93,7 +99,7 @@ function CheckoutForm({ product, user, size, quantity }: {
       useCommerceStore.getState().setPending(key, true);
       sent = true;
       const order = await createOrder({ productId: product.id, notes, size: readyMade ? size : null,
-        quantity: readyMade ? quantity : undefined }).unwrap();
+        quantity }).unwrap();
       useCommerceStore.getState().rememberOrder(order);
       // Only clear the matching local draft after the backend confirms the Order.
       // An unrelated draft may also be open, so leave that one alone.
@@ -108,6 +114,10 @@ function CheckoutForm({ product, user, size, quantity }: {
           photo: caseDraft.photo, name: t('drafts.myName', { name: product.category.name }) });
         caseDraft.markSaved(null);
       }
+      const mugDraft = useMugStore.getState();
+      if (mug && mugDraft.saved?.product.id === product.id)
+        // Ordered: the next mug starts with an empty design.
+        mugDraft.startOver(t('mugs.defaultName'));
       const stickerDraft = useStickerStore.getState();
       if (stickers && stickerDraft.saved?.product.id === product.id)
         // Ordered: the next set opens empty, in the shape and size chosen last.
@@ -178,6 +188,12 @@ function CheckoutForm({ product, user, size, quantity }: {
         router.dismissTo('/apparel-studio');
         return;
       }
+      if (mug) {
+        // Reopen the Mug Studio with every image, placement and layer.
+        if (useMugStore.getState().saved?.product.id !== product.id) loadMugDesign(product);
+        router.dismissTo('/mug-studio');
+        return;
+      }
       if (stickers) {
         // Reopen the sticker set with every design, placement and quantity.
         if (useStickerStore.getState().saved?.product.id !== product.id) loadStickerDesign(product);
@@ -221,7 +237,7 @@ function CheckoutForm({ product, user, size, quantity }: {
       style={{ maxWidth: 600, gap: 20 }}
       footer={
         <ActionFooter
-          amount={currentProduct.price * (readyMade && quantity ? quantity : 1)}
+          amount={currentProduct.price * pieces}
           amountLabel={t('checkout.totalDue')}
           title={
             pending && !busy
@@ -249,9 +265,9 @@ function CheckoutForm({ product, user, size, quantity }: {
     >
       <Header title={t('checkout.title')} back />
       {!readyMade && <FlowStep step={2} />}
-      {readyMade && !!quantity && quantity > 1 && (
+      {pieces > 1 && (
         <Text style={ui.body}>
-          {t('stickers.readyMade.quantityLine', { count: quantity, price: money(currentProduct.price) })}
+          {t('quantity.line', { count: pieces, price: money(currentProduct.price) })}
         </Text>
       )}
       <ProductOverview
@@ -332,7 +348,15 @@ function CheckoutForm({ product, user, size, quantity }: {
           ))}
         </Disclosure>
       )}
-      {!readyMade && !apparel && !canvas && !phoneCase && !stickers && (
+      {mug && (
+        <Disclosure
+          title={t('orderDetails.priceDetails')}
+          summary={mugMeta(t, currentProduct).join(' · ') + ' · ' + money(currentProduct.price * pieces)}
+        >
+          <DetailRow label={t('mugs.checkoutLine', { count: pieces })} value={money(currentProduct.price * pieces)} />
+        </Disclosure>
+      )}
+      {!readyMade && !apparel && !canvas && !phoneCase && !stickers && !mug && (
         <Disclosure
           title={t('orderDetails.priceDetails')}
           summary={componentCount(t, currentProduct.itemCount) + ' · ' + money(currentProduct.price)}

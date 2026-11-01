@@ -16,6 +16,8 @@ import { isApparelProduct, loadApparelDesign } from '@/services/apparelDesign';
 import { isCanvasProduct, loadCanvasDesign } from '@/services/canvasDesign';
 import { isCaseProduct, loadCaseDesign } from '@/services/caseDesign';
 import { isStickerProduct, loadStickerDesign } from '@/services/stickerDesign';
+import { loadMugDesign } from '@/services/mugDesign';
+import { isMugProduct } from '@/helper/mugs';
 import { DesignCard } from './components/DesignCard';
 
 export default function DesignsScreen() {
@@ -38,6 +40,13 @@ export default function DesignsScreen() {
         loadCaseDesign(product);
         toast.info(t('cases.opened'));
         router.push('/case-studio');
+        return;
+      }
+      if (isMugProduct(product)) {
+        // Mugs reopen with every image, placement and layer restored.
+        loadMugDesign(product);
+        toast.info(t('mugs.opened'));
+        router.push('/mug-studio');
         return;
       }
       if (isStickerProduct(product)) {

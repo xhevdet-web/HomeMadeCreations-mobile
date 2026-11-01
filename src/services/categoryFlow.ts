@@ -16,7 +16,12 @@ export function openCategory(category: Pick<CatalogCategory, 'id'>) {
 // APPAREL: Choose your base product and size → Apparel Studio.
 // CASE: Choose your phone → Case Studio.
 // STICKER: Choose shape and size → Sticker Studio.
+// MUG: straight to the Mug Studio (there is one standard mug).
 export function startDesign(category: CatalogCategory) {
+  if (category.builderType === 'MUG') {
+    router.push({ pathname: '/mug-studio', params: { categoryId: category.id } });
+    return;
+  }
   if (category.builderType === 'STICKER') {
     router.push({ pathname: '/sticker-setup', params: { categoryId: category.id } });
     return;

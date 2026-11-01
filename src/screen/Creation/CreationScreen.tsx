@@ -17,6 +17,8 @@ import { copyCreation } from '@/services/savedDesign';
 import { isApparelProduct, loadApparelDesign } from '@/services/apparelDesign';
 import { isCanvasProduct, loadCanvasDesign } from '@/services/canvasDesign';
 import { isStickerProduct, loadStickerDesign } from '@/services/stickerDesign';
+import { loadMugDesign } from '@/services/mugDesign';
+import { isMugProduct } from '@/helper/mugs';
 import { CreationBeads, CreationHero, CreationPromise, type CreationLine } from './components/CreationDetails';
 
 export default function CreationScreen() {
@@ -36,9 +38,12 @@ export default function CreationScreen() {
 
   // Sticker sets are priced per sticker by their size, not by their components.
   const stickers = !!creation && isStickerProduct(creation.product);
+  // A mug costs the blank mug's price, whatever its images.
+  const mug = !!creation && isMugProduct(creation.product);
+  const fixedPrice = stickers || mug;
   // One line per bead, priced and stock-checked against today's catalog.
   const lines: CreationLine[] = [];
-  for (const item of stickers ? [] : creation?.product.items ?? []) {
+  for (const item of fixedPrice ? [] : creation?.product.items ?? []) {
     const line = lines.find((entry) => entry.id === item.subCategoryId);
     if (line) { line.quantity += item.quantity; continue; }
     const current = components?.find((component) => component.id === item.subCategoryId);
@@ -56,15 +61,22 @@ export default function CreationScreen() {
     if (current && current.stock < line.quantity) line.available = false;
   }
   const unavailable = lines.filter((line) => !line.available);
-  const total = stickers ? creation.product.price
+  const total = fixedPrice ? creation!.product.price
     : lines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
-  const pricesChanged = !stickers && !!creation && !!components && total !== creation.product.price;
+  const pricesChanged = !fixedPrice && !!creation && !!components && total !== creation.product.price;
 
   async function open(mode: 'order' | 'customize') {
     if (!creation || !user || opening) return;
     setOpening(mode);
     setError('');
     try {
+      if (mug) {
+        // A mug opens as the buyer's own copy, saved when they continue.
+        loadMugDesign(creation.product, t('drafts.myName', { name: creation.product.name }));
+        toast.info(t('mugs.opened'));
+        router.push(mode === 'order' ? '/mug-preview' : '/mug-studio');
+        return;
+      }
       if (stickers) {
         // A sticker set opens as the buyer's own copy, saved when they continue.
         loadStickerDesign(creation.product, t('drafts.myName', { name: creation.product.name }));

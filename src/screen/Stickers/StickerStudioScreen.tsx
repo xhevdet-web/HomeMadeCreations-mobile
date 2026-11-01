@@ -10,6 +10,7 @@ import { StageBackground } from '@/components/common/StageBackground';
 import { CatalogState } from '@/components/products/CatalogState';
 import { CatalogImage } from '@/components/products/CatalogImage';
 import type { PickerDrag } from '@/components/studio/ComponentPicker';
+import { DesignLibraryPicker } from '@/components/studio/DesignLibraryPicker';
 import { useGetCategoryComponentsQuery } from '@/api/endpoints/subCategorySlice';
 import { useApiResult } from '@/api/useApiResult';
 import type { CatalogComponent } from '@/api/catalogModels';
@@ -25,7 +26,6 @@ import {
 } from '@/helper/stickers';
 import { designWithoutImage } from '@/services/stickerDesign';
 import { StickerCanvas } from './components/StickerCanvas';
-import { StickerDesignPicker } from './components/StickerDesignPicker';
 import { StickerDesignTabs } from './components/StickerDesignTabs';
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
@@ -265,8 +265,9 @@ export default function StickerStudioScreen() {
           </View>
         )}
         {!components.loading && library.length > 0 && (
-          <StickerDesignPicker designs={library} selectedId={ourDesignId} onChoose={(chosen) => choose(chosen)}
-            drag={drag} />
+          <DesignLibraryPicker designs={library} selectedId={ourDesignId} onChoose={(chosen) => choose(chosen)}
+            drag={drag} title={t('stickers.studio.ourDesigns')} hint={t('stickers.studio.ourDesignsHint')}
+            useLabel={(name) => t('stickers.studio.useDesign', { name })} />
         )}
         <Text style={[ui.caption, { textAlign: 'center' }]}>{t('stickers.studio.safeArea')}</Text>
         <StickerDesignTabs designs={draft.designs} activeId={design.id} onSelect={draft.select}

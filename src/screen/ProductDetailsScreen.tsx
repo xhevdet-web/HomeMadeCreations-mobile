@@ -19,8 +19,8 @@ import { type Theme } from '@/constants/theme';
 import type { SavedProduct } from '@/api/commerceModels';
 import { isCanvasBuilder } from '@/helper/canvasStudio';
 import { SizePicker } from './Apparel/components/BasePicker';
-import { MAX_STICKERS_PER_DESIGN, MIN_STICKERS_PER_ORDER } from '@/helper/stickers';
-import { StickerQuantitySelector } from './Stickers/components/StickerQuantitySelector';
+import { orderQuantityRule } from '@/helper/orderQuantity';
+import { QuantityStepper } from '@/components/common/QuantityStepper';
 
 /** A company product: its photos, colour and sizes, ordered as it is or customised. */
 export default function ProductDetailsScreen() {
@@ -33,7 +33,7 @@ export default function ProductDetailsScreen() {
   const result = useApiResult<SavedProduct>(useGetProductByIdQuery(id ?? '', { skip: !id }));
   const [size, setSize] = useState<string | null>(null);
   const [photo, setPhoto] = useState(0);
-  const [quantity, setQuantity] = useState(MIN_STICKERS_PER_ORDER);
+  const [quantity, setQuantity] = useState(1);
   const product = result.data;
 
   if (result.loading || result.error || !product || !isCompanyProduct(product))
@@ -47,14 +47,13 @@ export default function ProductDetailsScreen() {
     );
 
   const sizes = parseSizes(product.sizes);
-  // Ready-made stickers are sold from five at a time, up to what is in stock.
-  const sticker = product.category?.builderType === 'STICKER' && !sizes.length;
+  // Ready-made stickers (from five) and mugs are sold in quantities, up to what is in stock.
+  const rule = sizes.length ? null : orderQuantityRule(product);
   const stock = product.stock ?? 0;
-  const maxQuantity = Math.min(stock, MAX_STICKERS_PER_DESIGN);
+  const maxQuantity = rule ? Math.max(Math.min(stock, rule.max), rule.min) : 1;
   const unavailable = companyUnavailable(t, product, size)
-    ?? (sticker && stock < MIN_STICKERS_PER_ORDER
-      ? t('stickers.readyMade.notEnough', { count: MIN_STICKERS_PER_ORDER }) : null);
-  const pieces = sticker ? Math.min(Math.max(quantity, MIN_STICKERS_PER_ORDER), Math.max(maxQuantity, 1)) : 1;
+    ?? (rule && stock < rule.min ? t('quantity.notEnough', { count: rule.min }) : null);
+  const pieces = rule ? Math.min(Math.max(quantity, rule.min), maxQuantity) : 1;
   const apparel = product.category?.builderType === 'APPAREL';
   const phoneCase = product.category?.builderType === 'CASE';
   // Apparel, bouquets, gifts and phone cases can be customised starting from this exact product.
@@ -69,7 +68,7 @@ export default function ProductDetailsScreen() {
   function order() {
     if (!user) { toast.info(t('productDetails.loginToOrder')); router.push('/login'); return; }
     if (!product || unavailable) return;
-    useCommerceStore.getState().setCheckout(user.id, product, size, sticker ? pieces : undefined);
+    useCommerceStore.getState().setCheckout(user.id, product, size, rule ? pieces : undefined);
     router.push('/checkout');
   }
 
@@ -132,15 +131,15 @@ export default function ProductDetailsScreen() {
         )}
       </View>
 
-      {sticker && !unavailable && (
+      {rule && !unavailable && (
         <View style={styles.section}>
           <View style={ui.between}>
             <View style={{ flex: 1, gap: 2 }}>
-              <Text style={styles.label}>{t('stickers.preview.quantities')}</Text>
-              <Text style={ui.caption}>{t('stickers.readyMade.minimum', { count: MIN_STICKERS_PER_ORDER })}</Text>
+              <Text style={styles.label}>{t('quantity.title')}</Text>
+              {rule.min > 1 && <Text style={ui.caption}>{t('quantity.minimum', { count: rule.min })}</Text>}
             </View>
-            <StickerQuantitySelector quantity={pieces} label={product.name} min={MIN_STICKERS_PER_ORDER}
-              max={maxQuantity} onChange={setQuantity} />
+            <QuantityStepper quantity={pieces} label={product.name} min={rule.min} max={maxQuantity}
+              onChange={setQuantity} />
           </View>
         </View>
       )}

@@ -15,6 +15,8 @@ import { dateLocale } from '@/i18n';
 import { ApparelSummary } from '@/components/apparel/ApparelSummary';
 import { apparelMeta, isApparelProduct } from '@/services/apparelDesign';
 import { isStickerProduct, stickerMeta } from '@/services/stickerDesign';
+import { mugMeta } from '@/services/mugDesign';
+import { isMugProduct } from '@/helper/mugs';
 import { caseMeta, isCaseProduct } from '@/services/caseDesign';
 import { sizeLabel } from '@/helper/jewelry';
 
@@ -63,7 +65,9 @@ export function OrderTracking({ order }: { order: ApiOrder }) {
   const apparel = !readyMade && isApparelProduct(order.product);
   const phoneCase = !readyMade && isCaseProduct(order.product);
   const stickers = !readyMade && isStickerProduct(order.product);
-  const lines = readyMade || apparel || phoneCase || stickers ? [] : beadLines(order);
+  const mug = !readyMade && isMugProduct(order.product);
+  const lines = readyMade || apparel || phoneCase || stickers || mug ? [] : beadLines(order);
+  const copies = (order.quantity ?? 1) > 1 ? `× ${order.quantity}` : null;
   const date = orderDate(order.createdAt, i18n.language);
   const address = [order.address, [order.postalCode, order.country].filter(Boolean).join(' ')]
     .filter(Boolean).join(', ');
@@ -80,8 +84,9 @@ export function OrderTracking({ order }: { order: ApiOrder }) {
             <Text style={styles.name} numberOfLines={2}>{order.product.name}</Text>
             <Text style={styles.meta} numberOfLines={1}>
               {readyMade
-                ? [t('orderDetails.readyMade'), (order.quantity ?? 1) > 1 ? `× ${order.quantity}` : null]
-                  .filter(Boolean).join(' · ')
+                ? [t('orderDetails.readyMade'), copies].filter(Boolean).join(' · ')
+                : mug
+                  ? [...mugMeta(t, order.product), copies].filter(Boolean).join(' · ')
                 : apparel
                   ? apparelMeta(t, order.product).join(' · ')
                   : phoneCase

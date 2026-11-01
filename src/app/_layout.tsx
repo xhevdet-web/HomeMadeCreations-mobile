@@ -90,6 +90,8 @@ export default function RootLayout() {
               <Stack.Screen name="sticker-setup" />
               <Stack.Screen name="sticker-studio" />
               <Stack.Screen name="sticker-preview" />
+              <Stack.Screen name="mug-studio" />
+              <Stack.Screen name="mug-preview" />
               <Stack.Screen name="design-base" />
               <Stack.Screen name="studio" />
               <Stack.Screen name="studio-preview" />
