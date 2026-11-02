@@ -7,11 +7,11 @@ test('toasts appear on button clicks, fade away, and preserve inline errors', as
   const notification = page.getByTestId('flow-toast');
   await expect(notification).toHaveCount(0);
   await page.getByRole('button', { name: 'Log In', exact: true }).click();
-  await expect(notification).toContainText('Please enter your email or username.');
+  await expect(notification).toContainText('Please enter your email address.');
   await expect(notification).toHaveCSS('opacity', '1');
   await expect(notification).toHaveCount(0, { timeout: 6500 });
-  await expect(page.getByRole('alert')).toContainText('Please enter your email or username.');
-  await page.getByLabel('Email or username', { exact: true }).fill('mila@example.com');
+  await expect(page.getByRole('alert')).toContainText('Please enter your email address.');
+  await page.getByLabel('Email address', { exact: true }).fill('mila@example.com');
   await page.getByLabel('Password', { exact: true }).fill('incorrect');
   await page.getByRole('button', { name: 'Log In', exact: true }).click();
   await expect(notification).toContainText('incorrect');

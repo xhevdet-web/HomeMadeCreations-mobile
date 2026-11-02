@@ -8,7 +8,7 @@ test('reorder a placed bead and add one after scrolling the catalog', async ({ p
     id: 'test-user', firstName: 'Mila', lastName: 'Stone', email: 'mila@example.com',
   } }));
   await page.goto('/login');
-  await page.getByLabel('Email or username').fill('mila@example.com');
+  await page.getByLabel('Email address').fill('mila@example.com');
   await page.getByLabel('Password', { exact: true }).fill('test-password');
   await page.getByRole('button', { name: 'Log In' }).click();
   await page.getByRole('tab', { name: 'Create' }).click();

@@ -16,7 +16,7 @@ interface AuthState {
   expiresAt: number | null;
   error: SessionError | null;
   restore: () => Promise<void>;
-  signIn: (identifier: string, password: string) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<void>;
   beginLogin: () => number;
   acceptLogin: (tokens: Tokens, ticket: number) => Promise<boolean>;
   register: (input: RegistrationInput) => Promise<void>;
@@ -84,9 +84,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     })();
     return restoring;
   },
-  signIn: async (identifier, password) => {
+  signIn: async (email, password) => {
     const ticket = get().beginLogin();
-    const request = apiStore.dispatch(authSlice.endpoints.login.initiate({ identifier, password }));
+    const request = apiStore.dispatch(authSlice.endpoints.login.initiate({ email, password }));
     try {
       await get().acceptLogin(await request.unwrap(), ticket);
     } catch (error) { throw apiError(error); }

@@ -262,7 +262,7 @@ async function fixture(
     return route.fulfill({ status: 404, json: { message: 'Unexpected test request: ' + path } });
   });
   await page.goto('/login');
-  await page.getByLabel('Email or username', { exact: true }).fill('mila@example.com');
+  await page.getByLabel('Email address', { exact: true }).fill('mila@example.com');
   await page.getByLabel('Password', { exact: true }).fill('ValidPassword123!');
   await page.getByRole('button', { name: 'Log In', exact: true }).click();
   await page.getByRole('button', { name: 'Create your own', exact: true }).click();

@@ -16,6 +16,7 @@ import {
 } from './authForm';
 import { AuthLayout, FormSection } from './components/AuthLayout';
 import { AuthFeedback } from './components/AuthFeedback';
+import { GoogleSignInButton } from './components/GoogleSignInButton';
 import { PasswordMatch, PasswordStrength } from './components/PasswordChecks';
 
 export default function RegisterScreen() {
@@ -64,6 +65,7 @@ export default function RegisterScreen() {
       onSwitch={() => router.replace({ pathname: '/login', params: { next } })}
     >
       <View style={{ gap: 16 }}>
+        <GoogleSignInButton />
         <FormSection title={t('auth.register.aboutYou')} icon="person-outline">
           <Field label={t('auth.register.firstName')} icon="person-outline" value={form.firstName}
             onChangeText={update('firstName')} autoComplete="given-name" />
@@ -76,10 +78,6 @@ export default function RegisterScreen() {
           <Field label={t('auth.register.email')} icon="mail-outline" value={form.email}
             onChangeText={update('email')} keyboardType="email-address" autoCapitalize="none"
             autoComplete="email" autoCorrect={false} />
-          <Field label={t('auth.register.userName')} icon="at-outline"
-            placeholder={t('auth.register.userNamePlaceholder')} value={form.userName}
-            onChangeText={update('userName')} autoCapitalize="none" autoCorrect={false}
-            autoComplete="username" maxLength={30} />
           <PasswordInput label={t('auth.register.password')}
             placeholder={t('auth.register.passwordPlaceholder', { count: PASSWORD_MIN_LENGTH })}
             value={form.password} onChangeText={update('password')} autoComplete="new-password" />
@@ -87,18 +85,6 @@ export default function RegisterScreen() {
           <PasswordInput label={t('auth.register.confirmPassword')} value={form.confirm}
             onChangeText={update('confirm')} />
           <PasswordMatch password={form.password} confirm={form.confirm} />
-        </FormSection>
-
-        <FormSection title={t('auth.register.deliveryDetails')} icon="location-outline"
-          hint={t('auth.register.deliveryHint')}>
-          <Field label={t('auth.register.phone')} icon="call-outline" value={form.phone}
-            onChangeText={update('phone')} keyboardType="phone-pad" autoComplete="tel" maxLength={32} />
-          <Field label={t('auth.register.country')} icon="globe-outline" value={form.country}
-            onChangeText={update('country')} autoComplete="country" maxLength={100} />
-          <Field label={t('auth.register.address')} icon="home-outline" value={form.address}
-            onChangeText={update('address')} autoComplete="street-address" maxLength={300} />
-          <Field label={t('auth.register.postalCode')} icon="location-outline" value={form.postalCode}
-            onChangeText={update('postalCode')} autoComplete="postal-code" maxLength={20} />
         </FormSection>
 
         <View style={{ gap: 18 }}>

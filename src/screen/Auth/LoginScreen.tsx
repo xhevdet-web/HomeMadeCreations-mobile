@@ -11,12 +11,13 @@ import { useLoginMutation } from '@/api/endpoints/authSlice';
 import { loginErrorMessage, validateLogin } from './authForm';
 import { AuthLayout } from './components/AuthLayout';
 import { AuthFeedback } from './components/AuthFeedback';
+import { GoogleSignInButton } from './components/GoogleSignInButton';
 
 export default function LoginScreen() {
   const ui = useUI();
   const { t } = useTranslation();
   const { next } = useLocalSearchParams<{ next?: string; registered?: string }>();
-  const [identifier, setIdentifier] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useFeedbackState();
   const [busy, setBusy] = useState(false);
@@ -25,13 +26,13 @@ export default function LoginScreen() {
   async function submit() {
     if (busy) return;
     setError('');
-    const invalid = validateLogin(identifier, password);
+    const invalid = validateLogin(email, password);
     if (invalid) return setError(invalid);
     setBusy(true);
     toast.info(t('auth.login.signingIn'));
     try {
       const ticket = useAuthStore.getState().beginLogin();
-      const tokens = await login({ identifier, password }).unwrap();
+      const tokens = await login({ email, password }).unwrap();
       if (!await useAuthStore.getState().acceptLogin(tokens, ticket)) return;
       setPassword('');
       toast.success(t('auth.login.signedIn'));
@@ -54,13 +55,15 @@ export default function LoginScreen() {
       onSwitch={() => router.replace({ pathname: '/register', params: { next } })}
     >
       <View style={{ gap: 18 }}>
+        <GoogleSignInButton />
         <Field
-          label={t('auth.login.identifier')}
+          label={t('auth.login.email')}
           icon="mail-outline"
-          value={identifier}
-          onChangeText={setIdentifier}
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
           autoCapitalize="none"
-          autoComplete="username"
+          autoComplete="email"
           autoCorrect={false}
         />
         <PasswordInput

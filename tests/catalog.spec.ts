@@ -46,7 +46,7 @@ test.beforeEach(async ({ page }) => {
     }),
   );
   await page.goto('/login');
-  await page.getByLabel('Email or username', { exact: true }).fill('mila@example.com');
+  await page.getByLabel('Email address', { exact: true }).fill('mila@example.com');
   await page.getByLabel('Password', { exact: true }).fill('ValidPassword123!');
   await page.getByRole('button', { name: 'Log In', exact: true }).click();
   await expect(page.getByText(/Your idea\./)).toBeVisible();
@@ -108,7 +108,7 @@ test('catalog filters, sorts, falls back for images and caps bead quantities', a
   await expect(page).toHaveURL(/\/preview$/);
   await expect(page.getByTestId('flow-action-footer').getByText('\u20ac4.50', { exact: true })).toBeVisible();
   await page.reload();
-  await page.getByLabel('Email or username', { exact: true }).fill('mila@example.com');
+  await page.getByLabel('Email address', { exact: true }).fill('mila@example.com');
   await page.getByLabel('Password', { exact: true }).fill('ValidPassword123!');
   await page.getByRole('button', { name: 'Log In', exact: true }).click();
   await page.getByRole('tab', { name: 'Create', exact: true }).click();

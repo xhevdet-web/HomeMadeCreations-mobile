@@ -3,26 +3,35 @@ import { AUTH_URL } from '../constants';
 import { parseTokens, parseUser, type Tokens } from '@/api/authModels';
 import type { User } from '@/types/models';
 
+// Delivery details are not asked at sign-up; checkout collects them on the profile.
 export interface RegistrationInput {
   firstName: string;
   lastName: string;
   email: string;
   password: string;
-  userName?: string;
-  phone?: string;
-  country?: string;
-  address?: string;
-  postalCode?: string;
 }
 
 export const authSlice = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
-    login: builder.mutation<Tokens, { identifier: string; password: string }>({
-      query: ({ identifier, password }) => ({
+    // Customers sign in with their email only.
+    login: builder.mutation<Tokens, { email: string; password: string }>({
+      query: ({ email, password }) => ({
         url: `${AUTH_URL}/login`, method: 'POST',
-        body: { identifier: identifier.trim().toLowerCase(), password },
+        body: { email: email.trim().toLowerCase(), password },
       }),
       transformResponse: parseTokens,
+      invalidatesTags: ['Auth'],
+    }),
+    // Sign-in and sign-up with Google: the API verifies the ID token and answers like login.
+    // 409 means the email already has a password account; send its password to link Google.
+    googleLogin: builder.mutation<{ tokens: Tokens; profileComplete: boolean }, { idToken: string; password?: string }>({
+      query: ({ idToken, password }) => ({
+        url: `${AUTH_URL}/google`, method: 'POST', body: { idToken, password },
+      }),
+      transformResponse: (data: unknown) => ({
+        tokens: parseTokens(data),
+        profileComplete: (data as { profileComplete?: unknown } | null)?.profileComplete !== false,
+      }),
       invalidatesTags: ['Auth'],
     }),
     // Public self-registration; the backend always creates a CUSTOMER account.
@@ -32,9 +41,6 @@ export const authSlice = apiSlice.injectEndpoints({
         body: {
           firstName: input.firstName.trim(), lastName: input.lastName.trim(),
           email: input.email.trim().toLowerCase(), password: input.password,
-          userName: input.userName?.trim().toLowerCase() || undefined,
-          phone: input.phone?.trim() || undefined, country: input.country?.trim() || undefined,
-          address: input.address?.trim() || undefined, postalCode: input.postalCode?.trim() || undefined,
         },
       }),
     }),
@@ -52,4 +58,4 @@ export const authSlice = apiSlice.injectEndpoints({
   }),
 });
 
-export const { useLoginMutation, useRegisterMutation, useChangePasswordMutation, useGetMeQuery } = authSlice;
+export const { useLoginMutation, useGoogleLoginMutation, useRegisterMutation, useChangePasswordMutation, useGetMeQuery } = authSlice;

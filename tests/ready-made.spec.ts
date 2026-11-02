@@ -92,7 +92,7 @@ for (const mode of ['success', 'stock', 'uncertain', 'profile'] as const) {
       throw new Error(`Unexpected request ${req.method()} ${path}`);
     });
     await page.goto('/login');
-    await page.getByLabel('Email or username', { exact: true }).fill(user.email);
+    await page.getByLabel('Email address', { exact: true }).fill(user.email);
     await page.getByLabel('Password', { exact: true }).fill('ValidPassword123!');
     await page.getByRole('button', { name: 'Log In', exact: true }).click();
     await expect(
@@ -174,7 +174,7 @@ test('a sized company product is ordered in the chosen size', async ({ page }) =
     throw new Error(`Unexpected request ${req.method()} ${path}`);
   });
   await page.goto('/login');
-  await page.getByLabel('Email or username', { exact: true }).fill(user.email);
+  await page.getByLabel('Email address', { exact: true }).fill(user.email);
   await page.getByLabel('Password', { exact: true }).fill('ValidPassword123!');
   await page.getByRole('button', { name: 'Log In', exact: true }).click();
   await page.getByRole('button', { name: 'Order Black Essential Hoodie', exact: true }).click();

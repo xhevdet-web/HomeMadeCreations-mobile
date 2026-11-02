@@ -11,9 +11,11 @@
       "typedRoutes": true
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.hmcraft.app"
     },
     "android": {
+      "package": "com.hmcraft.app",
       "adaptiveIcon": {
         "backgroundColor": "#10110F",
         "foregroundImage": "./assets/android-icon-foreground.png",

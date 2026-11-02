@@ -26,9 +26,7 @@ export function ProfileHeader({ user, onEdit }: { user: User; onEdit: () => void
       </View>
       <View style={{ flex: 1, gap: 3 }}>
         <Text style={styles.name} numberOfLines={1}>{name}</Text>
-        <Text style={styles.meta} numberOfLines={1}>{user.email}</Text>
-        {!!user.userName && <Text style={styles.meta}>@{user.userName}</Text>}
-      </View>
+        <Text style={styles.meta} numberOfLines={1}>{user.email}</Text>      </View>
       <Icon name="chevron-forward" size={18} color={theme.colors.muted} />
     </Pressable>
   );

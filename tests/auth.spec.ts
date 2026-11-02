@@ -51,7 +51,7 @@ test('login validates session, opens Home, logout locks routes and clears memory
     }),
   );
   await openLogin(page);
-  await page.getByLabel('Email or username', { exact: true }).fill('mila@example.com');
+  await page.getByLabel('Email address', { exact: true }).fill('mila@example.com');
   await page.getByLabel('Password', { exact: true }).fill('ValidPassword123!');
   await page.getByRole('button', { name: 'Log In', exact: true }).click();
   await expect(page.getByText(/Your idea\./)).toBeVisible();
@@ -68,7 +68,7 @@ test('login validates session, opens Home, logout locks routes and clears memory
 test('failed credentials never open the main app', async ({ page }) => {
   await page.route('**/api/v1/auth/login', (route) => route.fulfill({ status: 401, json: {} }));
   await openLogin(page);
-  await page.getByLabel('Email or username', { exact: true }).fill('mila@example.com');
+  await page.getByLabel('Email address', { exact: true }).fill('mila@example.com');
   await page.getByLabel('Password', { exact: true }).fill('incorrect');
   await page.getByRole('button', { name: 'Log In', exact: true }).click();
   await expect(page.getByRole('alert').first()).toContainText('incorrect');
@@ -87,7 +87,7 @@ test('web reload requires login because bearer tokens are not persisted on web',
     }),
   );
   await openLogin(page);
-  await page.getByLabel('Email or username', { exact: true }).fill('mila@example.com');
+  await page.getByLabel('Email address', { exact: true }).fill('mila@example.com');
   await page.getByLabel('Password', { exact: true }).fill('ValidPassword123!');
   await page.getByRole('button', { name: 'Log In', exact: true }).click();
   await expect(page.getByText(/Your idea\./)).toBeVisible();
@@ -103,11 +103,9 @@ test('registration sends account details to the register API and shows success',
   });
   await page.goto('/register');
   await page.getByLabel('First name', { exact: true }).fill(' Mila ');
-  await page.getByLabel('Username (optional)', { exact: true }).fill('Mila.Stone');
-  await page.getByLabel('Phone (optional)', { exact: true }).fill('044123456');
-  await page.getByLabel('Country (optional)', { exact: true }).fill('Kosovo');
-  await page.getByLabel('Address (optional)', { exact: true }).fill('12 Main Street');
-  await page.getByLabel('Postal code (optional)', { exact: true }).fill('10000');
+  // Registration asks for no username and no delivery details.
+  await expect(page.getByLabel('Username (optional)', { exact: true })).toHaveCount(0);
+  await expect(page.getByLabel('Address (optional)', { exact: true })).toHaveCount(0);
   await page.getByLabel('Last name', { exact: true }).fill('Stone');
   await page.getByLabel('Email address', { exact: true }).fill('MILA@example.com');
   await page.getByLabel('Password', { exact: true }).fill('ValidPassword123!');
@@ -119,11 +117,6 @@ test('registration sends account details to the register API and shows success',
     lastName: 'Stone',
     email: 'mila@example.com',
     password: 'ValidPassword123!',
-    userName: 'mila.stone',
-    phone: '044123456',
-    country: 'Kosovo',
-    address: '12 Main Street',
-    postalCode: '10000',
   });
 });
 
@@ -144,7 +137,7 @@ test('registration displays backend validation errors', async ({ page }) => {
   await expect(page.getByRole('alert').first()).toContainText('firstName must be shorter');
 });
 
-test('login accepts a username and submits it as identifier', async ({ page }) => {
+test('login is by email only and rejects a username before calling the API', async ({ page }) => {
   let payload: unknown;
   await page.route('**/api/v1/auth/login', async (route) => {
     payload = route.request().postDataJSON();
@@ -165,12 +158,16 @@ test('login accepts a username and submits it as identifier', async ({ page }) =
     }),
   );
   await page.goto('/login');
-  await page.getByLabel('Email or username', { exact: true }).fill('Mila.Stone');
+  await page.getByLabel('Email address', { exact: true }).fill('Mila.Stone');
   await page.getByLabel('Password', { exact: true }).fill('ValidPassword123!');
   await page.getByRole('button', { name: 'Log In', exact: true }).click();
+  await expect(page.getByRole('alert').first()).toContainText('Please enter a valid email address.');
+  expect(payload).toBeUndefined();
+  await page.getByLabel('Email address', { exact: true }).fill(' MILA@example.com ');
+  await page.getByRole('button', { name: 'Log In', exact: true }).click();
   await expect(page.getByText(/Your idea\./)).toBeVisible();
-  expect(payload).toEqual({ identifier: 'mila.stone', password: 'ValidPassword123!' });
+  expect(payload).toEqual({ email: 'mila@example.com', password: 'ValidPassword123!' });
   await page.getByRole('tab', { name: 'Profile', exact: true }).click();
-  await expect(page.getByLabel('Address', { exact: true })).toHaveValue('12 Main Street');
+  await expect(page.getByText('12 Main Street, 10000, Kosovo', { exact: true })).toBeVisible();
 });
 

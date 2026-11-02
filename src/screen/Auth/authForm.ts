@@ -13,14 +13,12 @@ export interface RegistrationForm extends Required<RegistrationInput> {
 }
 
 export const emptyRegistration: RegistrationForm = {
-  firstName: '', lastName: '', email: '', userName: '', phone: '',
-  country: '', address: '', postalCode: '', password: '', confirm: '',
+  firstName: '', lastName: '', email: '', password: '', confirm: '',
 };
 
-const USERNAME = /^[a-zA-Z0-9_.-]{3,30}$/;
-
-export function validateLogin(identifier: string, password: string): string | null {
-  if (!identifier.trim()) return t('validation.identifierRequired');
+export function validateLogin(email: string, password: string): string | null {
+  if (!email.trim()) return t('validation.emailRequired');
+  if (!isValidEmail(email)) return t('validation.invalidEmail');
   if (!password) return t('validation.passwordRequired');
   return null;
 }
@@ -28,7 +26,6 @@ export function validateLogin(identifier: string, password: string): string | nu
 export function validateRegistration(form: RegistrationForm): string | null {
   if (!hasRequiredValues(form.firstName, form.lastName)) return t('validation.nameRequired');
   if (!isValidEmail(form.email)) return t('validation.invalidEmail');
-  if (form.userName.trim() && !USERNAME.test(form.userName.trim())) return t('validation.invalidUserName');
   if (!form.password) return t('validation.passwordRequired');
   if (!meetsPasswordPolicy(form.password)) return t('validation.passwordLength', lengths);
   if (form.password !== form.confirm) return t('validation.passwordsDoNotMatch');
@@ -59,10 +56,7 @@ export function loginErrorMessage(failure: unknown): string {
 
 export function registrationErrorMessage(failure: unknown): string {
   const error = apiError(failure);
-  if (error.status === 409)
-    return error.message === 'Username is already in use'
-      ? t('auth.register.userNameTaken')
-      : t('auth.register.emailTaken');
+  if (error.status === 409) return t('auth.register.emailTaken');
   return error.message;
 }
 
@@ -72,6 +66,7 @@ const PASSWORD_CHANGE_ERRORS: Record<string, () => string> = {
   'New passwords do not match': () => t('validation.newPasswordsDoNotMatch'),
   'New password must be different from your current password': () => t('validation.samePassword'),
   'New password does not meet the password requirements': () => t('validation.newPasswordLength', lengths),
+  'This account signs in with Google and has no password': () => t('validation.googleOnlyPassword'),
 };
 
 export function passwordChangeErrorMessage(failure: unknown): string {

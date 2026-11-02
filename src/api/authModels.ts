@@ -36,9 +36,12 @@ export function parseTokens(value: unknown): Tokens {
 export function parseUser(value: unknown): User {
   if (!value || typeof value !== 'object') throw new Error(i18n.t('errors.invalidAccount'));
   const data = value as Record<string, unknown>;
-  for (const field of ['id', 'firstName', 'lastName', 'email'])
+  for (const field of ['id', 'email'])
     if (typeof data[field] !== 'string' || !data[field])
       throw new Error(i18n.t('errors.invalidAccount'));
+  // Accounts made with Google can have an empty name until the customer adds it.
+  for (const field of ['firstName', 'lastName'])
+    if (typeof data[field] !== 'string') throw new Error(i18n.t('errors.invalidAccount'));
   if (data.isActive === false) throw new Error(i18n.t('errors.accountInactive'));
   // Adapt flat API address fields to the existing mobile address model.
   return {
